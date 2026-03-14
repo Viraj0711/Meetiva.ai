@@ -37,11 +37,11 @@ const Sidebar: React.FC = () => {
         <Link to="/dashboard" className="flex h-16 items-center border-b border-border px-6 overflow-hidden">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-sm">P</span>
+              <span className="text-white font-bold text-sm">M</span>
             </div>
             {isExpanded && (
               <h1 className="bg-gradient-primary bg-clip-text text-xl font-bold text-transparent whitespace-nowrap animate-fade-in">
-                Propelting
+                Meetiva
               </h1>
             )}
           </div>

@@ -195,7 +195,7 @@ const RegisterEnhanced = () => {
               Create Account
             </h1>
             <p className="text-sm text-gray-600">
-              Join thousands of teams using Propelting.ai
+              Join thousands of teams using Meetiva
             </p>
           </div>
 

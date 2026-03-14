@@ -74,7 +74,7 @@ const Register: React.FC = () => {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
       <div className="w-full max-w-md rounded-lg border border-border bg-card p-8 shadow-lg">
         <h1 className="mb-2 bg-gradient-primary bg-clip-text text-center text-3xl font-bold text-transparent">
-          Propelting
+          Meetiva
         </h1>
         <p className="mb-6 text-center text-sm text-muted-foreground">
           Create your account to get started

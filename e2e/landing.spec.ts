@@ -37,7 +37,7 @@ test.describe('Landing Page', () => {
     await page.locator('text=Frequently Asked Questions').scrollIntoViewIfNeeded();
     
     // Click first FAQ item
-    const firstFaq = page.locator('button:has-text("What is Propelting.ai?")').first();
+    const firstFaq = page.locator('button:has-text("What is Meetiva?")').first();
     await firstFaq.click();
     
     // Check if content expands

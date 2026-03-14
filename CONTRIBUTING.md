@@ -1,6 +1,6 @@
-# Contributing to Propelting
+# Contributing to Meetiva
 
-Thank you for considering contributing to Propelting! This document provides guidelines and instructions for contributing.
+Thank you for considering contributing to Meetiva! This document provides guidelines and instructions for contributing.
 
 ## Table of Contents
 
@@ -299,8 +299,8 @@ Mockups, examples, related features
 
 - Open a [GitHub Discussion](https://github.com/Viraj0711/Propelting.ai_pvt/discussions)
 - Join our community chat (if available)
-- Email: support@propelting.ai
+- Email: support@meetiva.ai
 
 ---
 
-**Thank you for contributing to Propelting!** 🚀
+**Thank you for contributing to Meetiva!** 🚀

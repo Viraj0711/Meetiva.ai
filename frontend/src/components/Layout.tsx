@@ -30,7 +30,7 @@ const Layout: React.FC = () => {
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className="flex h-16 items-center border-b border-border px-6">
-            <h1 className="text-xl font-bold text-gradient-primary">Propelting</h1>
+            <h1 className="text-xl font-bold text-gradient-primary">Meetiva</h1>
           </div>
 
           {/* Navigation */}

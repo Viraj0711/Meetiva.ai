@@ -12,10 +12,10 @@ const TermsPage: React.FC = () => {
         <div className="flex justify-between items-center backdrop-blur-sm bg-white/70 rounded-2xl px-6 py-4 shadow-lg border border-white/20">
           <Link to="/" className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">P</span>
+              <span className="text-white font-bold text-xl">M</span>
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Propelting.ai
+              Meetiva
             </span>
           </Link>
         </div>
@@ -31,7 +31,7 @@ const TermsPage: React.FC = () => {
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Acceptance of Terms</h2>
               <p className="text-gray-700 leading-relaxed">
-                By accessing and using Propelting.ai ("Service"), you accept and agree to be bound by the terms and
+                By accessing and using Meetiva ("Service"), you accept and agree to be bound by the terms and
                 provision of this agreement. If you do not agree to abide by the above, please do not use this service.
               </p>
             </section>
@@ -39,13 +39,13 @@ const TermsPage: React.FC = () => {
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Use License</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
-                Permission is granted to temporarily use Propelting.ai for personal and commercial use. This is the
+                Permission is granted to temporarily use Meetiva for personal and commercial use. This is the
                 grant of a license, not a transfer of title, and under this license you may not:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-gray-700">
                 <li>Modify or copy the materials</li>
                 <li>Use the materials for any commercial purpose without proper licensing</li>
-                <li>Attempt to decompile or reverse engineer any software contained on Propelting.ai</li>
+                <li>Attempt to decompile or reverse engineer any software contained on Meetiva</li>
                 <li>Remove any copyright or other proprietary notations from the materials</li>
                 <li>Transfer the materials to another person or "mirror" the materials on any other server</li>
               </ul>
@@ -92,7 +92,7 @@ const TermsPage: React.FC = () => {
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">7. Limitation of Liability</h2>
               <p className="text-gray-700 leading-relaxed">
-                In no event shall Propelting.ai or its suppliers be liable for any damages (including, without
+                In no event shall Meetiva or its suppliers be liable for any damages (including, without
                 limitation, damages for loss of data or profit, or due to business interruption) arising out of the
                 use or inability to use the Service.
               </p>
@@ -119,7 +119,7 @@ const TermsPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="relative z-10 container mx-auto px-6 py-12 text-center border-t border-gray-200/50">
-        <p className="text-gray-600">&copy; {new Date().getFullYear()} Propelting.ai. All rights reserved.</p>
+        <p className="text-gray-600">&copy; {new Date().getFullYear()} Meetiva. All rights reserved.</p>
       </footer>
     </div>
   );

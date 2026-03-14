@@ -87,7 +87,7 @@ const LandingPage: React.FC = () => {
 
   const testimonials = [
     {
-      quote: 'Propelting has transformed how our team handles meetings. We\'ve saved hours every week and nothing falls through the cracks anymore.',
+      quote: 'Meetiva has transformed how our team handles meetings. We\'ve saved hours every week and nothing falls through the cracks anymore.',
       author: 'Sarah Chen',
       role: 'VP of Product, TechCorp',
       avatar: '👩‍💼',
@@ -99,7 +99,7 @@ const LandingPage: React.FC = () => {
       avatar: '👨‍💻',
     },
     {
-      quote: 'Integration with our existing tools was seamless. Propelting fits perfectly into our workflow without any disruption.',
+      quote: 'Integration with our existing tools was seamless. Meetiva fits perfectly into our workflow without any disruption.',
       author: 'Emily Watson',
       role: 'CTO, InnovateLabs',
       avatar: '👩‍💼',
@@ -139,10 +139,10 @@ const LandingPage: React.FC = () => {
         <div className="flex justify-between items-center backdrop-blur-sm bg-white/70 rounded-2xl px-6 py-4 shadow-lg border border-white/20">
           <Link to="/" className="flex items-center space-x-3 group">
             <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
-              <span className="text-white font-bold text-xl">P</span>
+              <span className="text-white font-bold text-xl">M</span>
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Propelting.ai
+              Meetiva
             </span>
           </Link>
           <div className="hidden md:flex items-center space-x-8">
@@ -230,14 +230,14 @@ const LandingPage: React.FC = () => {
           </div>
           
           <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-            Turn Meetings Into{' '}
+            Freely attend your Meeting,{' '}
             <span className="bg-gradient-primary bg-clip-text text-transparent">
-              Results
+              Meetiva is ready for Reporting
             </span>
           </h1>
           
           <p className="text-xl md:text-2xl text-gray-600 mb-10 leading-relaxed max-w-3xl mx-auto">
-            Stop losing productivity to manual note-taking. Propelting automatically transcribes,
+            Stop losing productivity to manual note-taking. Meetiva automatically transcribes,
             summarizes, and extracts action items from your meetings—so your team can focus on
             execution, not documentation.
           </p>
@@ -387,7 +387,7 @@ const LandingPage: React.FC = () => {
       <section className="relative z-10 container mx-auto px-6 py-20">
         <div className="text-center mb-16">
           <h2 className="text-5xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
-          <p className="text-xl text-gray-600">Everything you need to know about Propelting</p>
+          <p className="text-xl text-gray-600">Everything you need to know about Meetiva</p>
         </div>
 
         <div className="max-w-3xl mx-auto space-y-4">
@@ -458,14 +458,14 @@ const LandingPage: React.FC = () => {
           <div>
             <div className="flex items-center space-x-2 mb-4">
               <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">P</span>
+                <span className="text-white font-bold">M</span>
               </div>
               <span className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
-                Propelting.ai
+                Meetiva
               </span>
             </div>
             <p className="text-gray-600 text-sm">
-              Turn meetings into momentum with AI-powered intelligence.
+              Freely attend your Meeting, Meetiva is ready for Reporting.
             </p>
           </div>
           
@@ -500,7 +500,7 @@ const LandingPage: React.FC = () => {
         </div>
         
         <div className="text-center text-gray-600 text-sm pt-8 border-t border-gray-200/50">
-          <p>&copy; {new Date().getFullYear()} Propelting.ai. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Meetiva. All rights reserved.</p>
         </div>
       </footer>
     </div>

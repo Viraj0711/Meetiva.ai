@@ -44,7 +44,7 @@ const LoginPage: React.FC = () => {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-gradient-primary">Propelting</CardTitle>
+          <CardTitle className="text-3xl font-bold text-gradient-primary">Meetiva</CardTitle>
           <CardDescription>Sign in to your account</CardDescription>
         </CardHeader>
         <CardContent>

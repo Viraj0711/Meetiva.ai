@@ -1,6 +1,6 @@
-# Propelting Frontend
+# Meetiva Frontend
 
-React + TypeScript + Vite frontend for the Propelting AI meeting intelligence platform.
+React + TypeScript + Vite frontend for the Meetiva AI meeting intelligence platform.
 
 ## 🚀 Getting Started
 

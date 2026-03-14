@@ -213,7 +213,7 @@ const Settings: React.FC = () => {
               <div>
                 <h3 className="font-semibold mb-1">Connect your tools</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Integrate Propelting with your favorite project management and communication tools to streamline your workflow.
+                  Integrate Meetiva with your favorite project management and communication tools to streamline your workflow.
                 </p>
               </div>
             </div>

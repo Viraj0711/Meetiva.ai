@@ -10,10 +10,10 @@ const Landing: React.FC = () => {
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">P</span>
+              <span className="text-white font-bold text-xl">M</span>
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Propelting.ai
+              Meetiva
             </span>
           </div>
           <div className="flex items-center space-x-4">
@@ -36,14 +36,14 @@ const Landing: React.FC = () => {
             </span>
           </div>
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-            Turn Meetings Into{' '}
+            Freely attend your Meeting,{' '}
             <span className="bg-gradient-primary bg-clip-text text-transparent">
-              Results
+              Meetiva is ready for Reporting
             </span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-            Stop losing productivity to manual note-taking. Propelting automatically transcribes,  
-            summarizes, and extracts action items from your meetings—so your team can focus on 
+            Stop losing productivity to manual note-taking. Meetiva automatically transcribes,
+            summarizes, and extracts action items from your meetings—so your team can focus on
             execution, not documentation.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -228,7 +228,7 @@ const Landing: React.FC = () => {
       {/* Footer */}
       <footer className="container mx-auto px-6 py-8 border-t">
         <div className="text-center text-gray-600">
-          <p>&copy; 2025 Propelting.ai. All rights reserved.</p>
+          <p>&copy; 2025 Meetiva. All rights reserved.</p>
         </div>
       </footer>
     </div>

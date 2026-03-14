@@ -401,7 +401,7 @@ const Profile: React.FC = () => {
               <div>
                 <h3 className="font-bold text-lg mb-1">Connect Your Favorite Tools</h3>
                 <p className="text-sm text-gray-700">
-                  Integrate Propelting with your project management and communication tools to create a seamless workflow. 
+                  Integrate Meetiva with your project management and communication tools to create a seamless workflow.
                   Action items automatically sync, and meeting summaries are shared with your team.
                 </p>
               </div>

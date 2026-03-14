@@ -1,7 +1,7 @@
 {
   "name": "propelting-backend",
   "version": "1.0.0",
-  "description": "Propelting.ai Backend API",
+  "description": "Meetiva Backend API",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

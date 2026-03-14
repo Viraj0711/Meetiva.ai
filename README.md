@@ -1,10 +1,10 @@
-# Propelting 🚀
+# Meetiva 🚀
 
-## Turn Meetings into Momentum
+## Freely attend your Meeting, Meetiva is ready for Reporting
 
-**Propelting** is an AI-powered meeting intelligence platform that automatically converts conversations into summaries, action items, and tracked tasks—so teams spend less time remembering and more time executing.
+**Meetiva** is an AI-powered meeting intelligence platform that automatically converts conversations into summaries, action items, and tracked tasks—so teams spend less time remembering and more time executing.
 
-Propelting listens to meetings, understands context, identifies decisions, assigns ownership, and integrates directly into your existing workflow tools like JIRA, Slack, and Google Calendar.
+Meetiva listens to meetings, understands context, identifies decisions, assigns ownership, and integrates directly into your existing workflow tools like JIRA, Slack, and Google Calendar.
 
 ---
 
@@ -50,7 +50,7 @@ Modern teams need meetings to **produce outcomes**, not just conversations.
 
 ## 💡 Solution Overview
 
-**Propelting** acts as an AI meeting co-pilot that automatically:
+**Meetiva** acts as an AI meeting co-pilot that automatically:
 
 * Transcribes meetings with high accuracy
 * Identifies speakers and context
@@ -60,7 +60,7 @@ Modern teams need meetings to **produce outcomes**, not just conversations.
 * Syncs tasks to project management tools
 * Sends reminders and follow-ups automatically
 
-Propelting closes the gap between **discussion and execution**.
+Meetiva closes the gap between **discussion and execution**.
 
 ---
 
@@ -107,7 +107,7 @@ Propelting closes the gap between **discussion and execution**.
 
 ## 🏗️ Technical Architecture
 
-Propelting is built as a scalable, cloud-native system.
+Meetiva is built as a scalable, cloud-native system.
 
 ### High-Level Overview
 
@@ -313,7 +313,7 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 
 ## 📡 API Documentation
 
-Propelting exposes a REST API with JWT authentication.
+Meetiva exposes a REST API with JWT authentication.
 
 ### Base URL
 
@@ -369,6 +369,6 @@ See the `LICENSE` file for full details.
 
 ---
 
-### Propelting exists for one reason
+### Meetiva exists for one reason
 
-**Meetings should create progress, not paperwork.**
+**Freely attend your Meeting, Meetiva is ready for Reporting.**
