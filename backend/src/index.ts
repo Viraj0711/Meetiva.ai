@@ -3,11 +3,19 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import authRoutes from './routes/auth';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8000', 10);
+
+const frontendLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs for wildcard frontend route
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -40,7 +48,7 @@ app.use('/api/v1/auth', authRoutes);
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendPath));
 
-app.get('*', (req, res) => {
+app.get('*', frontendLimiter, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
