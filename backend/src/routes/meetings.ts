@@ -263,7 +263,7 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
         ? 'Meeting transcribed with Whisper, summarized with Grok, and tasks extracted successfully.'
         : 'Meeting uploaded, summarized with Grok, and tasks extracted successfully.',
       transcribedByWhisper,
-      actionItemsExportUrl: `/api/v1/meetings/${createdMeeting.id}/action-items/export`,
+      actionItemsExportUrl: `/meetings/${createdMeeting.id}/action-items/export`,
       taskCount: analysis.tasks.length,
     });
   } catch (error) {

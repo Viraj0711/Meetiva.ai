@@ -1,0 +1,70 @@
+Sprint Planning Meeting - Q2 2026
+Date: March 17, 2026
+Duration: 45 minutes
+
+Attendees:
+- Sarah Chen (Product Manager)
+- Rahul Mehta (Tech Lead)
+- Priya Nair (Frontend Developer)
+- James O'Brien (Backend Developer)
+- Viraj Shah (QA Engineer)
+
+---
+
+Sarah: Good morning everyone. Let's kick off our Q2 sprint planning. We have a lot to cover today. First, let's go through the backlog items and assign ownership.
+
+Rahul: Sure. I've reviewed the backlog and I think we should prioritize the authentication overhaul first. Our current JWT expiry logic has a bug where tokens aren't being refreshed properly.
+
+James: Agreed. I can take that one. I'll fix the token refresh endpoint and write unit tests for it. I think I can wrap it up by March 24th.
+
+Sarah: Perfect. James, please also make sure to update the API documentation once that's done. Can you do that by March 26th?
+
+James: Yes, that's doable.
+
+Priya: On the frontend side, I've been looking at the upload page. The drag-and-drop has some accessibility issues — it's not keyboard navigable. I'll fix that this week, targeting March 21st.
+
+Sarah: Great. Priya, can you also add loading skeletons to the dashboard so users don't see blank cards during data fetch? That's been a complaint in user feedback.
+
+Priya: I can do that. I'll add it to my list — I'll aim for March 25th for the loading skeletons.
+
+Rahul: We also need to integrate the new analytics pipeline. I'll set up the data aggregation service on the backend. It's a bigger task so I'm estimating March 31st.
+
+Sarah: Viraj, once James finishes the auth fix, can you write end-to-end tests for the login and token refresh flows?
+
+Viraj: Absolutely. Once James is done, I'll pick it up. I can finish the E2E tests by March 28th.
+
+Sarah: We also discussed last week migrating the file storage from local disk to S3. Rahul, can you lead that?
+
+Rahul: Yes. I'll have the S3 integration ready by April 2nd. James should also review the security configuration for the bucket policies.
+
+James: I'll review and sign off on the S3 bucket policies by April 3rd.
+
+Sarah: One more thing — the mobile responsiveness of the landing page is broken on iPhone 14. Priya, can you investigate and fix that?
+
+Priya: I'll look at it today and have a fix by March 20th.
+
+Sarah: Excellent. Let's also not forget that we need a demo environment set up before the client call on April 5th. Rahul, can you handle the demo environment setup?
+
+Rahul: Yes, I'll set that up by April 4th to give us a day of buffer.
+
+Sarah: Perfect. Let me summarize the key decisions: we're prioritizing auth and frontend accessibility in the first week, analytics and S3 migration in week two, and the demo environment before April 5th. Any blockers?
+
+James: I'll need DevOps access for the S3 bucket. Can someone raise that ticket?
+
+Sarah: I'll create that ticket today and assign it to myself. I'll follow up with DevOps by end of day.
+
+Rahul: I also want to flag that we're considering switching our CI pipeline from GitHub Actions to Buildkite. We haven't decided yet — we need to evaluate costs first.
+
+Sarah: Let's table that for the next planning session. No action needed yet.
+
+Viraj: One open question — do we have a decision on the automated regression suite yet? We discussed it last sprint but I haven't seen a final answer.
+
+Sarah: Still open. I'll add it to the agenda for next week's retrospective.
+
+James: Also, with the S3 migration, what happens to existing uploaded files?
+
+Sarah: Good point — we'll need a data migration script. Rahul, can you include that in your S3 task scope?
+
+Rahul: Will do. I'll estimate an extra day for that — so still targeting April 2nd but let's keep April 3rd as a buffer.
+
+Sarah: Sounds good. Alright, that's everything. Let's follow up async on any blockers. Thanks everyone!
