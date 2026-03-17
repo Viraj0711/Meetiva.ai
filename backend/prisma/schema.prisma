@@ -16,6 +16,103 @@ model User {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  meetings       Meeting[]
+  actionItems    ActionItem[]
 
   @@map("users")
+}
+
+enum MeetingStatus {
+  uploading
+  processing
+  transcribing
+  analyzing
+  completed
+  failed
+}
+
+enum MeetingPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum ActionItemStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}
+
+model Meeting {
+  id                 String          @id @default(uuid())
+  title              String
+  description        String?
+  status             MeetingStatus   @default(uploading)
+  priority           MeetingPriority @default(medium)
+  audioUrl           String?
+  videoUrl           String?
+  duration           Int?
+  participants       Json            @default("[]")
+  processingProgress Int?            @default(0)
+  userId             String
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  completedAt        DateTime?
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summary            MeetingSummary?
+  transcript         Transcript?
+  actionItems        ActionItem[]
+
+  @@index([userId, createdAt])
+  @@map("meetings")
+}
+
+model MeetingSummary {
+  id               String   @id @default(uuid())
+  meetingId        String   @unique
+  executiveSummary String
+  keyPoints        Json     @default("[]")
+  decisions        Json     @default("[]")
+  openQuestions    Json     @default("[]")
+  sentiment        String   @default("neutral")
+  createdAt        DateTime @default(now())
+  meeting          Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@map("meeting_summaries")
+}
+
+model Transcript {
+  id        String   @id @default(uuid())
+  meetingId String   @unique
+  segments  Json     @default("[]")
+  fullText  String
+  language  String   @default("en")
+  createdAt DateTime @default(now())
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@map("transcripts")
+}
+
+model ActionItem {
+  id          String           @id @default(uuid())
+  meetingId   String
+  userId      String
+  title       String
+  description String?
+  assignee    String?
+  dueDate     DateTime?
+  priority    MeetingPriority  @default(medium)
+  status      ActionItemStatus @default(pending)
+  tags        Json             @default("[]")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  completedAt DateTime?
+  meeting     Meeting          @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([meetingId])
+  @@map("action_items")
 }

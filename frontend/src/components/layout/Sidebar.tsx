@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Upload, ListTodo, BarChart3, Settings, LogOut, Calendar, User } from 'lucide-react';
+import { Home, Upload, ListTodo, BarChart3, Settings, LogOut, Calendar } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { cn } from '@/lib/utils';

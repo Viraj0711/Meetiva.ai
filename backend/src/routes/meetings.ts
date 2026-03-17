@@ -1,49 +1,65 @@
 import { Router, Response } from 'express';
+import { Prisma } from '@prisma/client';
+import multer from 'multer';
+import * as XLSX from 'xlsx';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import prisma from '../lib/prisma';
+import { analyzeTranscriptWithGrok } from '../services/grokMeetingAnalyzer';
+import {
+  transcribeWithWhisper,
+  isAudioOrVideoFile,
+  WHISPER_MAX_BYTES,
+} from '../services/whisperTranscriber';
 
 const router = Router();
+
+// Multer: keep limit at Whisper's hard cap (25 MB).
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: WHISPER_MAX_BYTES },
+});
+
+const jsonArrayToStringArray = (value: Prisma.JsonValue | null | undefined): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === 'string');
+};
 
 router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meetings = await prisma.meeting.findMany({
       where: { userId: req.userId! },
-      include: {
-        actionItems: true
-      }
+      include: { actionItems: true }
     });
 
     const totalMeetings = meetings.length;
-    const totalDuration = meetings.reduce((sum, m) => sum + (m.duration || 0), 0);
+    const totalDuration = meetings.reduce((sum: number, meeting) => sum + (meeting.duration || 0), 0);
     const avgDuration = totalMeetings > 0 ? Math.round(totalDuration / totalMeetings) : 0;
 
-    const totalActionItems = meetings.reduce((sum, m) => sum + m.actionItems.length, 0);
-    const avgActionItems = totalMeetings > 0 ? (totalActionItems / totalMeetings).toFixed(1) : '0';
+    const totalActionItems = meetings.reduce((sum: number, meeting) => sum + meeting.actionItems.length, 0);
+    const avgActionItems = totalMeetings > 0 ? Number((totalActionItems / totalMeetings).toFixed(1)) : 0;
 
     const now = new Date();
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    
-    const monthlyMeetings = meetings.filter(m => m.createdAt >= sixMonthsAgo);
+    const monthlyMeetings = meetings.filter((meeting) => meeting.createdAt >= sixMonthsAgo);
     const monthMap = new Map<string, number>();
 
-    monthlyMeetings.forEach(meeting => {
+    monthlyMeetings.forEach((meeting) => {
       const month = new Date(meeting.createdAt).toLocaleDateString('en-US', { month: 'short' });
       monthMap.set(month, (monthMap.get(month) || 0) + 1);
     });
 
-    const trends = Array.from(monthMap.entries()).map(([month, count]) => ({
-      month,
-      count
-    }));
+    const trends = Array.from(monthMap.entries()).map(([month, count]) => ({ month, count }));
 
     const participantMap = new Map<string, number>();
-    meetings.forEach(meeting => {
-      const participants = meeting.participants as string[];
-      if (Array.isArray(participants)) {
-        participants.forEach((participant: string) => {
-          participantMap.set(participant, (participantMap.get(participant) || 0) + 1);
-        });
-      }
+
+    meetings.forEach((meeting) => {
+      const participants = jsonArrayToStringArray(meeting.participants);
+      participants.forEach((participant) => {
+        participantMap.set(participant, (participantMap.get(participant) || 0) + 1);
+      });
     });
 
     const topParticipants = Array.from(participantMap.entries())
@@ -53,11 +69,11 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
 
     res.json({
       totalMeetings,
-      completedMeetings: meetings.filter(m => m.status === 'COMPLETED').length,
-      processingMeetings: meetings.filter(m => m.status === 'PROCESSING').length,
+      completedMeetings: meetings.filter((meeting) => meeting.status === 'completed').length,
+      processingMeetings: meetings.filter((meeting) => meeting.status === 'processing').length,
       totalDuration,
       avgDuration,
-      avgActionItems: parseFloat(avgActionItems),
+      avgActionItems,
       trends,
       topParticipants
     });
@@ -70,13 +86,15 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '10' } = req.query;
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const pageNumber = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNumber = Math.max(1, parseInt(limit as string, 10) || 10);
+    const skip = (pageNumber - 1) * limitNumber;
 
     const [meetings, total] = await Promise.all([
       prisma.meeting.findMany({
         where: { userId: req.userId! },
         skip,
-        take: parseInt(limit as string),
+        take: limitNumber,
         orderBy: { createdAt: 'desc' },
         include: {
           _count: {
@@ -91,9 +109,9 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       data: meetings,
       pagination: {
         total,
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
-        totalPages: Math.ceil(total / parseInt(limit as string))
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: Math.ceil(total / limitNumber)
       }
     });
   } catch (error) {
@@ -105,13 +123,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findFirst({
-      where: {
-        id: req.params.id,
-        userId: req.userId!
-      },
-      include: {
-        actionItems: true
-      }
+      where: { id: req.params.id, userId: req.userId! },
+      include: { actionItems: true }
     });
 
     if (!meeting) {
@@ -125,6 +138,289 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
+router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequest, res: Response) => {
+  try {
+    const title = typeof req.body.title === 'string' && req.body.title.trim().length > 0
+      ? req.body.title.trim()
+      : req.file?.originalname || 'Uploaded meeting';
+
+    const description = typeof req.body.description === 'string' ? req.body.description : null;
+    const participants = (() => {
+      if (!req.body.participants) return [];
+      if (Array.isArray(req.body.participants)) {
+        return req.body.participants.filter((item: unknown): item is string => typeof item === 'string');
+      }
+      if (typeof req.body.participants === 'string') {
+        try {
+          const parsed = JSON.parse(req.body.participants);
+          return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+        } catch {
+          return req.body.participants.split(',').map((item: string) => item.trim()).filter(Boolean);
+        }
+      }
+      return [];
+    })();
+
+    // ── Step 1: resolve transcript text ──────────────────────────────────────
+    let transcriptText = '';
+    let transcribedByWhisper = false;
+
+    // Priority 1: caller sent raw text in the body
+    if (typeof req.body.transcriptText === 'string' && req.body.transcriptText.trim().length > 0) {
+      transcriptText = req.body.transcriptText.trim();
+    }
+    // Priority 2: uploaded .txt file
+    else if (
+      req.file &&
+      (req.file.mimetype.startsWith('text/') || req.file.originalname.endsWith('.txt'))
+    ) {
+      transcriptText = req.file.buffer.toString('utf8').trim();
+    }
+    // Priority 3: audio/video file → Whisper transcription
+    else if (req.file && isAudioOrVideoFile(req.file.originalname)) {
+      if (req.file.buffer.byteLength > WHISPER_MAX_BYTES) {
+        return res.status(413).json({
+          message:
+            `File is ${(req.file.buffer.byteLength / 1024 / 1024).toFixed(1)} MB. ` +
+            `Whisper API accepts a maximum of 25 MB. Please trim or compress your recording.`,
+        });
+      }
+      transcriptText = await transcribeWithWhisper(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+      transcribedByWhisper = true;
+    }
+
+    if (!transcriptText) {
+      return res.status(400).json({
+        message:
+          'No transcript found. Upload an audio/video file (≤ 25 MB), a .txt transcript, ' +
+          'or include transcriptText in the form body.',
+      });
+    }
+
+    // ── Step 2: persist meeting record ───────────────────────────────────────
+    const createdMeeting = await prisma.meeting.create({
+      data: {
+        title,
+        description,
+        participants,
+        status: 'processing',
+        processingProgress: transcribedByWhisper ? 50 : 20,
+        userId: req.userId!,
+      },
+    });
+
+    // ── Step 3: Grok analysis ─────────────────────────────────────────────────
+    const analysis = await analyzeTranscriptWithGrok(transcriptText);
+
+    // ── Step 4: persist all derived data atomically ──────────────────────────
+    await prisma.$transaction(async (tx) => {
+      await tx.transcript.create({
+        data: { meetingId: createdMeeting.id, fullText: transcriptText, segments: [] },
+      });
+
+      await tx.meetingSummary.create({
+        data: {
+          meetingId: createdMeeting.id,
+          executiveSummary: analysis.executiveSummary,
+          keyPoints: analysis.keyPoints,
+          decisions: analysis.decisions,
+          openQuestions: analysis.openQuestions,
+          sentiment: analysis.sentiment,
+        },
+      });
+
+      if (analysis.tasks.length > 0) {
+        await tx.actionItem.createMany({
+          data: analysis.tasks.map((task) => ({
+            meetingId: createdMeeting.id,
+            userId: req.userId!,
+            title: task.title,
+            description: task.description,
+            assignee: task.assignee,
+            dueDate: task.dueDate ? new Date(task.dueDate) : null,
+            priority: (task.priority as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
+            status: (task.status as 'pending' | 'in_progress' | 'completed' | 'cancelled') || 'pending',
+            tags: task.tags || [],
+          })),
+        });
+      }
+
+      await tx.meeting.update({
+        where: { id: createdMeeting.id },
+        data: { status: 'completed', processingProgress: 100, completedAt: new Date() },
+      });
+    });
+
+    const meeting = await prisma.meeting.findUnique({ where: { id: createdMeeting.id } });
+
+    res.status(201).json({
+      data: meeting,
+      message: transcribedByWhisper
+        ? 'Meeting transcribed with Whisper, summarized with Grok, and tasks extracted successfully.'
+        : 'Meeting uploaded, summarized with Grok, and tasks extracted successfully.',
+      transcribedByWhisper,
+      actionItemsExportUrl: `/api/v1/meetings/${createdMeeting.id}/action-items/export`,
+      taskCount: analysis.tasks.length,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorDetails = {
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      type: error instanceof Error ? error.constructor.name : typeof error
+    };
+    console.error('Meeting upload processing error:', JSON.stringify(errorDetails, null, 2));
+    
+    // Surface user-friendly Whisper size errors
+    if (error instanceof Error && error.message.includes('Whisper')) {
+      return res.status(413).json({ message: error.message });
+    }
+    
+    // Surface API errors
+    if (error instanceof Error && error.message.includes('Grok')) {
+      return res.status(502).json({ message: `AI service error: ${error.message}` });
+    }
+    
+    res.status(500).json({ message: 'Failed to process uploaded meeting', error: errorMessage });
+  }
+});
+
+router.get('/:id/summary', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: req.params.id, userId: req.userId! },
+      include: { summary: true }
+    });
+
+    if (!meeting) {
+      return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    if (!meeting.summary) {
+      return res.status(404).json({ message: 'Summary not found for this meeting yet' });
+    }
+
+    res.json({
+      id: meeting.summary.id,
+      meetingId: meeting.summary.meetingId,
+      executiveSummary: meeting.summary.executiveSummary,
+      keyPoints: jsonArrayToStringArray(meeting.summary.keyPoints),
+      decisions: jsonArrayToStringArray(meeting.summary.decisions),
+      openQuestions: jsonArrayToStringArray(meeting.summary.openQuestions),
+      sentiment: meeting.summary.sentiment,
+      createdAt: meeting.summary.createdAt
+    });
+  } catch (error) {
+    console.error('Error fetching meeting summary:', error);
+    res.status(500).json({ message: 'Failed to fetch meeting summary' });
+  }
+});
+
+router.get('/:id/transcript', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: req.params.id, userId: req.userId! },
+      include: { transcript: true }
+    });
+
+    if (!meeting) {
+      return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    if (!meeting.transcript) {
+      return res.status(404).json({ message: 'Transcript not found for this meeting yet' });
+    }
+
+    res.json({
+      id: meeting.transcript.id,
+      meetingId: meeting.transcript.meetingId,
+      segments: [],
+      fullText: meeting.transcript.fullText,
+      language: meeting.transcript.language,
+      createdAt: meeting.transcript.createdAt
+    });
+  } catch (error) {
+    console.error('Error fetching transcript:', error);
+    res.status(500).json({ message: 'Failed to fetch transcript' });
+  }
+});
+
+router.get('/:id/action-items', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: req.params.id, userId: req.userId! },
+      select: { id: true }
+    });
+
+    if (!meeting) {
+      return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    const actionItems = await prisma.actionItem.findMany({
+      where: { meetingId: req.params.id, userId: req.userId! },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.json(
+      actionItems.map((item) => ({
+        ...item,
+        tags: jsonArrayToStringArray(item.tags)
+      }))
+    );
+  } catch (error) {
+    console.error('Error fetching meeting action items:', error);
+    res.status(500).json({ message: 'Failed to fetch meeting action items' });
+  }
+});
+
+router.get('/:id/action-items/export', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: req.params.id, userId: req.userId! },
+      select: { id: true, title: true }
+    });
+
+    if (!meeting) {
+      return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    const actionItems = await prisma.actionItem.findMany({
+      where: { meetingId: meeting.id, userId: req.userId! },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    const rows = actionItems.map((item) => ({
+      Task: item.title,
+      Description: item.description || '',
+      Assignee: item.assignee || '',
+      Priority: item.priority,
+      Status: item.status,
+      DueDate: item.dueDate ? item.dueDate.toISOString().slice(0, 10) : '',
+      Tags: jsonArrayToStringArray(item.tags).join(', ')
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
+
+    const fileBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+
+    const safeTitle = meeting.title.replace(/[^a-z0-9-_]+/gi, '_').slice(0, 60);
+    const filename = `${safeTitle || 'meeting'}_tasks.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(fileBuffer);
+  } catch (error) {
+    console.error('Error exporting action items:', error);
+    res.status(500).json({ message: 'Failed to export action items' });
+  }
+});
+
 router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { title, description, duration, participants } = req.body;
@@ -134,9 +430,11 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
         title,
         description,
         duration,
-        participants: participants || [],
+        participants: Array.isArray(participants) ? participants : [],
         userId: req.userId!,
-        status: 'COMPLETED'
+        status: 'completed',
+        processingProgress: 100,
+        completedAt: new Date()
       }
     });
 
@@ -152,10 +450,7 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const { title, description, priority, status } = req.body;
 
     const meeting = await prisma.meeting.findFirst({
-      where: {
-        id: req.params.id,
-        userId: req.userId!
-      }
+      where: { id: req.params.id, userId: req.userId! }
     });
 
     if (!meeting) {
@@ -165,10 +460,10 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const updated = await prisma.meeting.update({
       where: { id: req.params.id },
       data: {
-        ...(title && { title }),
-        ...(description !== undefined && { description }),
-        ...(priority && { priority }),
-        ...(status && { status })
+        ...(title ? { title } : {}),
+        ...(description !== undefined ? { description } : {}),
+        ...(priority ? { priority } : {}),
+        ...(status ? { status } : {})
       }
     });
 
@@ -182,19 +477,14 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findFirst({
-      where: {
-        id: req.params.id,
-        userId: req.userId!
-      }
+      where: { id: req.params.id, userId: req.userId! }
     });
 
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
     }
 
-    await prisma.meeting.delete({
-      where: { id: req.params.id }
-    });
+    await prisma.meeting.delete({ where: { id: req.params.id } });
 
     res.status(204).send();
   } catch (error) {

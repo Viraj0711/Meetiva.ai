@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import { Prisma } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import prisma from '../lib/prisma';
 
@@ -7,18 +8,20 @@ const router = Router();
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '10', status } = req.query;
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const pageNumber = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNumber = Math.max(1, parseInt(limit as string, 10) || 10);
+    const skip = (pageNumber - 1) * limitNumber;
 
-    const where: any = { userId: req.userId! };
+    const where: Prisma.ActionItemWhereInput = { userId: req.userId! };
     if (status) {
-      where.status = status;
+      where.status = status as Prisma.EnumActionItemStatusFilter['equals'];
     }
 
     const [actionItems, total] = await Promise.all([
       prisma.actionItem.findMany({
         where,
         skip,
-        take: parseInt(limit as string),
+        take: limitNumber,
         orderBy: { createdAt: 'desc' },
         include: {
           meeting: {
@@ -36,9 +39,9 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       data: actionItems,
       pagination: {
         total,
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
-        totalPages: Math.ceil(total / parseInt(limit as string))
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: Math.ceil(total / limitNumber)
       }
     });
   } catch (error) {
@@ -92,7 +95,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
         description,
         assignee,
         dueDate: dueDate ? new Date(dueDate) : null,
-        priority: priority || 'MEDIUM',
+        priority: priority || 'medium',
         userId: req.userId!
       }
     });
@@ -119,7 +122,7 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Action item not found' });
     }
 
-    const updateData: any = {};
+    const updateData: Prisma.ActionItemUpdateInput = {};
     
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
@@ -131,7 +134,7 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       updateData.dueDate = dueDate ? new Date(dueDate) : null;
     }
 
-    if (status === 'COMPLETED' && !actionItem.completedAt) {
+    if (status === 'completed' && !actionItem.completedAt) {
       updateData.completedAt = new Date();
     }
 
@@ -187,7 +190,7 @@ router.post('/:id/complete', authenticate, async (req: AuthRequest, res: Respons
     const updated = await prisma.actionItem.update({
       where: { id: req.params.id },
       data: {
-        status: 'COMPLETED',
+        status: 'completed',
         completedAt: new Date()
       }
     });

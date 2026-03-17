@@ -50,17 +50,6 @@ const Navbar: React.FC = () => {
     setNotifications(notifications.filter(n => n.id !== id));
   };
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'success':
-        return '✅';
-      case 'warning':
-        return '⚠️';
-      default:
-        return '🔔';
-    }
-  };
-
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
       <div className="flex flex-1 items-center gap-4">

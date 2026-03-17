@@ -4,13 +4,13 @@ import { Toast } from '@/types';
 interface UIState {
   toasts: Toast[];
   isSidebarOpen: boolean;
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'system';
 }
 
 const initialState: UIState = {
   toasts: [],
   isSidebarOpen: true,
-  theme: (localStorage.getItem('theme') as 'light' | 'dark') || 'light',
+  theme: (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'light',
 };
 
 const uiSlice = createSlice({
@@ -30,7 +30,7 @@ const uiSlice = createSlice({
     setSidebarOpen: (state, action: PayloadAction<boolean>) => {
       state.isSidebarOpen = action.payload;
     },
-    setTheme: (state, action: PayloadAction<'light' | 'dark'>) => {
+    setTheme: (state, action: PayloadAction<'light' | 'dark' | 'system'>) => {
       state.theme = action.payload;
       localStorage.setItem('theme', action.payload);
     },

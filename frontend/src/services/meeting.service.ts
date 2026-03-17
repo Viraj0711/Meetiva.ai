@@ -52,7 +52,7 @@ export const meetingService = {
     description?: string,
     participants?: string[],
     onProgress?: (progress: number) => void
-  ): Promise<Meeting> => {
+  ): Promise<{ data: Meeting; actionItemsExportUrl: string }> => {
     if (onProgress) onProgress(0); // Initialize progress
     const formData = new FormData();
     formData.append('file', file);
@@ -77,7 +77,7 @@ export const meetingService = {
     }
 
     const result = await response.json();
-    return result.data;
+    return { data: result.data, actionItemsExportUrl: result.actionItemsExportUrl || '' };
   },
 
   /**
