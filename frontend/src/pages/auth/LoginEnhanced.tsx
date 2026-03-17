@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -80,7 +80,7 @@ const LoginPage: React.FC = () => {
         <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
           <span className="text-white font-bold text-sm">P</span>
         </div>
-        <span className="font-semibold">Propelting.ai</span>
+        <span className="font-semibold">Meetiva.ai</span>
       </Link>
 
       {/* Login Form */}
@@ -140,7 +140,7 @@ const LoginPage: React.FC = () => {
                   value={formData.password}
                   onChange={handleChange}
                   className={`pl-10 pr-10 bg-white dark:bg-white dark:text-gray-900 ${errors.password ? 'border-red-500 focus:ring-red-500' : ''}`}
-                  placeholder="••••••••"
+                  placeholder=""
                 />
                 <button
                   type="button"

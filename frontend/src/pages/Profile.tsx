@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -33,43 +33,43 @@ const integrationMetadata: Record<string, Omit<LocalIntegration, 'id' | 'connect
   [IntegrationType.JIRA]: {
     name: 'JIRA',
     description: 'Automatically create tickets from action items',
-    icon: '🔷',
+    icon: '',
     category: 'project',
   },
   [IntegrationType.TRELLO]: {
     name: 'Trello',
     description: 'Sync tasks to Trello boards',
-    icon: '📋',
+    icon: '',
     category: 'project',
   },
   [IntegrationType.ASANA]: {
     name: 'Asana',
     description: 'Create Asana tasks from meetings',
-    icon: '✨',
+    icon: '',
     category: 'project',
   },
   'google-calendar': {
     name: 'Google Calendar',
     description: 'Schedule meetings and set reminders',
-    icon: '📅',
+    icon: '',
     category: 'calendar',
   },
   'outlook': {
     name: 'Outlook Calendar',
     description: 'Integrate with Microsoft Outlook',
-    icon: '📧',
+    icon: '',
     category: 'calendar',
   },
   [IntegrationType.SLACK]: {
     name: 'Slack',
     description: 'Send meeting summaries to Slack channels',
-    icon: '💬',
+    icon: '',
     category: 'communication',
   },
   'teams': {
     name: 'Microsoft Teams',
     description: 'Share updates with Teams channels',
-    icon: '👥',
+    icon: '',
     category: 'communication',
   },
 };
@@ -322,15 +322,15 @@ const Profile: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Current Password</label>
-                <Input type="password" placeholder="••••••••" />
+                <Input type="password" placeholder="" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">New Password</label>
-                <Input type="password" placeholder="••••••••" />
+                <Input type="password" placeholder="" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Confirm New Password</label>
-                <Input type="password" placeholder="••••••••" />
+                <Input type="password" placeholder="" />
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -401,7 +401,7 @@ const Profile: React.FC = () => {
               <div>
                 <h3 className="font-bold text-lg mb-1">Connect Your Favorite Tools</h3>
                 <p className="text-sm text-gray-700">
-                  Integrate Propelting with your project management and communication tools to create a seamless workflow. 
+                  Integrate Meetiva with your project management and communication tools to create a seamless workflow. 
                   Action items automatically sync, and meeting summaries are shared with your team.
                 </p>
               </div>

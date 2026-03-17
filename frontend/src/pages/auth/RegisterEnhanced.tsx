@@ -1,4 +1,4 @@
-import { useState, ChangeEvent, FormEvent } from 'react';
+﻿import { useState, ChangeEvent, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch } from '@/store/hooks';
 import { registerAsync } from '@/store/slices/authSlice';
@@ -195,7 +195,7 @@ const RegisterEnhanced = () => {
               Create Account
             </h1>
             <p className="text-sm text-gray-600">
-              Join thousands of teams using Propelting.ai
+              Join thousands of teams using Meetiva.ai
             </p>
           </div>
 
@@ -297,7 +297,7 @@ const RegisterEnhanced = () => {
                   onBlur={() => handleBlur('password')}
                   className={`w-full pl-9 pr-9 py-2 text-sm bg-white border ${showPasswordError ? 'border-red-500' : 'border-gray-300'}
                     rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                  placeholder="••••••••"
+                  placeholder=""
                   disabled={isLoading}
                 />
                 <button
@@ -357,7 +357,7 @@ const RegisterEnhanced = () => {
                   onBlur={() => handleBlur('confirmPassword')}
                   className={`w-full pl-9 pr-9 py-2 text-sm bg-white border ${showConfirmPasswordError ? 'border-red-500' : 'border-gray-300'}
                     rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                  placeholder="••••••••"
+                  placeholder=""
                   disabled={isLoading}
                 />
                 <button

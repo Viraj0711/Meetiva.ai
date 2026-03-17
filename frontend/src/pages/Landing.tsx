@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 
@@ -13,7 +13,7 @@ const Landing: React.FC = () => {
               <span className="text-white font-bold text-xl">P</span>
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Propelting.ai
+              Meetiva.ai
             </span>
           </div>
           <div className="flex items-center space-x-4">
@@ -42,8 +42,8 @@ const Landing: React.FC = () => {
             </span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-            Stop losing productivity to manual note-taking. Propelting automatically transcribes,  
-            summarizes, and extracts action items from your meetings—so your team can focus on 
+            Stop losing productivity to manual note-taking. Meetiva automatically transcribes,  
+            summarizes, and extracts action items from your meetingsso your team can focus on 
             execution, not documentation.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -123,7 +123,7 @@ const Landing: React.FC = () => {
             </h3>
             <p className="text-gray-600 leading-relaxed">
               Automatically detect and extract action items with assigned owners, deadlines, 
-              and priority levels—no manual tracking required.
+              and priority levelsno manual tracking required.
             </p>
           </div>
 
@@ -155,7 +155,7 @@ const Landing: React.FC = () => {
             </h3>
             <p className="text-gray-600 leading-relaxed">
               Sync with JIRA, Trello, Asana, Google Calendar, and Slack. Create tickets, 
-              schedule reminders, and notify teams—all automatically.
+              schedule reminders, and notify teamsall automatically.
             </p>
           </div>
 
@@ -206,7 +206,7 @@ const Landing: React.FC = () => {
             </h2>
             <p className="text-xl mb-8 opacity-95 max-w-2xl mx-auto">
               Join forward-thinking teams who have eliminated manual note-taking and 
-              turned their meetings into momentum with AI-powered intelligence.
+              turned their meetings into Meetiva with AI-powered intelligence.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/register">
@@ -220,7 +220,7 @@ const Landing: React.FC = () => {
                 </Button>
               </Link>
             </div>
-            <p className="text-sm mt-6 opacity-80">No credit card required • 14-day free trial • Cancel anytime</p>
+            <p className="text-sm mt-6 opacity-80">No credit card required  14-day free trial  Cancel anytime</p>
           </div>
         </div>
       </section>
@@ -228,7 +228,7 @@ const Landing: React.FC = () => {
       {/* Footer */}
       <footer className="container mx-auto px-6 py-8 border-t">
         <div className="text-center text-gray-600">
-          <p>&copy; 2025 Propelting.ai. All rights reserved.</p>
+          <p>&copy; 2025 Meetiva.ai. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -45,7 +45,7 @@ test.describe('Contact Page', () => {
   test('should display contact information', async ({ page }) => {
     await page.goto('/contact');
     
-    await expect(page.locator('text=support@propelting.ai')).toBeVisible();
+    await expect(page.locator('text=support@meetiva.ai')).toBeVisible();
     await expect(page.locator('text=+1 (555) 123-4567')).toBeVisible();
   });
 

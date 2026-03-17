@@ -15,7 +15,7 @@ const PrivacyPage: React.FC = () => {
               <span className="text-white font-bold text-xl">P</span>
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Propelting.ai
+              Meetiva.ai
             </span>
           </Link>
         </div>
@@ -31,7 +31,7 @@ const PrivacyPage: React.FC = () => {
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Introduction</h2>
               <p className="text-gray-700 leading-relaxed">
-                At Propelting.ai, we take your privacy seriously. This Privacy Policy explains how we collect, use,
+                At Meetiva.ai, we take your privacy seriously. This Privacy Policy explains how we collect, use,
                 disclose, and safeguard your information when you use our service. Please read this privacy policy
                 carefully.
               </p>
@@ -161,7 +161,7 @@ const PrivacyPage: React.FC = () => {
               </p>
               <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                 <p className="text-gray-700">
-                  <strong>Email:</strong> privacy@propelting.ai<br />
+                  <strong>Email:</strong> privacy@meetiva.ai<br />
                   <strong>Address:</strong> 123 Innovation Drive, San Francisco, CA 94102
                 </p>
               </div>
@@ -172,7 +172,7 @@ const PrivacyPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="relative z-10 container mx-auto px-6 py-12 text-center border-t border-gray-200/50">
-        <p className="text-gray-600">&copy; {new Date().getFullYear()} Propelting.ai. All rights reserved.</p>
+        <p className="text-gray-600">&copy; {new Date().getFullYear()} Meetiva.ai. All rights reserved.</p>
       </footer>
     </div>
   );

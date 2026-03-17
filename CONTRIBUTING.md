@@ -1,6 +1,6 @@
-# Contributing to Propelting
+﻿# Contributing to Meetiva
 
-Thank you for considering contributing to Propelting! This document provides guidelines and instructions for contributing.
+Thank you for considering contributing to Meetiva! This document provides guidelines and instructions for contributing.
 
 ## Table of Contents
 
@@ -21,13 +21,13 @@ By participating in this project, you agree to maintain a respectful and inclusi
 
 1. **Fork the repository**
    ```bash
-   gh repo fork Viraj0711/Propelting.ai_pvt
+   gh repo fork Viraj0711/Meetiva.ai_pvt
    ```
 
 2. **Clone your fork**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/Propelting.ai_pvt.git
-   cd Propelting.ai_pvt
+   git clone https://github.com/YOUR_USERNAME/Meetiva.ai_pvt.git
+   cd Meetiva.ai_pvt
    ```
 
 3. **Create a branch**
@@ -297,10 +297,10 @@ Mockups, examples, related features
 
 ## Questions?
 
-- Open a [GitHub Discussion](https://github.com/Viraj0711/Propelting.ai_pvt/discussions)
+- Open a [GitHub Discussion](https://github.com/Viraj0711/Meetiva.ai_pvt/discussions)
 - Join our community chat (if available)
-- Email: support@propelting.ai
+- Email: support@meetiva.ai
 
 ---
 
-**Thank you for contributing to Propelting!** 🚀
+**Thank you for contributing to Meetiva!** 

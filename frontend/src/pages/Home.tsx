@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -119,7 +119,7 @@ const Home: React.FC = () => {
               Hello, {user?.name || 'there'}! 👋
             </h1>
             <p className="text-lg opacity-90 max-w-2xl">
-              Ready to turn your meetings into momentum? Upload a meeting, review action items, or
+              Ready to turn your meetings into Meetiva? Upload a meeting, review action items, or
               explore your analytics to stay on top of your team's productivity.
             </p>
           </div>

@@ -17,7 +17,7 @@ const ContactPage: React.FC = () => {
               <span className="text-white font-bold text-xl">P</span>
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Propelting.ai
+              Meetiva.ai
             </span>
           </Link>
         </div>
@@ -87,8 +87,8 @@ const ContactPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mb-2">Email</h3>
-                    <p className="text-gray-600">support@propelting.ai</p>
-                    <p className="text-gray-600">sales@propelting.ai</p>
+                    <p className="text-gray-600">support@meetiva.ai</p>
+                    <p className="text-gray-600">sales@meetiva.ai</p>
                   </div>
                 </div>
               </div>
@@ -128,7 +128,7 @@ const ContactPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="relative z-10 container mx-auto px-6 py-12 text-center border-t border-gray-200/50">
-        <p className="text-gray-600">&copy; {new Date().getFullYear()} Propelting.ai. All rights reserved.</p>
+        <p className="text-gray-600">&copy; {new Date().getFullYear()} Meetiva.ai. All rights reserved.</p>
       </footer>
     </div>
   );

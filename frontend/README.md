@@ -1,8 +1,8 @@
-# Propelting Frontend
+﻿# Meetiva Frontend
 
-React + TypeScript + Vite frontend for the Propelting AI meeting intelligence platform.
+React + TypeScript + Vite frontend for the Meetiva AI meeting intelligence platform.
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 - Node.js 18+ 
@@ -30,35 +30,35 @@ npm run build
 npm run preview
 ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 frontend/
-├── src/
-│   ├── components/      # Reusable UI components
-│   │   ├── ui/         # Base UI components (Button, Card, etc.)
-│   │   ├── Layout.tsx
-│   │   ├── ErrorBoundary.tsx
-│   │   └── ...
-│   ├── pages/          # Page components
-│   ├── services/       # API services
-│   ├── store/          # Redux store and slices
-│   ├── hooks/          # Custom React hooks
-│   ├── types/          # TypeScript type definitions
-│   ├── utils/          # Utility functions
-│   ├── lib/            # Library configurations
-│   ├── App.tsx         # Main App component
-│   ├── main.tsx        # Entry point
-│   └── index.css       # Global styles
-├── public/             # Static assets
-├── index.html
-├── vite.config.ts
-├── tailwind.config.js
-├── tsconfig.json
-└── package.json
+ src/
+    components/      # Reusable UI components
+       ui/         # Base UI components (Button, Card, etc.)
+       Layout.tsx
+       ErrorBoundary.tsx
+       ...
+    pages/          # Page components
+    services/       # API services
+    store/          # Redux store and slices
+    hooks/          # Custom React hooks
+    types/          # TypeScript type definitions
+    utils/          # Utility functions
+    lib/            # Library configurations
+    App.tsx         # Main App component
+    main.tsx        # Entry point
+    index.css       # Global styles
+ public/             # Static assets
+ index.html
+ vite.config.ts
+ tailwind.config.js
+ tsconfig.json
+ package.json
 ```
 
-## 🎨 Tech Stack
+##  Tech Stack
 
 - **React 18.2** - UI library
 - **TypeScript 5.0** - Type safety
@@ -71,17 +71,17 @@ frontend/
 - **React Hook Form + Zod** - Forms
 - **Lucide React** - Icons
 
-## 🎯 Key Features
+##  Key Features
 
-- 📁 File upload with drag-and-drop
-- 📊 Dashboard with meeting stats
-- ✅ Action items management
-- 🔄 Real-time processing status
-- 🎨 Beautiful, accessible UI
-- 📱 Mobile-responsive design
-- 🌓 Dark mode support (coming soon)
+-  File upload with drag-and-drop
+-  Dashboard with meeting stats
+-  Action items management
+-  Real-time processing status
+-  Beautiful, accessible UI
+-  Mobile-responsive design
+-  Dark mode support (coming soon)
 
-## 🔧 Available Scripts
+##  Available Scripts
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
@@ -89,7 +89,7 @@ frontend/
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
 
-## 📝 Environment Variables
+##  Environment Variables
 
 Create a `.env` file in the root directory:
 
@@ -97,7 +97,7 @@ Create a `.env` file in the root directory:
 VITE_API_BASE_URL=http://localhost:8000/api/v1
 ```
 
-## 🤝 Contributing
+##  Contributing
 
 1. Follow the TypeScript strict mode guidelines
 2. Use the existing component patterns
@@ -105,6 +105,6 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 4. Write clean, documented code
 5. Test thoroughly before committing
 
-## 📄 License
+##  License
 
 MIT License - see LICENSE file for details

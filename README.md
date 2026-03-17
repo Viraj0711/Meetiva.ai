@@ -1,21 +1,21 @@
-# Propelting 🚀
+﻿# Meetiva 
 
-## Turn Meetings into Momentum
+## Turn Meetings into Meetiva
 
-**Propelting** is an AI-powered meeting intelligence platform that automatically converts conversations into summaries, action items, and tracked tasks—so teams spend less time remembering and more time executing.
+**Meetiva** is an AI-powered meeting intelligence platform that automatically converts conversations into summaries, action items, and tracked tasksso teams spend less time remembering and more time executing.
 
-Propelting listens to meetings, understands context, identifies decisions, assigns ownership, and integrates directly into your existing workflow tools like JIRA, Slack, and Google Calendar.
+Meetiva listens to meetings, understands context, identifies decisions, assigns ownership, and integrates directly into your existing workflow tools like JIRA, Slack, and Google Calendar.
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 * [Problem Statement](#-problem-statement)
 * [Solution Overview](#-solution-overview)
 * [Core Features](#-core-features)
-* [Technical Architecture](#️-technical-architecture)
-* [Technology Stack](#️-technology-stack)
-* [How It Works](#️-how-it-works)
+* [Technical Architecture](#-technical-architecture)
+* [Technology Stack](#-technology-stack)
+* [How It Works](#-how-it-works)
 * [Use Cases](#-use-cases)
 * [Installation & Setup](#-installation--setup)
 * [API Documentation](#-api-documentation)
@@ -25,9 +25,9 @@ Propelting listens to meetings, understands context, identifies decisions, assig
 
 ---
 
-## 🎯 Problem Statement
+##  Problem Statement
 
-Meetings are where decisions are made—but they are also where execution breaks down.
+Meetings are where decisions are madebut they are also where execution breaks down.
 
 ### Common Challenges
 
@@ -48,9 +48,9 @@ Modern teams need meetings to **produce outcomes**, not just conversations.
 
 ---
 
-## 💡 Solution Overview
+##  Solution Overview
 
-**Propelting** acts as an AI meeting co-pilot that automatically:
+**Meetiva** acts as an AI meeting co-pilot that automatically:
 
 * Transcribes meetings with high accuracy
 * Identifies speakers and context
@@ -60,31 +60,31 @@ Modern teams need meetings to **produce outcomes**, not just conversations.
 * Syncs tasks to project management tools
 * Sends reminders and follow-ups automatically
 
-Propelting closes the gap between **discussion and execution**.
+Meetiva closes the gap between **discussion and execution**.
 
 ---
 
-## ✨ Core Features
+##  Core Features
 
-### 🎙️ AI-Powered Transcription
+###  AI-Powered Transcription
 
 * Supports audio and video uploads
 * Multi-language transcription with automatic detection
 * Handles accents, noise, and technical terminology
 
-### 🧠 Intelligent Summarization
+###  Intelligent Summarization
 
 * Executive summary for quick review
 * Key discussion points and decisions
 * Open questions and unresolved topics
 
-### ✅ Action Item Extraction
+###  Action Item Extraction
 
 * Detects tasks from natural language
 * Assigns owners and deadlines
 * Categorizes and prioritizes tasks
 
-### 🔥 Priority & Sentiment Analysis
+###  Priority & Sentiment Analysis
 
 * Identifies urgency using tone and repetition
 * Flags critical items automatically
@@ -96,7 +96,7 @@ Propelting closes the gap between **discussion and execution**.
 * Meeting effectiveness metrics
 * Productivity trends over time
 
-### 🔐 Security & Privacy
+###  Security & Privacy
 
 * AES-256 encryption at rest
 * TLS 1.3 in transit
@@ -105,9 +105,9 @@ Propelting closes the gap between **discussion and execution**.
 
 ---
 
-## 🏗️ Technical Architecture
+##  Technical Architecture
 
-Propelting is built as a scalable, cloud-native system.
+Meetiva is built as a scalable, cloud-native system.
 
 ### High-Level Overview
 
@@ -125,7 +125,7 @@ Propelting is built as a scalable, cloud-native system.
 
 ---
 
-## 🛠️ Technology Stack
+##  Technology Stack
 
 ### Backend
 
@@ -150,7 +150,7 @@ Propelting is built as a scalable, cloud-native system.
 
 ---
 
-## ⚙️ How It Works
+##  How It Works
 
 1. **Upload Meeting Content**
    Upload an audio/video file or paste a transcript.
@@ -183,7 +183,7 @@ Propelting is built as a scalable, cloud-native system.
 
 ---
 
-## 🎯 Use Cases
+##  Use Cases
 
 ### Product Teams
 
@@ -207,7 +207,7 @@ Postmortems, root cause analysis, prevention planning.
 
 ---
 
-## 🚀 Installation & Setup
+##  Installation & Setup
 
 ### Prerequisites
 
@@ -311,9 +311,9 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 
 ---
 
-## 📡 API Documentation
+##  API Documentation
 
-Propelting exposes a REST API with JWT authentication.
+Meetiva exposes a REST API with JWT authentication.
 
 ### Base URL
 
@@ -337,7 +337,7 @@ Swagger UI available at:
 
 ---
 
-## 🧭 Future Roadmap
+##  Future Roadmap
 
 * Live meeting capture (Zoom, Meet, Teams)
 * Knowledge base auto-generation
@@ -347,7 +347,7 @@ Swagger UI available at:
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions are welcome.
 
@@ -360,7 +360,7 @@ Please follow coding standards and include tests where applicable.
 
 ---
 
-## 📄 License
+##  License
 
 This project is licensed under the **MIT License**.
 
@@ -369,6 +369,6 @@ See the `LICENSE` file for full details.
 
 ---
 
-### Propelting exists for one reason
+### Meetiva exists for one reason
 
 **Meetings should create progress, not paperwork.**

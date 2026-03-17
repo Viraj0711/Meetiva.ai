@@ -69,7 +69,7 @@ const PricingPage: React.FC = () => {
               <span className="text-white font-bold text-xl">P</span>
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Propelting.ai
+              Meetiva.ai
             </span>
           </Link>
           <div className="flex items-center space-x-4">
@@ -165,7 +165,7 @@ const PricingPage: React.FC = () => {
           <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/50">
             <h3 className="text-lg font-bold text-gray-900 mb-2">Is there a setup fee?</h3>
             <p className="text-gray-600">
-              No setup fees for any plan. Start using Propelting immediately after signing up.
+              No setup fees for any plan. Start using Meetiva immediately after signing up.
             </p>
           </div>
         </div>
@@ -187,7 +187,7 @@ const PricingPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="relative z-10 container mx-auto px-6 py-12 text-center border-t border-gray-200/50">
-        <p className="text-gray-600">&copy; {new Date().getFullYear()} Propelting.ai. All rights reserved.</p>
+        <p className="text-gray-600">&copy; {new Date().getFullYear()} Meetiva.ai. All rights reserved.</p>
       </footer>
     </div>
   );

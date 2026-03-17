@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -20,28 +20,28 @@ const Settings: React.FC = () => {
       id: 'jira',
       name: 'JIRA',
       description: 'Automatically create tickets from action items',
-      icon: '🔷',
+      icon: '',
       connected: false,
     },
     {
       id: 'trello',
       name: 'Trello',
       description: 'Sync tasks to Trello boards',
-      icon: '📋',
+      icon: '',
       connected: false,
     },
     {
       id: 'asana',
       name: 'Asana',
       description: 'Create Asana tasks from meetings',
-      icon: '✨',
+      icon: '',
       connected: false,
     },
     {
       id: 'google-calendar',
       name: 'Google Calendar',
       description: 'Schedule meetings and set reminders',
-      icon: '📅',
+      icon: '',
       connected: true,
       status: 'active',
     },
@@ -49,14 +49,14 @@ const Settings: React.FC = () => {
       id: 'outlook',
       name: 'Outlook Calendar',
       description: 'Integrate with Microsoft Outlook',
-      icon: '📧',
+      icon: '',
       connected: false,
     },
     {
       id: 'slack',
       name: 'Slack',
       description: 'Send meeting summaries to Slack channels',
-      icon: '💬',
+      icon: '',
       connected: true,
       status: 'active',
     },
@@ -64,7 +64,7 @@ const Settings: React.FC = () => {
       id: 'teams',
       name: 'Microsoft Teams',
       description: 'Share updates with Teams channels',
-      icon: '👥',
+      icon: '',
       connected: false,
     },
   ]);
@@ -184,15 +184,15 @@ const Settings: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Current Password</label>
-                <Input type="password" placeholder="••••••••" />
+                <Input type="password" placeholder="" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">New Password</label>
-                <Input type="password" placeholder="••••••••" />
+                <Input type="password" placeholder="" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Confirm New Password</label>
-                <Input type="password" placeholder="••••••••" />
+                <Input type="password" placeholder="" />
               </div>
             </div>
             <div className="flex justify-end mt-6">
@@ -213,7 +213,7 @@ const Settings: React.FC = () => {
               <div>
                 <h3 className="font-semibold mb-1">Connect your tools</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Integrate Propelting with your favorite project management and communication tools to streamline your workflow.
+                  Integrate Meetiva with your favorite project management and communication tools to streamline your workflow.
                 </p>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import AnimatedBackground from '@/components/AnimatedBackground';
@@ -87,22 +87,22 @@ const LandingPage: React.FC = () => {
 
   const testimonials = [
     {
-      quote: 'Propelting has transformed how our team handles meetings. We\'ve saved hours every week and nothing falls through the cracks anymore.',
+      quote: 'Meetiva has transformed how our team handles meetings. We\'ve saved hours every week and nothing falls through the cracks anymore.',
       author: 'Sarah Chen',
       role: 'VP of Product, TechCorp',
-      avatar: '👩‍💼',
+      avatar: '',
     },
     {
       quote: 'The AI-powered action item extraction is incredibly accurate. It\'s like having a personal assistant in every meeting.',
       author: 'Michael Rodriguez',
       role: 'Engineering Manager, StartupXYZ',
-      avatar: '👨‍💻',
+      avatar: '',
     },
     {
-      quote: 'Integration with our existing tools was seamless. Propelting fits perfectly into our workflow without any disruption.',
+      quote: 'Integration with our existing tools was seamless. Meetiva fits perfectly into our workflow without any disruption.',
       author: 'Emily Watson',
       role: 'CTO, InnovateLabs',
-      avatar: '👩‍💼',
+      avatar: '',
     },
   ];
 
@@ -142,7 +142,7 @@ const LandingPage: React.FC = () => {
               <span className="text-white font-bold text-xl">P</span>
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Propelting.ai
+              Meetiva.ai
             </span>
           </Link>
           <div className="hidden md:flex items-center space-x-8">
@@ -237,8 +237,8 @@ const LandingPage: React.FC = () => {
           </h1>
           
           <p className="text-xl md:text-2xl text-gray-600 mb-10 leading-relaxed max-w-3xl mx-auto">
-            Stop losing productivity to manual note-taking. Propelting automatically transcribes,
-            summarizes, and extracts action items from your meetings—so your team can focus on
+            Stop losing productivity to manual note-taking. Meetiva automatically transcribes,
+            summarizes, and extracts action items from your meetingsso your team can focus on
             execution, not documentation.
           </p>
           
@@ -387,7 +387,7 @@ const LandingPage: React.FC = () => {
       <section className="relative z-10 container mx-auto px-6 py-20">
         <div className="text-center mb-16">
           <h2 className="text-5xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
-          <p className="text-xl text-gray-600">Everything you need to know about Propelting</p>
+          <p className="text-xl text-gray-600">Everything you need to know about Meetiva</p>
         </div>
 
         <div className="max-w-3xl mx-auto space-y-4">
@@ -427,7 +427,7 @@ const LandingPage: React.FC = () => {
             </h2>
             <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
               Join forward-thinking teams who have eliminated manual note-taking and turned their
-              meetings into momentum with AI-powered intelligence.
+              meetings into Meetiva with AI-powered intelligence.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/register">
@@ -446,7 +446,7 @@ const LandingPage: React.FC = () => {
               </Link>
             </div>
             <p className="text-sm mt-6 opacity-75">
-              No credit card required • 14-day free trial • Cancel anytime
+              No credit card required  14-day free trial  Cancel anytime
             </p>
           </div>
         </div>
@@ -461,11 +461,11 @@ const LandingPage: React.FC = () => {
                 <span className="text-white font-bold">P</span>
               </div>
               <span className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
-                Propelting.ai
+                Meetiva.ai
               </span>
             </div>
             <p className="text-gray-600 text-sm">
-              Turn meetings into momentum with AI-powered intelligence.
+              Turn meetings into Meetiva with AI-powered intelligence.
             </p>
           </div>
           
@@ -500,7 +500,7 @@ const LandingPage: React.FC = () => {
         </div>
         
         <div className="text-center text-gray-600 text-sm pt-8 border-t border-gray-200/50">
-          <p>&copy; {new Date().getFullYear()} Propelting.ai. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Meetiva.ai. All rights reserved.</p>
         </div>
       </footer>
     </div>

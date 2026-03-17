@@ -41,7 +41,7 @@ const Sidebar: React.FC = () => {
             </div>
             {isExpanded && (
               <h1 className="bg-gradient-primary bg-clip-text text-xl font-bold text-transparent whitespace-nowrap animate-fade-in">
-                Propelting
+                Meetiva
               </h1>
             )}
           </div>
