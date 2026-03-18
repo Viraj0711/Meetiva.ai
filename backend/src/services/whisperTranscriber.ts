@@ -1,6 +1,3 @@
-import FormData from 'form-data';
-import fetch from 'node-fetch';
-
 // Whisper API hard limit is 25 MB.
 export const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
 
@@ -45,10 +42,8 @@ export const transcribeWithWhisper = async (
   const contentType = SUPPORTED_AUDIO_TYPES[ext] ?? mimeType ?? 'audio/mpeg';
 
   const form = new FormData();
-  form.append('file', fileBuffer, {
-    filename: originalname,
-    contentType,
-  });
+  const fileBlob = new Blob([fileBuffer], { type: contentType });
+  form.append('file', fileBlob, originalname);
   form.append('model', 'whisper-1');
   form.append('response_format', 'text');
 
@@ -56,7 +51,6 @@ export const transcribeWithWhisper = async (
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      ...form.getHeaders(),
     },
     body: form,
   });

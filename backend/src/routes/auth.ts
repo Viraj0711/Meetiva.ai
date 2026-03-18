@@ -62,8 +62,18 @@ router.post('/register',
         }
       });
     } catch (error) {
-      console.error('Registration error:', error);
-      res.status(500).json({ message: 'Registration failed' });
+      console.error('❌ Registration error:', error);
+      console.error('❌ Error details:', {
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        code: (error as any).code,
+        meta: (error as any).meta
+      });
+      
+      // Return detailed error for debugging
+      const errorMessage = (error as Error).message || 'Registration failed';
+      const status = (error as any).code === 'P2002' ? 400 : 500;
+      res.status(status).json({ message: errorMessage });
     }
   }
 );
