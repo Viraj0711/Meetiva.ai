@@ -1,4 +1,4 @@
-﻿"use strict";
+"use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -12,7 +12,9 @@ const ai_1 = __importDefault(require("./routes/ai"));
 const meetings_1 = __importDefault(require("./routes/meetings"));
 const actionItems_1 = __importDefault(require("./routes/actionItems"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+const env_1 = require("./lib/env");
 dotenv_1.default.config();
+(0, env_1.validateBackendEnv)();
 const app = (0, express_1.default)();
 const PORT = parseInt(process.env.PORT || '8000', 10);
 const frontendLimiter = (0, express_rate_limit_1.default)({

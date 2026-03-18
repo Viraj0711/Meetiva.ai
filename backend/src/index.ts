@@ -7,8 +7,10 @@ import aiRoutes from './routes/ai';
 import meetingsRoutes from './routes/meetings';
 import actionItemsRoutes from './routes/actionItems';
 import rateLimit from 'express-rate-limit';
+import { validateBackendEnv } from './lib/env';
 
 dotenv.config();
+validateBackendEnv();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8000', 10);

@@ -1,4 +1,4 @@
-﻿"use strict";
+"use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -260,7 +260,7 @@ router.post('/upload', auth_1.authenticate, upload.single('file'), async (req, r
                 ? 'Meeting transcribed with Whisper, summarized with Grok, and tasks extracted successfully.'
                 : 'Meeting uploaded, summarized with Grok, and tasks extracted successfully.',
             transcribedByWhisper,
-            actionItemsExportUrl: `/api/v1/meetings/${createdMeeting.id}/action-items/export`,
+            actionItemsExportUrl: `/meetings/${createdMeeting.id}/action-items/export`,
             taskCount: analysis.tasks.length,
         });
     }
