@@ -211,7 +211,7 @@ Postmortems, root cause analysis, prevention planning.
 
 ### Prerequisites
 
-* Node.js 18+
+* Node.js 20+
 * Supabase account (free tier available at https://supabase.com)
 * Redis 7+ (optional, for production caching)
 
@@ -230,8 +230,10 @@ npm install
 
 # 3. Set up environment
 cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 # Edit backend/.env with your Supabase connection details:
 # DATABASE_URL and DIRECT_URL from Supabase dashboard
+# Edit frontend/.env with your Supabase API values.
 
 # 4. Initialize database with Prisma
 cd backend
@@ -307,7 +309,17 @@ CORS_ORIGIN=http://localhost:3000,http://localhost:5173
 Frontend (.env):
 ```env
 VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_SUPABASE_URL=https://[YOUR-PROJECT-REF].supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
+
+### Team Setup Recommendation
+
+For a team setup, keep all keys in a shared secret manager (for example 1Password, Bitwarden, Doppler, or Infisical) and never commit `.env` files.
+
+Startup now includes preflight checks:
+* Backend fails fast if required keys are missing (`DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`).
+* Frontend fails fast if required keys are missing (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 
 ---
 

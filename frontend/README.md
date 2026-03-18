@@ -5,7 +5,7 @@ React + TypeScript + Vite frontend for the Meetiva AI meeting intelligence platf
 ##  Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 20+ 
 - npm or yarn
 
 ### Installation
@@ -95,7 +95,11 @@ Create a `.env` file in the root directory:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_SUPABASE_URL=https://[YOUR-PROJECT-REF].supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
+
+The Vite config performs a preflight check on startup and build. If required keys are missing, it exits with a clear error message.
 
 ##  Contributing
 
