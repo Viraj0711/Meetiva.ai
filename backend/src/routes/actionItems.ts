@@ -1,9 +1,48 @@
 import { Router, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { canViewUserData } from '../middleware/authorize';
 import prisma from '../lib/prisma';
 
 const router = Router();
+
+// Helper to get the appropriate where clause based on user's role
+const getActionItemsWhereClause = async (req: AuthRequest): Promise<Prisma.ActionItemWhereInput> => {
+  // For members or users with no team membership, only show their own action items
+  if (!req.userTeams || req.userTeams.length === 0) {
+    return { userId: req.userId! };
+  }
+
+  // Check if user is MANAGER or LEAD in any team
+  const isManagerOrLead = req.userTeams.some(team =>
+    team.role === 'MANAGER' || team.role === 'LEAD'
+  );
+
+  if (!isManagerOrLead) {
+    // User is just a MEMBER, show only their own items
+    return { userId: req.userId! };
+  }
+
+  // User is MANAGER or LEAD - fetch all team members from their teams
+  const teamIds = req.userTeams
+    .filter(team => team.role === 'MANAGER' || team.role === 'LEAD')
+    .map(team => team.teamId);
+
+  if (teamIds.length === 0) {
+    return { userId: req.userId! };
+  }
+
+  const teamMembers = await prisma.teamMember.findMany({
+    where: { teamId: { in: teamIds } },
+    select: { userId: true }
+  });
+
+  const memberUserIds = [req.userId!, ...teamMembers.map(tm => tm.userId)];
+
+  return {
+    userId: { in: memberUserIds }
+  };
+};
 
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
@@ -12,9 +51,13 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     const limitNumber = Math.max(1, parseInt(limit as string, 10) || 10);
     const skip = (pageNumber - 1) * limitNumber;
 
-    const where: Prisma.ActionItemWhereInput = { userId: req.userId! };
+    let where: Prisma.ActionItemWhereInput = await getActionItemsWhereClause(req);
+
     if (status) {
-      where.status = status as Prisma.EnumActionItemStatusFilter['equals'];
+      where = {
+        ...where,
+        status: status as Prisma.EnumActionItemStatusFilter['equals']
+      };
     }
 
     const [actionItems, total] = await Promise.all([
@@ -54,8 +97,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const actionItem = await prisma.actionItem.findFirst({
       where: {
-        id: req.params.id,
-        userId: req.userId!
+        id: req.params.id
       },
       include: {
         meeting: true
@@ -64,6 +106,11 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 
     if (!actionItem) {
       return res.status(404).json({ message: 'Action item not found' });
+    }
+
+    // Check if user can view this action item
+    if (!canViewUserData(req.userId!, actionItem.userId, req.userTeams || [])) {
+      return res.status(403).json({ message: 'You do not have permission to view this action item' });
     }
 
     res.json(actionItem);
@@ -122,8 +169,13 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Action item not found' });
     }
 
+    // Check if user can modify this action item (must be owner)
+    if (actionItem.userId !== req.userId!) {
+      return res.status(403).json({ message: 'You do not have permission to modify this action item' });
+    }
+
     const updateData: Prisma.ActionItemUpdateInput = {};
-    
+
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
     if (assignee !== undefined) updateData.assignee = assignee;
@@ -161,6 +213,11 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 
     if (!actionItem) {
       return res.status(404).json({ message: 'Action item not found' });
+    }
+
+    // Check if user can delete this action item (must be owner)
+    if (actionItem.userId !== req.userId!) {
+      return res.status(403).json({ message: 'You do not have permission to delete this action item' });
     }
 
     await prisma.actionItem.delete({

@@ -6,23 +6,29 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { useAppSelector } from '@/store/hooks';
+import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
 import { actionItemService } from '@/services';
 import { ActionItem } from '@/types';
 import { formatDate } from '@/utils';
 
 const ActionItems: React.FC = () => {
+  const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
+  const [showTeamItems, setShowTeamItems] = useState(false);
   const [currentPage] = useState(1);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
 
   useEffect(() => {
     loadActionItems();
-  }, [currentPage, filterStatus, filterPriority]);
+  }, [currentPage, filterStatus, filterPriority, showTeamItems]);
 
   const loadActionItems = async () => {
     try {
@@ -62,6 +68,8 @@ const ActionItems: React.FC = () => {
   const filteredItems = actionItems.filter((item) =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const displayedItems = showTeamItems ? filteredItems : filteredItems.filter((item) => item.userId === userId);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -105,21 +113,21 @@ const ActionItems: React.FC = () => {
   };
 
   const groupedItems = {
-    overdue: filteredItems.filter(item => item.status !== 'completed' && isOverdue(item.dueDate)),
-    today: filteredItems.filter(item => {
+    overdue: displayedItems.filter(item => item.status !== 'completed' && isOverdue(item.dueDate)),
+    today: displayedItems.filter(item => {
       if (item.status === 'completed' || !item.dueDate) return false;
       const today = new Date().setHours(0, 0, 0, 0);
       const due = new Date(item.dueDate).setHours(0, 0, 0, 0);
       return due === today;
     }),
-    upcoming: filteredItems.filter(item => {
+    upcoming: displayedItems.filter(item => {
       if (item.status === 'completed' || !item.dueDate) return false;
       const today = new Date().setHours(0, 0, 0, 0);
       const due = new Date(item.dueDate).setHours(0, 0, 0, 0);
       return due > today;
     }),
-    noDueDate: filteredItems.filter(item => item.status !== 'completed' && !item.dueDate),
-    completed: filteredItems.filter(item => item.status === 'completed'),
+    noDueDate: displayedItems.filter(item => item.status !== 'completed' && !item.dueDate),
+    completed: displayedItems.filter(item => item.status === 'completed'),
   };
 
   return (
@@ -149,13 +157,73 @@ const ActionItems: React.FC = () => {
         <Button>Create Action Item</Button>
       </div>
 
+      {/* Filters */}
+      <Card className="p-4">
+        <div className="flex gap-2 items-center justify-between flex-wrap">
+          <div className="flex gap-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Status</label>
+              <select
+                className="px-2 py-1 border rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="all">All</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Priority</label>
+              <select
+                className="px-2 py-1 border rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                value={filterPriority}
+                onChange={(e) => setFilterPriority(e.target.value)}
+              >
+                <option value="all">All</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Team Items Toggle (Managers/Leads Only) */}
+          {isManagerOrLead && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowTeamItems(false)}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  !showTeamItems
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                My Items
+              </button>
+              <button
+                onClick={() => setShowTeamItems(true)}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  showTeamItems
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                Team Items
+              </button>
+            </div>
+          )}
+        </div>
+      </Card>
+
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total</p>
-              <p className="text-2xl font-bold">{filteredItems.length}</p>
+              <p className="text-2xl font-bold">{displayedItems.length}</p>
             </div>
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

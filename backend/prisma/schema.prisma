@@ -18,6 +18,7 @@ model User {
   updatedAt      DateTime @updatedAt
   meetings       Meeting[]
   actionItems    ActionItem[]
+  teamMembers    TeamMember[]
 
   @@map("users")
 }
@@ -43,6 +44,12 @@ enum ActionItemStatus {
   in_progress
   completed
   cancelled
+}
+
+enum TeamRole {
+  MANAGER
+  LEAD
+  MEMBER
 }
 
 model Meeting {
@@ -115,4 +122,31 @@ model ActionItem {
   @@index([userId, status])
   @@index([meetingId])
   @@map("action_items")
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  teamMembers TeamMember[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String    @id @default(uuid())
+  userId    String
+  teamId    String
+  role      TeamRole  @default(MEMBER)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_members")
 }
