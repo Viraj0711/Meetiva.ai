@@ -30,40 +30,52 @@ const jsonArrayToStringArray = (value: Prisma.JsonValue | null | undefined): str
 
 // Helper to get the appropriate where clause based on user's role
 const getMeetingsWhereClause = async (req: AuthRequest): Promise<Prisma.MeetingWhereInput> => {
-  // For members or users with no team membership, only show their own meetings
-  if (!req.userTeams || req.userTeams.length === 0) {
+  try {
+    // For members or users with no team membership, only show their own meetings
+    if (!req.userTeams || req.userTeams.length === 0) {
+      console.log(`[getMeetingsWhereClause] User ${req.userId} has no teams, returning own meetings only`);
+      return { userId: req.userId! };
+    }
+
+    // Check if user is MANAGER or LEAD in any team
+    const isManagerOrLead = req.userTeams.some(team =>
+      team.role === 'MANAGER' || team.role === 'LEAD'
+    );
+
+    if (!isManagerOrLead) {
+      // User is just a MEMBER, show only their own meetings
+      console.log(`[getMeetingsWhereClause] User ${req.userId} is MEMBER only, returning own meetings`);
+      return { userId: req.userId! };
+    }
+
+    // User is MANAGER or LEAD - fetch all team members from their teams
+    const teamIds = req.userTeams
+      .filter(team => team.role === 'MANAGER' || team.role === 'LEAD')
+      .map(team => team.teamId);
+
+    if (teamIds.length === 0) {
+      console.log(`[getMeetingsWhereClause] User ${req.userId} has no MANAGER/LEAD teams`);
+      return { userId: req.userId! };
+    }
+
+    console.log(`[getMeetingsWhereClause] User ${req.userId} is MANAGER/LEAD in teams: ${teamIds.join(', ')}`);
+
+    const teamMembers = await prisma.teamMember.findMany({
+      where: { teamId: { in: teamIds } },
+      select: { userId: true }
+    });
+
+    const memberUserIds = Array.from(new Set([req.userId!, ...teamMembers.map(tm => tm.userId)]));
+    console.log(`[getMeetingsWhereClause] Showing meetings for ${memberUserIds.length} users`);
+
+    return {
+      userId: { in: memberUserIds }
+    };
+  } catch (error) {
+    console.error(`[getMeetingsWhereClause] Error: ${error}`);
+    console.log(`[getMeetingsWhereClause] Fallback: returning only own meetings for user ${req.userId}`);
     return { userId: req.userId! };
   }
-
-  // Check if user is MANAGER or LEAD in any team
-  const isManagerOrLead = req.userTeams.some(team =>
-    team.role === 'MANAGER' || team.role === 'LEAD'
-  );
-
-  if (!isManagerOrLead) {
-    // User is just a MEMBER, show only their own meetings
-    return { userId: req.userId! };
-  }
-
-  // User is MANAGER or LEAD - fetch all team members from their teams
-  const teamIds = req.userTeams
-    .filter(team => team.role === 'MANAGER' || team.role === 'LEAD')
-    .map(team => team.teamId);
-
-  if (teamIds.length === 0) {
-    return { userId: req.userId! };
-  }
-
-  const teamMembers = await prisma.teamMember.findMany({
-    where: { teamId: { in: teamIds } },
-    select: { userId: true }
-  });
-
-  const memberUserIds = [req.userId!, ...teamMembers.map(tm => tm.userId)];
-
-  return {
-    userId: { in: memberUserIds }
-  };
 };
 
 router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {

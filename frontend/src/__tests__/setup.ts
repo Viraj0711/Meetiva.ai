@@ -1,6 +1,28 @@
 // Frontend test setup
 import '@testing-library/jest-dom';
 
+// Mock the auth service to avoid import.meta issues in tests
+jest.mock('@/services/auth.service', () => ({
+  authService: {
+    login: jest.fn().mockResolvedValue({ user: { id: '1', email: 'test@test.com' }, token: 'test-token' }),
+    register: jest.fn().mockResolvedValue({ user: { id: '1', email: 'test@test.com' }, token: 'test-token' }),
+    logout: jest.fn(),
+    getProfile: jest.fn().mockResolvedValue({ id: '1', email: 'test@test.com' }),
+    updateProfile: jest.fn(),
+  },
+}));
+
+// Mock the meeting service
+jest.mock('@/services/meeting.service', () => ({
+  meetingService: {
+    getMeetings: jest.fn().mockResolvedValue([]),
+    getMeetingById: jest.fn().mockResolvedValue(null),
+    createMeeting: jest.fn(),
+    updateMeeting: jest.fn(),
+    deleteMeeting: jest.fn(),
+  },
+}));
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

@@ -15,53 +15,71 @@ async function main() {
 
   // Clean up existing test data
   console.log('🧹 Cleaning up existing test data...');
-  await prisma.teamMember.deleteMany({
-    where: {
-      user: {
+  try {
+    await prisma.teamMember.deleteMany({
+      where: {
+        user: {
+          email: {
+            in: ['manager@test.com', 'lead@test.com', 'member@test.com'],
+          },
+        },
+      },
+    });
+  } catch (error: any) {
+    console.warn('⚠️  Warning cleaning team members:', error.message);
+  }
+
+  try {
+    await prisma.user.deleteMany({
+      where: {
         email: {
           in: ['manager@test.com', 'lead@test.com', 'member@test.com'],
         },
       },
-    },
-  });
+    });
+  } catch (error: any) {
+    console.warn('⚠️  Warning cleaning users:', error.message);
+  }
 
-  await prisma.user.deleteMany({
-    where: {
-      email: {
-        in: ['manager@test.com', 'lead@test.com', 'member@test.com'],
+  try {
+    await prisma.team.deleteMany({
+      where: {
+        name: 'Test Team',
       },
-    },
-  });
-
-  await prisma.team.deleteMany({
-    where: {
-      name: 'Test Team',
-    },
-  });
+    });
+  } catch (error: any) {
+    console.warn('⚠️  Warning cleaning teams:', error.message);
+  }
 
   // Create test users
   console.log('👥 Creating test users...');
   const bcrypt = require('bcrypt');
   const password = await bcrypt.hash('Test123!@', 10);
 
-  const manager = await prisma.user.create({
-    data: {
+  const manager = await prisma.user.upsert({
+    where: { email: 'manager@test.com' },
+    update: {},
+    create: {
       email: 'manager@test.com',
       name: 'Test Manager',
       hashedPassword: password,
     },
   });
 
-  const lead = await prisma.user.create({
-    data: {
+  const lead = await prisma.user.upsert({
+    where: { email: 'lead@test.com' },
+    update: {},
+    create: {
       email: 'lead@test.com',
       name: 'Test Lead',
       hashedPassword: password,
     },
   });
 
-  const member = await prisma.user.create({
-    data: {
+  const member = await prisma.user.upsert({
+    where: { email: 'member@test.com' },
+    update: {},
+    create: {
       email: 'member@test.com',
       name: 'Test Member',
       hashedPassword: password,
@@ -75,34 +93,61 @@ async function main() {
 
   // Create team
   console.log('🏢 Creating team...');
-  const team = await prisma.team.create({
-    data: {
-      name: 'Test Team',
-      description: 'Team for RBAC testing',
-    },
+  let team = await prisma.team.findFirst({
+    where: { name: 'Test Team' },
   });
+
+  if (!team) {
+    team = await prisma.team.create({
+      data: {
+        name: 'Test Team',
+        description: 'Team for RBAC testing',
+      },
+    });
+  }
   console.log(`✅ Created team: ${team.name} (${team.id})\n`);
 
   // Assign users to team with different roles
   console.log('🎯 Assigning users to team with roles...');
-  const managerMember = await prisma.teamMember.create({
-    data: {
+  const managerMember = await prisma.teamMember.upsert({
+    where: {
+      userId_teamId: {
+        userId: manager.id,
+        teamId: team.id,
+      },
+    },
+    update: { role: 'MANAGER' },
+    create: {
       userId: manager.id,
       teamId: team.id,
       role: 'MANAGER',
     },
   });
 
-  const leadMember = await prisma.teamMember.create({
-    data: {
+  const leadMember = await prisma.teamMember.upsert({
+    where: {
+      userId_teamId: {
+        userId: lead.id,
+        teamId: team.id,
+      },
+    },
+    update: { role: 'LEAD' },
+    create: {
       userId: lead.id,
       teamId: team.id,
       role: 'LEAD',
     },
   });
 
-  const memberMember = await prisma.teamMember.create({
-    data: {
+  const memberMember = await prisma.teamMember.upsert({
+    where: {
+      userId_teamId: {
+        userId: member.id,
+        teamId: team.id,
+      },
+    },
+    update: { role: 'MEMBER' },
+    create: {
       userId: member.id,
       teamId: team.id,
       role: 'MEMBER',

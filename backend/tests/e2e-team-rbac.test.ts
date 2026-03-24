@@ -207,12 +207,12 @@ async function testMemberViewOwnMeetings() {
 }
 
 /**
- * Test 5: Manager Cannot View Member's Meetings (Without Team)
- * Before team assignment, manager should NOT see member's meetings
+ * Test 5: Manager Can View Team Members' Meetings (With Team)
+ * After team assignment, manager should see team members' meetings
  */
-async function testManagerCannotViewMemberMeetingsPreTeam() {
-  console.log('\n🔒 Test 5: Manager Cannot View Member Meetings (Pre-Team)');
-  console.log('==========================================================');
+async function testManagerCanViewMemberMeetingsWithTeam() {
+  console.log('\n🔒 Test 5: Manager Can View Team Members Meetings (With Team)');
+  console.log('===========================================================');
 
   try {
     const response = await axios.get(`${BASE_URL}/meetings`, {
@@ -220,8 +220,14 @@ async function testManagerCannotViewMemberMeetingsPreTeam() {
     });
 
     const hasMemberMeeting = response.data.data.some((m: any) => m.id === testData.meetingUser2);
-    console.log(`✅ Manager fetched meetings. Member's meeting visible: ${hasMemberMeeting}`);
-    console.log(`   Expected: false (before team assignment)`);
+    
+    if (hasMemberMeeting) {
+      console.log(`✅ Manager can see team Member's meeting: ${hasMemberMeeting}`);
+      console.log(`   Correct: Manager role allows viewing team members' data`);
+    } else {
+      console.log(`⚠️  Manager cannot see Member's meeting: ${hasMemberMeeting}`);
+      console.log(`   Issue: Manager should be able to see team members' meetings`);
+    }
   } catch (error: any) {
     console.log(`❌ Error: ${error.message}`);
   }
@@ -235,23 +241,23 @@ async function testActionItems() {
   console.log('===========================================');
 
   try {
-    // Lead creates action item
-    const actionId1 = await createActionItem(testData.lead.token, testData.meetingUser1, 'Lead Action Item');
+    // Manager creates action item on own meeting
+    const actionId1 = await createActionItem(testData.manager.token, testData.meetingUser1, 'Manager Action Item');
     testData.actionItemUser1 = actionId1;
-    console.log(`✅ Lead created action item: ${actionId1}`);
+    console.log(`✅ Manager created action item: ${actionId1}`);
 
-    // Member creates action item
+    // Member creates action item on own meeting
     const actionId2 = await createActionItem(testData.member.token, testData.meetingUser2, 'Member Action Item');
     testData.actionItemUser2 = actionId2;
     console.log(`✅ Member created action item: ${actionId2}`);
 
-    // Lead retrieves action items
+    // Manager retrieves action items
     const response = await axios.get(`${BASE_URL}/action-items`, {
-      headers: { Authorization: `Bearer ${testData.lead.token}` },
+      headers: { Authorization: `Bearer ${testData.manager.token}` },
     });
 
     const hasOwnItem = response.data.data.some((item: any) => item.id === actionId1);
-    console.log(`✅ Lead can retrieve own action item: ${hasOwnItem}`);
+    console.log(`✅ Manager can retrieve own action item: ${hasOwnItem}`);
   } catch (error: any) {
     console.log(`❌ Error: ${error.message}`);
   }
@@ -379,7 +385,7 @@ async function runTests() {
     await testTeamManagement();
     await testManagerViewOwnMeetings();
     await testMemberViewOwnMeetings();
-    await testManagerCannotViewMemberMeetingsPreTeam();
+    await testManagerCanViewMemberMeetingsWithTeam();
     await testActionItems();
     await testMeetingStats();
     await testJWTToken();

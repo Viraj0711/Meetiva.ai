@@ -8,40 +8,52 @@ const router = Router();
 
 // Helper to get the appropriate where clause based on user's role
 const getActionItemsWhereClause = async (req: AuthRequest): Promise<Prisma.ActionItemWhereInput> => {
-  // For members or users with no team membership, only show their own action items
-  if (!req.userTeams || req.userTeams.length === 0) {
+  try {
+    // For members or users with no team membership, only show their own action items
+    if (!req.userTeams || req.userTeams.length === 0) {
+      console.log(`[getActionItemsWhereClause] User ${req.userId} has no teams, returning own items only`);
+      return { userId: req.userId! };
+    }
+
+    // Check if user is MANAGER or LEAD in any team
+    const isManagerOrLead = req.userTeams.some(team =>
+      team.role === 'MANAGER' || team.role === 'LEAD'
+    );
+
+    if (!isManagerOrLead) {
+      // User is just a MEMBER, show only their own items
+      console.log(`[getActionItemsWhereClause] User ${req.userId} is MEMBER only, returning own items`);
+      return { userId: req.userId! };
+    }
+
+    // User is MANAGER or LEAD - fetch all team members from their teams
+    const teamIds = req.userTeams
+      .filter(team => team.role === 'MANAGER' || team.role === 'LEAD')
+      .map(team => team.teamId);
+
+    if (teamIds.length === 0) {
+      console.log(`[getActionItemsWhereClause] User ${req.userId} has no MANAGER/LEAD teams`);
+      return { userId: req.userId! };
+    }
+
+    console.log(`[getActionItemsWhereClause] User ${req.userId} is MANAGER/LEAD in teams: ${teamIds.join(', ')}`);
+
+    const teamMembers = await prisma.teamMember.findMany({
+      where: { teamId: { in: teamIds } },
+      select: { userId: true }
+    });
+
+    const memberUserIds = Array.from(new Set([req.userId!, ...teamMembers.map(tm => tm.userId)]));
+    console.log(`[getActionItemsWhereClause] Showing items for ${memberUserIds.length} users`);
+
+    return {
+      userId: { in: memberUserIds }
+    };
+  } catch (error) {
+    console.error(`[getActionItemsWhereClause] Error: ${error}`);
+    console.log(`[getActionItemsWhereClause] Fallback: returning only own items for user ${req.userId}`);
     return { userId: req.userId! };
   }
-
-  // Check if user is MANAGER or LEAD in any team
-  const isManagerOrLead = req.userTeams.some(team =>
-    team.role === 'MANAGER' || team.role === 'LEAD'
-  );
-
-  if (!isManagerOrLead) {
-    // User is just a MEMBER, show only their own items
-    return { userId: req.userId! };
-  }
-
-  // User is MANAGER or LEAD - fetch all team members from their teams
-  const teamIds = req.userTeams
-    .filter(team => team.role === 'MANAGER' || team.role === 'LEAD')
-    .map(team => team.teamId);
-
-  if (teamIds.length === 0) {
-    return { userId: req.userId! };
-  }
-
-  const teamMembers = await prisma.teamMember.findMany({
-    where: { teamId: { in: teamIds } },
-    select: { userId: true }
-  });
-
-  const memberUserIds = [req.userId!, ...teamMembers.map(tm => tm.userId)];
-
-  return {
-    userId: { in: memberUserIds }
-  };
 };
 
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
