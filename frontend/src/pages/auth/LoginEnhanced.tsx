@@ -78,7 +78,7 @@ const LoginPage: React.FC = () => {
         className="absolute top-6 left-6 z-10 flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
       >
         <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold text-sm">P</span>
+          <span className="text-white font-bold text-sm">M</span>
         </div>
         <span className="font-semibold">Meetiva.ai</span>
       </Link>
