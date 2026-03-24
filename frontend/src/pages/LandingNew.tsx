@@ -85,26 +85,6 @@ const LandingPage: React.FC = () => {
     { value: '4.9/5', label: 'User Rating' },
   ];
 
-  const testimonials = [
-    {
-      quote: 'Meetiva has transformed how our team handles meetings. We\'ve saved hours every week and nothing falls through the cracks anymore.',
-      author: 'Sarah Chen',
-      role: 'VP of Product, TechCorp',
-      avatar: '',
-    },
-    {
-      quote: 'The AI-powered action item extraction is incredibly accurate. It\'s like having a personal assistant in every meeting.',
-      author: 'Michael Rodriguez',
-      role: 'Engineering Manager, StartupXYZ',
-      avatar: '',
-    },
-    {
-      quote: 'Integration with our existing tools was seamless. Meetiva fits perfectly into our workflow without any disruption.',
-      author: 'Emily Watson',
-      role: 'CTO, InnovateLabs',
-      avatar: '',
-    },
-  ];
 
   const faqs = [
     {
@@ -158,12 +138,6 @@ const LandingPage: React.FC = () => {
             >
               Pricing
             </button>
-            <button
-              onClick={() => scrollToSection('testimonials')}
-              className="text-gray-700 hover:text-blue-600 font-medium transition-colors cursor-pointer"
-            >
-              Testimonials
-            </button>
             <Link to="/login">
               <Button variant="ghost" className="font-medium">
                 Login
@@ -199,12 +173,6 @@ const LandingPage: React.FC = () => {
                 className="text-gray-700 hover:text-blue-600 font-medium transition-colors text-left"
               >
                 Pricing
-              </button>
-              <button
-                onClick={() => scrollToSection('testimonials')}
-                className="text-gray-700 hover:text-blue-600 font-medium transition-colors text-left"
-              >
-                Testimonials
               </button>
               <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="ghost" className="font-medium w-full">
@@ -317,38 +285,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonials" className="relative z-10 container mx-auto px-6 py-20">
-        <div className="text-center mb-16">
-          <h2 className="text-5xl font-bold text-gray-900 mb-4">Loved by Teams Worldwide</h2>
-          <p className="text-xl text-gray-600">See what our customers have to say</p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          {testimonials.map((testimonial, index) => (
-            <div
-              key={index}
-              className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow border border-white/50"
-            >
-              <div className="flex items-center gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />
-                ))}
-              </div>
-              <p className="text-gray-700 mb-6 italic leading-relaxed">&ldquo;{testimonial.quote}&rdquo;</p>
-              <div className="flex items-center gap-3">
-                <div className="text-3xl">{testimonial.avatar}</div>
-                <div>
-                  <div className="font-bold text-gray-900">{testimonial.author}</div>
-                  <div className="text-sm text-gray-600">{testimonial.role}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Pricing Section */}
+{/* Pricing Section */}
       <section id="pricing" className="relative z-10 container mx-auto px-6 py-20">
         <div className="text-center mb-16">
           <h2 className="text-5xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h2>
