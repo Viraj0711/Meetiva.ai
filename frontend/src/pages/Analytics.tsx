@@ -2,6 +2,8 @@
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useAppSelector } from '@/store/hooks';
+import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
 import { meetingService, actionItemService } from '@/services';
 
 interface AnalyticsData {
@@ -27,6 +29,8 @@ interface AnalyticsData {
 }
 
 const Analytics: React.FC = () => {
+  const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
+
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     meetingTrends: [],
     actionItemStats: {
@@ -44,10 +48,11 @@ const Analytics: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
+  const [showTeamAnalytics, setShowTeamAnalytics] = useState(false);
 
   useEffect(() => {
     loadAnalytics();
-  }, [timeRange]);
+  }, [timeRange, showTeamAnalytics]);
 
   const loadAnalytics = async () => {
     try {
@@ -145,7 +150,31 @@ const Analytics: React.FC = () => {
             Insights and trends from your meetings and action items
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {isManagerOrLead && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowTeamAnalytics(false)}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  !showTeamAnalytics
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                My Analytics
+              </button>
+              <button
+                onClick={() => setShowTeamAnalytics(true)}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  showTeamAnalytics
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                Team Analytics
+              </button>
+            </div>
+          )}
           <select
             className="px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
             value={timeRange}

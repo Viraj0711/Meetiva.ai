@@ -14,6 +14,7 @@ const Upload = React.lazy(() => import('@/pages/Upload'));
 const Processing = React.lazy(() => import('@/pages/Processing'));
 const ActionItems = React.lazy(() => import('@/pages/ActionItems'));
 const Analytics = React.lazy(() => import('@/pages/Analytics'));
+const TeamReport = React.lazy(() => import('@/pages/TeamReport'));
 const Profile = React.lazy(() => import('@/pages/Profile'));
 const Settings = React.lazy(() => import('@/pages/Settings'));
 const Pricing = React.lazy(() => import('@/pages/Pricing'));
@@ -150,6 +151,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LoadingSpinner />}>
             <Analytics />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'team-report',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <TeamReport />
           </Suspense>
         ),
       },

@@ -3,8 +3,33 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
 import prisma from '../lib/prisma';
+import { TeamInfo } from '../middleware/auth';
 
 const router = Router();
+
+// Helper function to get user's teams
+const getUserTeams = async (userId: string): Promise<TeamInfo[]> => {
+  const teamMembers = await prisma.teamMember.findMany({
+    where: { userId },
+    select: { teamId: true, role: true }
+  });
+
+  return teamMembers.map(tm => ({
+    teamId: tm.teamId,
+    role: tm.role as TeamInfo['role']
+  }));
+};
+
+// Helper function to create JWT token with team info
+const createToken = async (userId: string, email: string): Promise<string> => {
+  const teams = await getUserTeams(userId);
+
+  return jwt.sign(
+    { userId, email, teams },
+    process.env.JWT_SECRET!,
+    { expiresIn: '7d' }
+  );
+};
 
 // Register
 router.post('/register',
@@ -45,11 +70,7 @@ router.post('/register',
         }
       });
 
-      const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        process.env.JWT_SECRET!,
-        { expiresIn: '7d' }
-      );
+      const token = await createToken(user.id, user.email);
 
       res.status(201).json({
         token,
@@ -112,11 +133,7 @@ router.post('/login',
         return res.status(403).json({ message: 'Account is inactive' });
       }
 
-      const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        process.env.JWT_SECRET!,
-        { expiresIn: '7d' }
-      );
+      const token = await createToken(user.id, user.email);
 
       res.json({
         token,

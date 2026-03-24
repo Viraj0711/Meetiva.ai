@@ -1,24 +1,31 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Upload, ListTodo, BarChart3, Settings, LogOut, Calendar } from 'lucide-react';
+import { Home, Upload, ListTodo, BarChart3, Settings, LogOut, Calendar, Users } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
+import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
 import { cn } from '@/lib/utils';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
+  const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const navigation = [
+  const baseNavigation = [
     { name: 'Home', href: '/dashboard', icon: Home },
     { name: 'Meetings', href: '/dashboard/meetings', icon: Calendar },
     { name: 'Upload', href: '/dashboard/upload', icon: Upload },
     { name: 'Action Items', href: '/dashboard/action-items', icon: ListTodo },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-    { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
+
+  const managerNavigation = isManagerOrLead
+    ? [...baseNavigation, { name: 'Team Report', href: '/dashboard/team-report', icon: Users }]
+    : baseNavigation;
+
+  const navigation = [...managerNavigation, { name: 'Settings', href: '/dashboard/settings', icon: Settings }];
 
   const handleLogout = () => {
     dispatch(logout());

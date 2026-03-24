@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import multer from 'multer';
 import * as XLSX from 'xlsx';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { canViewUserData } from '../middleware/authorize';
 import prisma from '../lib/prisma';
 import { analyzeTranscriptWithGrok } from '../services/grokMeetingAnalyzer';
 import {
@@ -27,10 +28,50 @@ const jsonArrayToStringArray = (value: Prisma.JsonValue | null | undefined): str
   return value.filter((entry): entry is string => typeof entry === 'string');
 };
 
+// Helper to get the appropriate where clause based on user's role
+const getMeetingsWhereClause = async (req: AuthRequest): Promise<Prisma.MeetingWhereInput> => {
+  // For members or users with no team membership, only show their own meetings
+  if (!req.userTeams || req.userTeams.length === 0) {
+    return { userId: req.userId! };
+  }
+
+  // Check if user is MANAGER or LEAD in any team
+  const isManagerOrLead = req.userTeams.some(team =>
+    team.role === 'MANAGER' || team.role === 'LEAD'
+  );
+
+  if (!isManagerOrLead) {
+    // User is just a MEMBER, show only their own meetings
+    return { userId: req.userId! };
+  }
+
+  // User is MANAGER or LEAD - fetch all team members from their teams
+  const teamIds = req.userTeams
+    .filter(team => team.role === 'MANAGER' || team.role === 'LEAD')
+    .map(team => team.teamId);
+
+  if (teamIds.length === 0) {
+    return { userId: req.userId! };
+  }
+
+  const teamMembers = await prisma.teamMember.findMany({
+    where: { teamId: { in: teamIds } },
+    select: { userId: true }
+  });
+
+  const memberUserIds = [req.userId!, ...teamMembers.map(tm => tm.userId)];
+
+  return {
+    userId: { in: memberUserIds }
+  };
+};
+
 router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
   try {
+    const where = await getMeetingsWhereClause(req);
+
     const meetings = await prisma.meeting.findMany({
-      where: { userId: req.userId! },
+      where,
       include: { actionItems: true }
     });
 
@@ -90,9 +131,11 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     const limitNumber = Math.max(1, parseInt(limit as string, 10) || 10);
     const skip = (pageNumber - 1) * limitNumber;
 
+    const where = await getMeetingsWhereClause(req);
+
     const [meetings, total] = await Promise.all([
       prisma.meeting.findMany({
-        where: { userId: req.userId! },
+        where,
         skip,
         take: limitNumber,
         orderBy: { createdAt: 'desc' },
@@ -102,7 +145,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
           }
         }
       }),
-      prisma.meeting.count({ where: { userId: req.userId! } })
+      prisma.meeting.count({ where })
     ]);
 
     res.json({
@@ -123,12 +166,17 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findFirst({
-      where: { id: req.params.id, userId: req.userId! },
+      where: { id: req.params.id },
       include: { actionItems: true }
     });
 
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    // Check if user can view this meeting
+    if (!canViewUserData(req.userId!, meeting.userId, req.userTeams || [])) {
+      return res.status(403).json({ message: 'You do not have permission to view this meeting' });
     }
 
     res.json(meeting);
@@ -292,12 +340,17 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
 router.get('/:id/summary', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findFirst({
-      where: { id: req.params.id, userId: req.userId! },
+      where: { id: req.params.id },
       include: { summary: true }
     });
 
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    // Check permissions
+    if (!canViewUserData(req.userId!, meeting.userId, req.userTeams || [])) {
+      return res.status(403).json({ message: 'You do not have permission to view this meeting' });
     }
 
     if (!meeting.summary) {
@@ -323,12 +376,17 @@ router.get('/:id/summary', authenticate, async (req: AuthRequest, res: Response)
 router.get('/:id/transcript', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findFirst({
-      where: { id: req.params.id, userId: req.userId! },
+      where: { id: req.params.id },
       include: { transcript: true }
     });
 
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    // Check permissions
+    if (!canViewUserData(req.userId!, meeting.userId, req.userTeams || [])) {
+      return res.status(403).json({ message: 'You do not have permission to view this meeting' });
     }
 
     if (!meeting.transcript) {
@@ -352,16 +410,20 @@ router.get('/:id/transcript', authenticate, async (req: AuthRequest, res: Respon
 router.get('/:id/action-items', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findFirst({
-      where: { id: req.params.id, userId: req.userId! },
-      select: { id: true }
+      where: { id: req.params.id }
     });
 
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
     }
 
+    // Check permissions
+    if (!canViewUserData(req.userId!, meeting.userId, req.userTeams || [])) {
+      return res.status(403).json({ message: 'You do not have permission to view this meeting' });
+    }
+
     const actionItems = await prisma.actionItem.findMany({
-      where: { meetingId: req.params.id, userId: req.userId! },
+      where: { meetingId: req.params.id },
       orderBy: { createdAt: 'asc' }
     });
 
@@ -380,16 +442,21 @@ router.get('/:id/action-items', authenticate, async (req: AuthRequest, res: Resp
 router.get('/:id/action-items/export', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findFirst({
-      where: { id: req.params.id, userId: req.userId! },
-      select: { id: true, title: true }
+      where: { id: req.params.id },
+      select: { id: true, title: true, userId: true }
     });
 
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
     }
 
+    // Check permissions
+    if (!canViewUserData(req.userId!, meeting.userId, req.userTeams || [])) {
+      return res.status(403).json({ message: 'You do not have permission to export this meeting' });
+    }
+
     const actionItems = await prisma.actionItem.findMany({
-      where: { meetingId: meeting.id, userId: req.userId! },
+      where: { meetingId: meeting.id },
       orderBy: { createdAt: 'asc' }
     });
 
@@ -450,11 +517,16 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const { title, description, priority, status } = req.body;
 
     const meeting = await prisma.meeting.findFirst({
-      where: { id: req.params.id, userId: req.userId! }
+      where: { id: req.params.id }
     });
 
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    // Only owner can modify
+    if (meeting.userId !== req.userId!) {
+      return res.status(403).json({ message: 'You do not have permission to modify this meeting' });
     }
 
     const updated = await prisma.meeting.update({
@@ -477,11 +549,16 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findFirst({
-      where: { id: req.params.id, userId: req.userId! }
+      where: { id: req.params.id }
     });
 
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
+    }
+
+    // Only owner can delete
+    if (meeting.userId !== req.userId!) {
+      return res.status(403).json({ message: 'You do not have permission to delete this meeting' });
     }
 
     await prisma.meeting.delete({ where: { id: req.params.id } });

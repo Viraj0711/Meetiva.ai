@@ -1,8 +1,16 @@
+export type TeamRole = 'MANAGER' | 'LEAD' | 'MEMBER';
+
+export interface TeamInfo {
+  teamId: string;
+  role: TeamRole;
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
   avatar?: string;
+  teams?: TeamInfo[];
   createdAt: string;
   updatedAt: string;
 }

@@ -1,13 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+export type TeamRole = 'MANAGER' | 'LEAD' | 'MEMBER';
+
+export interface TeamInfo {
+  teamId: string;
+  role: TeamRole;
+}
+
 export interface AuthRequest extends Request {
   userId?: string;
+  userTeams?: TeamInfo[];
 }
 
 interface JwtPayload {
   userId: string;
   email: string;
+  teams?: TeamInfo[];
   iat?: number;
   exp?: number;
 }
@@ -28,6 +37,7 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     }
 
     req.userId = decoded.userId;
+    req.userTeams = decoded.teams || [];
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Invalid or expired token' });
