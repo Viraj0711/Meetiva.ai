@@ -17,6 +17,7 @@ const authenticate = (req, res, next) => {
             return res.status(401).json({ message: 'Invalid token payload' });
         }
         req.userId = decoded.userId;
+        req.userTeams = decoded.teams || [];
         next();
     }
     catch (error) {

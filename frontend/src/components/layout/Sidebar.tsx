@@ -19,6 +19,7 @@ const Sidebar: React.FC = () => {
     { name: 'Upload', href: '/dashboard/upload', icon: Upload },
     { name: 'Action Items', href: '/dashboard/action-items', icon: ListTodo },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+    { name: 'Teams', href: '/dashboard/teams', icon: Users },
   ];
 
   const managerNavigation = isManagerOrLead

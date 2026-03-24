@@ -42,7 +42,7 @@ export const transcribeWithWhisper = async (
   const contentType = SUPPORTED_AUDIO_TYPES[ext] ?? mimeType ?? 'audio/mpeg';
 
   const form = new FormData();
-  const fileBlob = new Blob([fileBuffer], { type: contentType });
+  const fileBlob = new Blob([new Uint8Array(fileBuffer)], { type: contentType });
   form.append('file', fileBlob, originalname);
   form.append('model', 'whisper-1');
   form.append('response_format', 'text');
