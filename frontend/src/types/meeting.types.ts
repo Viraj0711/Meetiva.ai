@@ -73,6 +73,7 @@ export interface ActionItem {
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
+  userId?: string;
 }
 
 export interface MeetingStats {

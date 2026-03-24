@@ -94,6 +94,7 @@ const TeamReport: React.FC = () => {
 
   meetings.forEach((meeting) => {
     const userId = meeting.userId;
+    if (!userId) return;
     if (!teamMembersMap.has(userId)) {
       teamMembersMap.set(userId, {
         userId,
@@ -117,6 +118,7 @@ const TeamReport: React.FC = () => {
 
   actionItems.forEach((item) => {
     const userId = item.userId;
+    if (!userId) return;
     if (!teamMembersMap.has(userId)) {
       teamMembersMap.set(userId, {
         userId,
@@ -165,12 +167,6 @@ const TeamReport: React.FC = () => {
         return 'default';
     }
   };
-
-  const completionRate = stats?.totalActionItems
-    ? Math.round(
-        ((stats.totalMeetings || 0) / (stats.totalActionItems || 1)) * 100
-      )
-    : 0;
 
   return (
     <div className="space-y-6">
@@ -393,3 +389,4 @@ const TeamReport: React.FC = () => {
 };
 
 export default TeamReport;
+
