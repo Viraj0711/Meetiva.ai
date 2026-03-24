@@ -11,7 +11,7 @@ import axios from 'axios';
  * - Verify that members can only see their own data
  */
 
-const BASE_URL = 'http://localhost:3001/api';
+const BASE_URL = 'http://localhost:8000/api/v1';
 
 interface TestUser {
   id: string;
@@ -130,9 +130,9 @@ async function testRegistrationAndRoleAssignment() {
   console.log('================================================');
 
   testData = {
-    manager: await registerUser('manager@test.com', 'Manager User'),
-    lead: await registerUser('lead@test.com', 'Lead User'),
-    member: await registerUser('member@test.com', 'Member User'),
+    manager: await loginUser('manager@test.com', 'Test123!@'),
+    lead: await loginUser('lead@test.com', 'Test123!@'),
+    member: await loginUser('member@test.com', 'Test123!@'),
     teamId: '',
     meetingUser1: '',
     meetingUser2: '',
@@ -140,7 +140,7 @@ async function testRegistrationAndRoleAssignment() {
     actionItemUser2: '',
   };
 
-  console.log('✅ Users registered:');
+  console.log('✅ Users logged in:');
   console.log(`   - Manager: ${testData.manager.email}`);
   console.log(`   - Lead: ${testData.lead.email}`);
   console.log(`   - Member: ${testData.member.email}`);
