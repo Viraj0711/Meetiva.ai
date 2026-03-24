@@ -531,3 +531,4 @@ router.delete('/:id', auth_1.authenticate, async (req, res) => {
     }
 });
 exports.default = router;
+//# sourceMappingURL=meetings.js.map

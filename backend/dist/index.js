@@ -73,3 +73,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Network access: http://0.0.0.0:${PORT}`);
     console.log(`🏥 Health check: http://localhost:${PORT}/health`);
 });
+//# sourceMappingURL=index.js.map
