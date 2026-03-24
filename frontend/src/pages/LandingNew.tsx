@@ -139,7 +139,7 @@ const LandingPage: React.FC = () => {
         <div className="flex justify-between items-center backdrop-blur-sm bg-white/70 rounded-2xl px-6 py-4 shadow-lg border border-white/20">
           <Link to="/" className="flex items-center space-x-3 group">
             <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
-              <span className="text-white font-bold text-xl">P</span>
+              <span className="text-white font-bold text-xl">M</span>
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
               Meetiva.ai
@@ -458,7 +458,7 @@ const LandingPage: React.FC = () => {
           <div>
             <div className="flex items-center space-x-2 mb-4">
               <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">P</span>
+                <span className="text-white font-bold">M</span>
               </div>
               <span className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
                 Meetiva.ai
