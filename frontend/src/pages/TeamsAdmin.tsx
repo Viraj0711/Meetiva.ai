@@ -60,7 +60,7 @@ export const TeamsAdmin: React.FC = () => {
     try {
       dispatch(setLoading(true));
       const response = await getTeams();
-      dispatch(setTeams(response.teams));
+      dispatch(setTeams(response?.teams ?? []));
     } catch (err) {
       const message = (err as ApiError).message || 'Failed to load teams';
       dispatch(setError(message));
@@ -87,11 +87,11 @@ export const TeamsAdmin: React.FC = () => {
         getTeamMembers(teamId),
       ]);
       dispatch(setCurrentTeam(teamData));
-      dispatch(setTeamMembers(membersData.members));
+      dispatch(setTeamMembers(membersData?.members ?? []));
       
       // Load pending invitations for this team
       const invitationsData = await getPendingInvitations();
-      setPendingInvitations(invitationsData.invitations.filter(inv => inv.teamId === teamId));
+      setPendingInvitations((invitationsData?.invitations ?? []).filter(inv => inv.teamId === teamId));
     } catch (err) {
       const message = (err as ApiError).message || 'Failed to load team details';
       dispatch(setError(message));
@@ -124,6 +124,10 @@ export const TeamsAdmin: React.FC = () => {
         description: createTeamForm.description || undefined,
       });
       
+      if (!response?.team || !response?.membership) {
+        throw new Error('Invalid response from server: missing team or membership data');
+      }
+      
       const newTeam: Team = {
         id: response.team.id,
         name: response.team.name,
@@ -145,7 +149,9 @@ export const TeamsAdmin: React.FC = () => {
       setShowCreateTeamModal(false);
       
       // Load the new team's details
-      await loadTeamMembers(response.team.id);
+      if (response?.team?.id) {
+        await loadTeamMembers(response.team.id);
+      }
     } catch (err) {
       const message = (err as ApiError).message || 'Failed to create team';
       dispatch(setError(message));
@@ -188,7 +194,9 @@ export const TeamsAdmin: React.FC = () => {
       });
       
       // Add to pending invitations list
-      setPendingInvitations(prev => [...prev, response.invitation]);
+      if (response?.invitation) {
+        setPendingInvitations(prev => [...prev, response.invitation]);
+      }
       
       dispatch(addToast({
         type: 'success',
