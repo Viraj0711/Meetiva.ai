@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import GradientOrbs from '@/components/GradientOrbs';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { useAppDispatch } from '@/store/hooks';
 import { loginAsync } from '@/store/slices/authSlice';
 
@@ -72,15 +72,13 @@ const LoginPage: React.FC = () => {
     <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 overflow-hidden flex items-center justify-center">
       <GradientOrbs />
 
-      {/* Back to Home */}
+      {/* Back Button */}
       <Link
         to="/"
-        className="absolute top-6 left-6 z-10 flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
+        className="absolute top-6 left-6 z-10 flex items-center space-x-1 text-blue-600 hover:text-blue-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 px-3 py-2 rounded-lg transition-all duration-200"
       >
-        <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold text-sm">M</span>
-        </div>
-        <span className="font-semibold">Meetiva.ai</span>
+        <ArrowLeft className="w-5 h-5" />
+        <span className="font-medium">Back</span>
       </Link>
 
       {/* Login Form */}

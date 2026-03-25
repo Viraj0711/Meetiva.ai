@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   Shield,
   Chrome,
-  Github
+  Github,
+  ArrowLeft
 } from 'lucide-react';
 import AnimatedBackground from '@/components/AnimatedBackground';
 import GradientOrbs from '@/components/GradientOrbs';
@@ -180,6 +181,15 @@ const RegisterEnhanced = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-cyan-50 relative overflow-hidden py-8">
       <AnimatedBackground />
       <GradientOrbs />
+
+      {/* Back Button */}
+      <Link
+        to="/"
+        className="absolute top-6 left-6 z-10 flex items-center space-x-1 text-blue-600 hover:text-blue-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 px-3 py-2 rounded-lg transition-all duration-200"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span className="font-medium">Back</span>
+      </Link>
 
       <div className="relative z-10 w-full max-w-md mx-4">
         {/* Card */}

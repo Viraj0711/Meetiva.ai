@@ -157,7 +157,7 @@ const LandingPage: React.FC = () => {
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
-        
+
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden mt-4 backdrop-blur-sm bg-white/70 rounded-2xl px-6 py-4 shadow-lg border border-white/20 animate-fade-in">
@@ -196,7 +196,7 @@ const LandingPage: React.FC = () => {
             <Star className="w-4 h-4 fill-current" />
             Trusted by 1,000+ teams worldwide
           </div>
-          
+
           <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
             Turn Meetings Into{' '}
             <span className="bg-gradient-primary bg-clip-text text-transparent">
@@ -405,7 +405,7 @@ const LandingPage: React.FC = () => {
               Turn meetings into Meetiva with AI-powered intelligence.
             </p>
           </div>
-          
+
           <div>
             <h4 className="font-bold text-gray-900 mb-4">Product</h4>
             <ul className="space-y-2 text-sm text-gray-600">
@@ -415,7 +415,7 @@ const LandingPage: React.FC = () => {
               <li><Link to="/security" className="hover:text-blue-600">Security</Link></li>
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-bold text-gray-900 mb-4">Company</h4>
             <ul className="space-y-2 text-sm text-gray-600">
@@ -425,7 +425,7 @@ const LandingPage: React.FC = () => {
               <li><Link to="/blog" className="hover:text-blue-600">Blog</Link></li>
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-bold text-gray-900 mb-4">Legal</h4>
             <ul className="space-y-2 text-sm text-gray-600">
@@ -435,7 +435,7 @@ const LandingPage: React.FC = () => {
             </ul>
           </div>
         </div>
-        
+
         <div className="text-center text-gray-600 text-sm pt-8 border-t border-gray-200/50">
           <p>&copy; {new Date().getFullYear()} Meetiva.ai. All rights reserved.</p>
         </div>
