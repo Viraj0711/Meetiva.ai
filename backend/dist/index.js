@@ -11,6 +11,7 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const ai_1 = __importDefault(require("./routes/ai"));
 const meetings_1 = __importDefault(require("./routes/meetings"));
 const actionItems_1 = __importDefault(require("./routes/actionItems"));
+const teams_1 = __importDefault(require("./routes/teams"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const env_1 = require("./lib/env");
 dotenv_1.default.config();
@@ -53,6 +54,7 @@ app.use('/api/v1/auth', auth_1.default);
 app.use('/api/v1/ai', ai_1.default);
 app.use('/api/v1/meetings', meetings_1.default);
 app.use('/api/v1/action-items', actionItems_1.default);
+app.use('/api/v1/teams', teams_1.default);
 const frontendPath = path_1.default.join(__dirname, '../../frontend/dist');
 app.use(express_1.default.static(frontendPath));
 app.get('*', frontendLimiter, (req, res) => {
@@ -71,3 +73,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Network access: http://0.0.0.0:${PORT}`);
     console.log(`🏥 Health check: http://localhost:${PORT}/health`);
 });
+//# sourceMappingURL=index.js.map

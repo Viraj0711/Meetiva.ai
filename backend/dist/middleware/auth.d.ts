@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
-interface JwtPayload {
-    userId: string;
-    email: string;
+export type TeamRole = 'MANAGER' | 'LEAD' | 'MEMBER';
+export interface TeamInfo {
+    teamId: string;
+    role: TeamRole;
 }
 export interface AuthRequest extends Request {
-    user?: JwtPayload;
+    userId?: string;
+    userTeams?: TeamInfo[];
 }
-export declare const authenticate: (req: AuthRequest, res: Response, next: NextFunction) => Promise<Response<any, Record<string, any>> | undefined>;
-export {};
+export declare const authenticate: (req: AuthRequest, res: Response, next: NextFunction) => Response | void;
 //# sourceMappingURL=auth.d.ts.map

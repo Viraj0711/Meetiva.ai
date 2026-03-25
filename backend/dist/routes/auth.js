@@ -9,6 +9,22 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_validator_1 = require("express-validator");
 const prisma_1 = __importDefault(require("../lib/prisma"));
 const router = (0, express_1.Router)();
+// Helper function to get user's teams
+const getUserTeams = async (userId) => {
+    const teamMembers = await prisma_1.default.teamMember.findMany({
+        where: { userId },
+        select: { teamId: true, role: true }
+    });
+    return teamMembers.map(tm => ({
+        teamId: tm.teamId,
+        role: tm.role
+    }));
+};
+// Helper function to create JWT token with team info
+const createToken = async (userId, email) => {
+    const teams = await getUserTeams(userId);
+    return jsonwebtoken_1.default.sign({ userId, email, teams }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
 // Register
 router.post('/register', [
     (0, express_validator_1.body)('email').isEmail(),
@@ -40,7 +56,7 @@ router.post('/register', [
                 hashedPassword
             }
         });
-        const token = jsonwebtoken_1.default.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        const token = await createToken(user.id, user.email);
         res.status(201).json({
             token,
             user: {
@@ -53,8 +69,17 @@ router.post('/register', [
         });
     }
     catch (error) {
-        console.error('Registration error:', error);
-        res.status(500).json({ message: 'Registration failed' });
+        console.error('❌ Registration error:', error);
+        console.error('❌ Error details:', {
+            message: error.message,
+            stack: error.stack,
+            code: error.code,
+            meta: error.meta
+        });
+        // Return detailed error for debugging
+        const errorMessage = error.message || 'Registration failed';
+        const status = error.code === 'P2002' ? 400 : 500;
+        res.status(status).json({ message: errorMessage });
     }
 });
 // Login
@@ -83,7 +108,7 @@ router.post('/login', [
         if (!user.isActive) {
             return res.status(403).json({ message: 'Account is inactive' });
         }
-        const token = jsonwebtoken_1.default.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        const token = await createToken(user.id, user.email);
         res.json({
             token,
             user: {
@@ -101,3 +126,4 @@ router.post('/login', [
     }
 });
 exports.default = router;
+//# sourceMappingURL=auth.js.map

@@ -36,7 +36,7 @@ export const selectUserTeams = (state: RootState) => state.auth.user?.teams || [
  */
 export const selectIsManagerOrLead = (state: RootState): boolean => {
   const user = state.auth.user;
-  if (!user?.teams) return false;
+  if (!user || !user.teams) return false;
   return user.teams.some(team => team.role === 'MANAGER' || team.role === 'LEAD');
 };
 
@@ -45,7 +45,7 @@ export const selectIsManagerOrLead = (state: RootState): boolean => {
  */
 export const selectIsManager = (state: RootState): boolean => {
   const user = state.auth.user;
-  if (!user?.teams) return false;
+  if (!user || !user.teams) return false;
   return user.teams.some(team => team.role === 'MANAGER');
 };
 
@@ -54,7 +54,7 @@ export const selectIsManager = (state: RootState): boolean => {
  */
 export const selectIsLead = (state: RootState): boolean => {
   const user = state.auth.user;
-  if (!user?.teams) return false;
+  if (!user || !user.teams) return false;
   return user.teams.some(team => team.role === 'LEAD');
 };
 
@@ -63,7 +63,7 @@ export const selectIsLead = (state: RootState): boolean => {
  */
 export const selectUserRoleInTeam = (teamId: string) => (state: RootState): TeamRole | null => {
   const user = state.auth.user;
-  if (!user?.teams) return null;
+  if (!user || !user.teams) return null;
   const team = user.teams.find(t => t.teamId === teamId);
   return team?.role || null;
 };
@@ -81,7 +81,7 @@ export const selectIsManagerOrLeadInTeam = (teamId: string) => (state: RootState
  */
 export const selectManagedTeamIds = (state: RootState): string[] => {
   const user = state.auth.user;
-  if (!user?.teams) return [];
+  if (!user || !user.teams) return [];
   return user.teams
     .filter(team => team.role === 'MANAGER' || team.role === 'LEAD')
     .map(team => team.teamId);

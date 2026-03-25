@@ -6,6 +6,7 @@ import authRoutes from './routes/auth';
 import aiRoutes from './routes/ai';
 import meetingsRoutes from './routes/meetings';
 import actionItemsRoutes from './routes/actionItems';
+import teamsRoutes from './routes/teams';
 import rateLimit from 'express-rate-limit';
 import { validateBackendEnv } from './lib/env';
 
@@ -52,6 +53,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/meetings', meetingsRoutes);
 app.use('/api/v1/action-items', actionItemsRoutes);
+app.use('/api/v1/teams', teamsRoutes);
 
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendPath));

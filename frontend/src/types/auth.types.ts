@@ -1,4 +1,4 @@
-export type TeamRole = 'MANAGER' | 'LEAD' | 'MEMBER';
+import { TeamRole } from './teams.types';
 
 export interface TeamInfo {
   teamId: string;
