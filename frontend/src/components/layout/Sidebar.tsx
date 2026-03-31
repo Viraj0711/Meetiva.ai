@@ -67,7 +67,7 @@ const Sidebar: React.FC = () => {
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors relative group',
                   isActive
                     ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    : 'text-muted-foreground hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400'
                 )}
                 title={!isExpanded ? item.name : undefined}
               >

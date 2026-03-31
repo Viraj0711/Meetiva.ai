@@ -105,7 +105,7 @@ const Home: React.FC = () => {
       
       <div className="relative z-10 space-y-8">
       {/* Welcome Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-8 text-white shadow-xl">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-600 p-8 text-white shadow-xl">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative z-10 flex items-start justify-between gap-6">
           <div className="flex-1">
