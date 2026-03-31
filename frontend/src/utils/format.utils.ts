@@ -6,7 +6,7 @@ import { MeetingStatus, MeetingPriority } from '@/types';
 export const getStatusColor = (status: MeetingStatus): string => {
   const colors: Record<MeetingStatus, string> = {
     [MeetingStatus.UPLOADING]: 'bg-blue-100 text-blue-800',
-    [MeetingStatus.PROCESSING]: 'bg-yellow-100 text-yellow-800',
+    [MeetingStatus.PROCESSING]: 'bg-blue-100 text-blue-800',
     [MeetingStatus.TRANSCRIBING]: 'bg-purple-100 text-purple-800',
     [MeetingStatus.ANALYZING]: 'bg-indigo-100 text-indigo-800',
     [MeetingStatus.COMPLETED]: 'bg-green-100 text-green-800',

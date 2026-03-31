@@ -66,10 +66,10 @@ const Navbar: React.FC = () => {
       <div className="flex items-center gap-4">
         <div className="relative" ref={notificationRef}>
           <button 
-            className="relative rounded-lg p-2 hover:bg-accent transition-colors"
+            className="relative rounded-lg p-2 hover:bg-[#F2F7FD] transition-colors group"
             onClick={() => setShowNotifications(!showNotifications)}
           >
-            <Bell className="h-5 w-5 text-muted-foreground" />
+            <Bell className="h-5 w-5 text-[#2F80ED] group-hover:text-[#2563eb] transition-colors" />
             {unreadCount > 0 && (
               <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                 {unreadCount}

@@ -176,7 +176,7 @@ const Analytics: React.FC = () => {
             </div>
           )}
           <select
-            className="px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+            className="min-w-[150px] px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value as any)}
           >
@@ -185,7 +185,7 @@ const Analytics: React.FC = () => {
             <option value="quarter">Last Quarter</option>
             <option value="year">Last Year</option>
           </select>
-          <Button variant="outline">
+          <Button variant="outline" className="hover:bg-[#2F80ED] hover:text-white hover:border-[#2F80ED] transition-colors">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>

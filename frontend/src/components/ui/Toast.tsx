@@ -29,7 +29,7 @@ const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 5000, onClo
   const typeStyles = {
     success: 'bg-green-50 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-100',
     error: 'bg-red-50 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-100',
-    warning: 'bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-100',
+    warning: 'bg-cyan-50 text-cyan-800 border-cyan-200 dark:bg-cyan-900 dark:text-cyan-100',
     info: 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-100',
   };
 

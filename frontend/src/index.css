@@ -87,3 +87,78 @@
     @apply bg-gradient-accent bg-clip-text text-transparent;
   }
 }
+
+/* Enhanced Select/Dropdown Styling for Native Select Elements */
+@layer components {
+  select {
+    background-color: #FFFFFF;
+    border: 1px solid #DDE6F0;
+    border-radius: 10px;
+    color: #333333;
+    padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23828282' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px;
+  }
+
+  select:hover:not(:disabled) {
+    background-color: #F2F7FD;
+    border-color: #2F80ED;
+  }
+
+  select:focus {
+    outline: none;
+    border-color: #2F80ED;
+    box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.15);
+    background-color: #FFFFFF;
+  }
+
+  select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #F5F5F5;
+  }
+
+  /* Native select options - limited styling support */
+  select option {
+    background-color: #FFFFFF;
+    color: #333333;
+    padding: 0.5rem;
+  }
+
+  select option:checked {
+    background-color: #E6F0FA;
+    color: #2F80ED;
+  }
+
+  /* Dark mode support */
+  .dark select {
+    background-color: #1a1a1a;
+    border-color: #404040;
+    color: #e0e0e0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23828282' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  }
+
+  .dark select:hover:not(:disabled) {
+    background-color: rgba(47, 128, 237, 0.1);
+    border-color: #2F80ED;
+  }
+
+  .dark select option {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+  }
+
+  .dark select option:checked {
+    background-color: rgba(47, 128, 237, 0.2);
+    color: #2F80ED;
+  }
+}
+

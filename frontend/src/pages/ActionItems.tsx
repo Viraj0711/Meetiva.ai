@@ -164,7 +164,7 @@ const ActionItems: React.FC = () => {
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Status</label>
               <select
-                className="px-2 py-1 border rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                className="min-w-[140px] px-2 py-1 border rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
@@ -177,7 +177,7 @@ const ActionItems: React.FC = () => {
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Priority</label>
               <select
-                className="px-2 py-1 border rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                className="min-w-[140px] px-2 py-1 border rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
               >
