@@ -78,7 +78,6 @@ const getVisibleUserIds = async (userId: string, userRole: string): Promise<stri
 router.post(
   '/',
   authenticate,
-  authorize(['MANAGER'], undefined),
   [
     body('name').trim().isLength({ min: 2, max: 100 }),
     body('description').optional().trim().isLength({ max: 500 })
