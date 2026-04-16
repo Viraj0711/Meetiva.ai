@@ -6,9 +6,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const crypto_1 = __importDefault(require("crypto"));
 const express_validator_1 = require("express-validator");
 const prisma_1 = __importDefault(require("../lib/prisma"));
+const googleCalendar_1 = require("../services/googleCalendar");
 const router = (0, express_1.Router)();
+const OAUTH_STATE_COOKIE = 'google_oauth_state';
+const OAUTH_UID_COOKIE = 'google_oauth_uid';
+const verifyJwtAndGetUserId = (token) => {
+    const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || '');
+    if (!decoded.userId) {
+        throw new Error('Invalid token payload');
+    }
+    return decoded.userId;
+};
 // Helper function to get user's teams
 const getUserTeams = async (userId) => {
     const teamMembers = await prisma_1.default.teamMember.findMany({
@@ -123,6 +134,76 @@ router.post('/login', [
     catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ message: 'Login failed' });
+    }
+});
+router.get('/google', async (req, res) => {
+    try {
+        const jwtToken = typeof req.query.token === 'string' ? req.query.token : '';
+        if (!jwtToken) {
+            return res.status(401).json({ message: 'Missing session token.' });
+        }
+        const userId = verifyJwtAndGetUserId(jwtToken);
+        const oauthClient = (0, googleCalendar_1.getGoogleOAuthClient)();
+        const state = crypto_1.default.randomBytes(24).toString('hex');
+        res.cookie(OAUTH_STATE_COOKIE, state, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 10 * 60 * 1000,
+        });
+        res.cookie(OAUTH_UID_COOKIE, userId, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 10 * 60 * 1000,
+        });
+        const authUrl = oauthClient.generateAuthUrl({
+            access_type: 'offline',
+            prompt: 'consent',
+            scope: googleCalendar_1.googleCalendarScopes,
+            state,
+            include_granted_scopes: true,
+        });
+        return res.redirect(authUrl);
+    }
+    catch (error) {
+        console.error('Google OAuth init failed:', error);
+        return res.status(401).json({ message: 'Invalid session token.' });
+    }
+});
+router.get('/google/callback', async (req, res) => {
+    try {
+        const returnedState = typeof req.query.state === 'string' ? req.query.state : '';
+        const stateFromCookie = req.cookies?.[OAUTH_STATE_COOKIE];
+        const userId = req.cookies?.[OAUTH_UID_COOKIE];
+        if (!returnedState || !stateFromCookie || returnedState !== stateFromCookie) {
+            return res.status(400).json({ message: 'Invalid OAuth state.' });
+        }
+        if (!userId) {
+            return res.status(400).json({ message: 'Missing OAuth user context.' });
+        }
+        const code = typeof req.query.code === 'string' ? req.query.code : '';
+        if (!code) {
+            return res.status(400).json({ message: 'Missing OAuth code.' });
+        }
+        const oauthClient = (0, googleCalendar_1.getGoogleOAuthClient)();
+        const { tokens } = await oauthClient.getToken(code);
+        await (0, googleCalendar_1.upsertGoogleTokens)(userId, {
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            expiry_date: tokens.expiry_date,
+            token_type: tokens.token_type,
+            scope: tokens.scope,
+        });
+        res.clearCookie(OAUTH_STATE_COOKIE);
+        res.clearCookie(OAUTH_UID_COOKIE);
+        const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:3000';
+        return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=1`);
+    }
+    catch (error) {
+        console.error('Google OAuth callback failed:', error);
+        const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:3000';
+        return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=0`);
     }
 });
 exports.default = router;

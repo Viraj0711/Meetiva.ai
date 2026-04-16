@@ -7,13 +7,18 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const ai_1 = __importDefault(require("./routes/ai"));
 const meetings_1 = __importDefault(require("./routes/meetings"));
 const actionItems_1 = __importDefault(require("./routes/actionItems"));
 const teams_1 = __importDefault(require("./routes/teams"));
+const calendar_1 = __importDefault(require("./routes/calendar"));
+const notifications_1 = __importDefault(require("./routes/notifications"));
+const workspace_1 = __importDefault(require("./routes/workspace"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const env_1 = require("./lib/env");
+const deadlineNotifier_1 = require("./jobs/deadlineNotifier");
 dotenv_1.default.config();
 (0, env_1.validateBackendEnv)();
 const app = (0, express_1.default)();
@@ -47,6 +52,7 @@ app.use((0, cors_1.default)({
 }));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
+app.use((0, cookie_parser_1.default)());
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -55,6 +61,12 @@ app.use('/api/v1/ai', ai_1.default);
 app.use('/api/v1/meetings', meetings_1.default);
 app.use('/api/v1/action-items', actionItems_1.default);
 app.use('/api/v1/teams', teams_1.default);
+app.use('/api/v1/calendar', calendar_1.default);
+app.use('/api/v1/notifications', notifications_1.default);
+app.use('/api/v1/workspace', workspace_1.default);
+// Alias routes for integrations that expect non-versioned auth/calendar paths.
+app.use('/auth', auth_1.default);
+app.use('/calendar', calendar_1.default);
 const frontendPath = path_1.default.join(__dirname, '../../frontend/dist');
 app.use(express_1.default.static(frontendPath));
 app.get('*', frontendLimiter, (req, res) => {
@@ -68,7 +80,14 @@ app.use((err, req, res, next) => {
     console.error('Error:', err);
     res.status(500).json({ message: 'Internal server error' });
 });
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
+    try {
+        await (0, deadlineNotifier_1.startDeadlineNotifier)();
+    }
+    catch (error) {
+        console.error('⚠️ Failed to start deadline notifier:', error);
+        // Continue serving requests even if notifier fails
+    }
     console.log(`✅ Server running on http://localhost:${PORT}`);
     console.log(`🌐 Network access: http://0.0.0.0:${PORT}`);
     console.log(`🏥 Health check: http://localhost:${PORT}/health`);

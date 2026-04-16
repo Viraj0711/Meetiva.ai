@@ -68,4 +68,66 @@ export const integrationService = {
     );
     return response.data;
   },
+
+  /**
+   * Get Google Calendar status
+   */
+  getGoogleCalendarStatus: async (): Promise<{
+    provider: 'GOOGLE';
+    isConnected: boolean;
+    connectedAt: string | null;
+  }> => {
+    const response = await apiClient.get<{ connected: boolean; updatedAt: string | null }>('/calendar/status');
+    return {
+      provider: 'GOOGLE',
+      isConnected: response.data.connected,
+      connectedAt: response.data.updatedAt,
+    };
+  },
+
+  /**
+   * Get Google OAuth authorization URL
+   */
+  getGoogleAuthUrl: async (_teamId: string): Promise<{ authUrl: string }> => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+    const rootBase = apiBase.replace(/\/api\/v1\/?$/, '');
+    return {
+      authUrl: `${rootBase}/auth/google?token=${encodeURIComponent(token)}`,
+    };
+  },
+
+  /**
+   * Disconnect Google Calendar
+   */
+  disconnectGoogleCalendar: async (): Promise<void> => {
+    await apiClient.post('/calendar/disconnect');
+  },
+
+  /**
+   * Get upcoming calendar events
+   */
+  getUpcomingEvents: async (maxResults?: number): Promise<any[]> => {
+    const response = await apiClient.get<any>('/calendar/events', {
+      params: { maxResults: maxResults || 10 },
+    });
+    return response.data as any[];
+  },
+
+  /**
+   * Sync meeting to Google Calendar
+   */
+  syncMeetingToCalendar: async (meetingId: string): Promise<void> => {
+    await apiClient.post(`/calendar/create-event`, {
+      title: `Meeting ${meetingId}`,
+      description: `Synced from meeting ${meetingId}`,
+      startTime: new Date().toISOString(),
+      endTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+  },
 };

@@ -22,6 +22,8 @@ model User {
   teamMembers        TeamMember[]
   invitedByRelations TeamMember[]     @relation("InvitedBy")
   sentInvitations    TeamInvitation[]
+  googleCalendarAuth GoogleCalendarAuth?
+  notifications      Notification[]
 
   @@map("users")
 }
@@ -123,11 +125,13 @@ model ActionItem {
   priority    MeetingPriority  @default(medium)
   status      ActionItemStatus @default(pending)
   tags        Json             @default("[]")
+  reminderSentAt DateTime?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   completedAt DateTime?
   meeting     Meeting          @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifications Notification[]
 
   @@index([userId, status])
   @@index([meetingId])
@@ -186,4 +190,44 @@ model TeamInvitation {
   @@index([email])
   @@index([teamId])
   @@map("team_invitations")
+}
+
+model GoogleCalendarAuth {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  encryptedAccessToken String
+  encryptedRefreshToken String
+  tokenType           String?  @default("Bearer")
+  scope               String?
+  expiryDate          DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiryDate])
+  @@map("google_calendar_auth")
+}
+
+enum NotificationType {
+  DEADLINE_REMINDER
+  SYSTEM
+}
+
+model Notification {
+  id           String           @id @default(uuid())
+  userId       String
+  actionItemId String?
+  type         NotificationType @default(SYSTEM)
+  title        String
+  message      String
+  channel      String           @default("in_app")
+  isRead       Boolean          @default(false)
+  readAt       DateTime?
+  createdAt    DateTime         @default(now())
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionItem   ActionItem?      @relation(fields: [actionItemId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead, createdAt])
+  @@index([actionItemId])
+  @@map("notifications")
 }

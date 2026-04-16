@@ -3,4 +3,5 @@ export * from './meeting.types';
 export * from './integration.types';
 export * from './common.types';
 export * from './teams.types';
+export * from './workspace.types';
 

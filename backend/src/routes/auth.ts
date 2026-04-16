@@ -1,11 +1,30 @@
 ﻿import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { body, validationResult } from 'express-validator';
 import prisma from '../lib/prisma';
 import { TeamInfo } from '../middleware/auth';
+import {
+  getGoogleOAuthClient,
+  googleCalendarScopes,
+  upsertGoogleTokens,
+} from '../services/googleCalendar';
 
 const router = Router();
+
+const OAUTH_STATE_COOKIE = 'google_oauth_state';
+const OAUTH_UID_COOKIE = 'google_oauth_uid';
+
+const verifyJwtAndGetUserId = (token: string): string => {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET || '') as { userId?: string };
+
+  if (!decoded.userId) {
+    throw new Error('Invalid token payload');
+  }
+
+  return decoded.userId;
+};
 
 // Helper function to get user's teams
 const getUserTeams = async (userId: string): Promise<TeamInfo[]> => {
@@ -151,5 +170,89 @@ router.post('/login',
     }
   }
 );
+
+router.get('/google', async (req: Request, res: Response) => {
+  try {
+    const jwtToken = typeof req.query.token === 'string' ? req.query.token : '';
+
+    if (!jwtToken) {
+      return res.status(401).json({ message: 'Missing session token.' });
+    }
+
+    const userId = verifyJwtAndGetUserId(jwtToken);
+    const oauthClient = getGoogleOAuthClient();
+
+    const state = crypto.randomBytes(24).toString('hex');
+
+    res.cookie(OAUTH_STATE_COOKIE, state, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 10 * 60 * 1000,
+    });
+
+    res.cookie(OAUTH_UID_COOKIE, userId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 10 * 60 * 1000,
+    });
+
+    const authUrl = oauthClient.generateAuthUrl({
+      access_type: 'offline',
+      prompt: 'consent',
+      scope: googleCalendarScopes,
+      state,
+      include_granted_scopes: true,
+    });
+
+    return res.redirect(authUrl);
+  } catch (error) {
+    console.error('Google OAuth init failed:', error);
+    return res.status(401).json({ message: 'Invalid session token.' });
+  }
+});
+
+router.get('/google/callback', async (req: Request, res: Response) => {
+  try {
+    const returnedState = typeof req.query.state === 'string' ? req.query.state : '';
+    const stateFromCookie = req.cookies?.[OAUTH_STATE_COOKIE] as string | undefined;
+    const userId = req.cookies?.[OAUTH_UID_COOKIE] as string | undefined;
+
+    if (!returnedState || !stateFromCookie || returnedState !== stateFromCookie) {
+      return res.status(400).json({ message: 'Invalid OAuth state.' });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ message: 'Missing OAuth user context.' });
+    }
+
+    const code = typeof req.query.code === 'string' ? req.query.code : '';
+    if (!code) {
+      return res.status(400).json({ message: 'Missing OAuth code.' });
+    }
+
+    const oauthClient = getGoogleOAuthClient();
+    const { tokens } = await oauthClient.getToken(code);
+
+    await upsertGoogleTokens(userId, {
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expiry_date: tokens.expiry_date,
+      token_type: tokens.token_type,
+      scope: tokens.scope,
+    });
+
+    res.clearCookie(OAUTH_STATE_COOKIE);
+    res.clearCookie(OAUTH_UID_COOKIE);
+
+    const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:3000';
+    return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=1`);
+  } catch (error) {
+    console.error('Google OAuth callback failed:', error);
+    const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:3000';
+    return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=0`);
+  }
+});
 
 export default router;

@@ -2,13 +2,18 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth';
 import aiRoutes from './routes/ai';
 import meetingsRoutes from './routes/meetings';
 import actionItemsRoutes from './routes/actionItems';
 import teamsRoutes from './routes/teams';
+import calendarRoutes from './routes/calendar';
+import notificationsRoutes from './routes/notifications';
+import workspaceRoutes from './routes/workspace';
 import rateLimit from 'express-rate-limit';
 import { validateBackendEnv } from './lib/env';
+import { startDeadlineNotifier } from './jobs/deadlineNotifier';
 
 dotenv.config();
 validateBackendEnv();
@@ -44,6 +49,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -54,6 +60,13 @@ app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/meetings', meetingsRoutes);
 app.use('/api/v1/action-items', actionItemsRoutes);
 app.use('/api/v1/teams', teamsRoutes);
+app.use('/api/v1/calendar', calendarRoutes);
+app.use('/api/v1/notifications', notificationsRoutes);
+app.use('/api/v1/workspace', workspaceRoutes);
+
+// Alias routes for integrations that expect non-versioned auth/calendar paths.
+app.use('/auth', authRoutes);
+app.use('/calendar', calendarRoutes);
 
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendPath));
@@ -73,7 +86,13 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   res.status(500).json({ message: 'Internal server error' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
+  try {
+    await startDeadlineNotifier();
+  } catch (error) {
+    console.error('⚠️ Failed to start deadline notifier:', error);
+    // Continue serving requests even if notifier fails
+  }
   console.log(`✅ Server running on http://localhost:${PORT}`);
   console.log(`🌐 Network access: http://0.0.0.0:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);

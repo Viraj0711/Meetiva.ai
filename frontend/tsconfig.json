@@ -28,7 +28,6 @@
     "alwaysStrict": true,
 
     /* Paths */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }

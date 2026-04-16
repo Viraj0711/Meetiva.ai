@@ -313,6 +313,50 @@ VITE_SUPABASE_URL=https://[YOUR-PROJECT-REF].supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
+### Google Calendar OAuth 2.0 Setup
+
+1. Create OAuth credentials in Google Cloud Console.
+2. Add these redirect URIs:
+   - http://localhost:8000/auth/google/callback
+3. Add these scopes in your OAuth consent screen:
+   - https://www.googleapis.com/auth/calendar.events
+   - https://www.googleapis.com/auth/userinfo.profile
+4. Add these backend environment variables:
+
+```env
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
+GOOGLE_TOKEN_ENCRYPTION_KEY=your-32-byte-base64-or-hex-key
+FRONTEND_APP_URL=http://localhost:5173
+```
+
+OAuth flow endpoints:
+* GET /auth/google
+* GET /auth/google/callback
+
+Calendar API endpoints:
+* POST /calendar/create-event
+* GET /calendar/events
+
+All token operations are server-side. Access and refresh tokens are encrypted before being stored.
+
+### Sample User Flow (End-to-End)
+
+1. Sign in to Meetiva.
+2. Go to Workspace.
+3. Click Connect Google Calendar.
+4. Complete Google OAuth consent.
+5. Return to Workspace and confirm status shows Connected.
+6. Upload meeting audio or transcript.
+7. Verify generated output:
+   - concise summary
+   - key decisions
+   - follow-up action items
+8. Create a calendar event from Workspace.
+9. Verify event appears in Google Calendar.
+10. Set an action item due within 24 hours and confirm reminder appears in Notifications.
+
 ### Team Setup Recommendation
 
 For a team setup, keep all keys in a shared secret manager (for example 1Password, Bitwarden, Doppler, or Infisical) and never commit `.env` files.

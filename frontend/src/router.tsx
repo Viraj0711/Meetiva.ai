@@ -16,6 +16,7 @@ const ActionItems = React.lazy(() => import('@/pages/ActionItems'));
 const Analytics = React.lazy(() => import('@/pages/Analytics'));
 const TeamReport = React.lazy(() => import('@/pages/TeamReport'));
 const TeamsAdmin = React.lazy(() => import('@/pages/TeamsAdmin'));
+const Workspace = React.lazy(() => import('@/pages/Workspace'));
 const Profile = React.lazy(() => import('@/pages/Profile'));
 const Settings = React.lazy(() => import('@/pages/Settings'));
 const Pricing = React.lazy(() => import('@/pages/Pricing'));
@@ -168,6 +169,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LoadingSpinner />}>
             <TeamsAdmin />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'workspace',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <Workspace />
           </Suspense>
         ),
       },

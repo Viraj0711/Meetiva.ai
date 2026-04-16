@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Upload, ListTodo, BarChart3, Settings, LogOut, Calendar, Users } from 'lucide-react';
+import { Home, Upload, ListTodo, BarChart3, Settings, LogOut, Calendar, Users, Grid2X2 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
@@ -15,6 +15,7 @@ const Sidebar: React.FC = () => {
 
   const baseNavigation = [
     { name: 'Home', href: '/dashboard', icon: Home },
+    { name: 'Workspace', href: '/dashboard/workspace', icon: Grid2X2 },
     { name: 'Meetings', href: '/dashboard/meetings', icon: Calendar },
     { name: 'Upload', href: '/dashboard/upload', icon: Upload },
     { name: 'Action Items', href: '/dashboard/action-items', icon: ListTodo },

@@ -137,6 +137,7 @@ router.post('/', auth_1.authenticate, async (req, res) => {
                 assignee,
                 dueDate: dueDate ? new Date(dueDate) : null,
                 priority: priority || 'medium',
+                reminderSentAt: null,
                 userId: req.userId
             }
         });
@@ -176,9 +177,13 @@ router.patch('/:id', auth_1.authenticate, async (req, res) => {
             updateData.status = status;
         if (dueDate !== undefined) {
             updateData.dueDate = dueDate ? new Date(dueDate) : null;
+            updateData.reminderSentAt = null;
         }
         if (status === 'completed' && !actionItem.completedAt) {
             updateData.completedAt = new Date();
+        }
+        if (status !== undefined && status !== 'completed') {
+            updateData.reminderSentAt = null;
         }
         const updated = await prisma_1.default.actionItem.update({
             where: { id: req.params.id },
