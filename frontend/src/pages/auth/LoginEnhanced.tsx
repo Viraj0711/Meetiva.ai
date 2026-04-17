@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -69,13 +69,13 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 overflow-hidden flex items-center justify-center">
+    <div className="relative min-h-screen bg-[#edf2e8] overflow-hidden flex items-center justify-center">
       <GradientOrbs />
 
       {/* Back Button */}
       <Link
         to="/"
-        className="absolute top-6 left-6 z-10 flex items-center space-x-1 text-blue-600 hover:text-blue-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 px-3 py-2 rounded-lg transition-all duration-200"
+        className="absolute top-6 left-6 z-10 flex items-center space-x-1 text-emerald-900 hover:text-emerald-950 hover:bg-emerald-50 px-3 py-2 rounded-lg transition-all duration-200"
       >
         <ArrowLeft className="w-5 h-5" />
         <span className="font-medium">Back</span>
@@ -160,11 +160,11 @@ const LoginPage: React.FC = () => {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-300 text-emerald-800 focus:ring-emerald-700"
                 />
                 <span className="ml-2 text-sm text-gray-600">Remember me</span>
               </label>
-              <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              <Link to="/forgot-password" className="text-sm text-emerald-900 hover:text-emerald-950 font-medium">
                 Forgot password?
               </Link>
             </div>
@@ -223,12 +223,12 @@ const LoginPage: React.FC = () => {
             </Button>
           </div>
 
-          {/* Sign Up Link */}
           <p className="mt-6 text-center text-sm text-gray-600">
-            Don't have an account?{' '}
-            <Link to="/register" className="font-medium text-blue-600 hover:text-blue-700">
-              Sign up for free
+            Invite-only for members. If you are a team leader, you can{' '}
+            <Link to="/register" className="font-medium text-emerald-800 text-emerald-800">
+              create a leader account
             </Link>
+            .
           </p>
         </div>
 
@@ -243,3 +243,5 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
+
+

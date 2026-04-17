@@ -5,7 +5,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useAppSelector } from '@/store/hooks';
 
 const Landing = React.lazy(() => import('@/pages/LandingNew'));
-const Home = React.lazy(() => import('@/pages/Home'));
+const Home = React.lazy(() => import('@/pages/home/RoleHome'));
 const Login = React.lazy(() => import('@/pages/auth/LoginEnhanced'));
 const Register = React.lazy(() => import('@/pages/auth/RegisterEnhanced'));
 const Meetings = React.lazy(() => import('@/pages/Meetings'));

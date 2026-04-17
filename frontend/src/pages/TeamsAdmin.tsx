@@ -16,12 +16,15 @@ import {
   getTeams,
   getTeam,
   getTeamMembers,
+  getTeamChatMessages,
   inviteTeamMember,
-  getPendingInvitations,
+  postTeamChatMessage,
+  updateTeamMemberProfile,
+  resetTeamMemberCredentials,
   updateTeamMember as apiUpdateTeamMember,
   removeTeamMember as apiRemoveTeamMember,
 } from '@/services/teams.service';
-import type { TeamInvitation } from '@/services/teams.service';
+import type { TeamChatMessage } from '@/services/teams.service';
 import { Team, ApiError } from '@/types';
 import './TeamsAdmin.css';
 
@@ -32,7 +35,6 @@ interface CreateTeamForm {
 
 interface InviteMemberForm {
   email: string;
-  role: 'LEAD' | 'MEMBER';
 }
 
 export const TeamsAdmin: React.FC = () => {
@@ -50,11 +52,13 @@ export const TeamsAdmin: React.FC = () => {
   });
   const [inviteMemberForm, setInviteMemberForm] = useState<InviteMemberForm>({
     email: '',
-    role: 'MEMBER',
   });
-  const [pendingInvitations, setPendingInvitations] = useState<TeamInvitation[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [newMemberRole, setNewMemberRole] = useState<'LEAD' | 'MEMBER'>('MEMBER');
+  const [chatMessages, setChatMessages] = useState<TeamChatMessage[]>([]);
+  const [chatMessageInput, setChatMessageInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatSending, setChatSending] = useState(false);
 
   const loadTeams = React.useCallback(async () => {
     try {
@@ -82,16 +86,14 @@ export const TeamsAdmin: React.FC = () => {
   const loadTeamMembers = React.useCallback(async (teamId: string) => {
     try {
       dispatch(setLoading(true));
-      const [teamData, membersData] = await Promise.all([
+      const [teamData, membersData, chatData] = await Promise.all([
         getTeam(teamId),
         getTeamMembers(teamId),
+        getTeamChatMessages(teamId, { limit: 100 }),
       ]);
       dispatch(setCurrentTeam(teamData));
       dispatch(setTeamMembers(membersData?.members ?? []));
-      
-      // Load pending invitations for this team
-      const invitationsData = await getPendingInvitations();
-      setPendingInvitations((invitationsData?.invitations ?? []).filter(inv => inv.teamId === teamId));
+      setChatMessages(chatData?.messages ?? []);
     } catch (err) {
       const message = (err as ApiError).message || 'Failed to load team details';
       dispatch(setError(message));
@@ -100,10 +102,78 @@ export const TeamsAdmin: React.FC = () => {
         message,
         duration: 3000,
       }));
+      setChatMessages([]);
     } finally {
       dispatch(setLoading(false));
     }
   }, [dispatch]);
+
+  const refreshChatMessages = React.useCallback(async () => {
+    if (!currentTeam) return;
+
+    try {
+      setChatLoading(true);
+      const chatData = await getTeamChatMessages(currentTeam.id, { limit: 100 });
+      setChatMessages(chatData?.messages ?? []);
+    } catch (err) {
+      const message = (err as ApiError).message || 'Failed to load team chat';
+      dispatch(addToast({
+        type: 'error',
+        message,
+        duration: 3000,
+      }));
+    } finally {
+      setChatLoading(false);
+    }
+  }, [currentTeam, dispatch]);
+
+  useEffect(() => {
+    if (!currentTeam) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      refreshChatMessages();
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [currentTeam, refreshChatMessages]);
+
+  const handleSendChatMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!currentTeam || !chatMessageInput.trim()) return;
+
+    try {
+      setChatSending(true);
+      const response = await postTeamChatMessage(currentTeam.id, chatMessageInput.trim());
+      if (response?.message) {
+        setChatMessages((prev) => [...prev, response.message]);
+      }
+      setChatMessageInput('');
+    } catch (err) {
+      const message = (err as ApiError).message || 'Failed to send follow-up message';
+      dispatch(addToast({
+        type: 'error',
+        message,
+        duration: 3000,
+      }));
+    } finally {
+      setChatSending(false);
+    }
+  };
+
+  const formatMessageTime = (isoDate: string) => {
+    const date = new Date(isoDate);
+    return date.toLocaleString([], {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,7 +202,7 @@ export const TeamsAdmin: React.FC = () => {
         id: response.team.id,
         name: response.team.name,
         description: response.team.description,
-        role: 'MANAGER',
+        role: 'LEAD',
         createdAt: response.team.createdAt,
         updatedAt: response.team.updatedAt,
         joinedAt: response.membership.acceptedAt,
@@ -190,21 +260,25 @@ export const TeamsAdmin: React.FC = () => {
       dispatch(setLoading(true));
       const response = await inviteTeamMember(currentTeam.id, {
         email: inviteMemberForm.email,
-        role: inviteMemberForm.role,
       });
-      
-      // Add to pending invitations list
-      if (response?.invitation) {
-        setPendingInvitations(prev => [...prev, response.invitation]);
+
+      await loadTeamMembers(currentTeam.id);
+
+      if (response.temporaryCredentials) {
+        dispatch(addToast({
+          type: 'success',
+          message: `New credentials: ${response.temporaryCredentials.email} / ${response.temporaryCredentials.temporaryPassword}`,
+          duration: 7000,
+        }));
       }
       
       dispatch(addToast({
         type: 'success',
-        message: `Invitation sent to ${inviteMemberForm.email} as ${inviteMemberForm.role}!`,
+        message: response.message,
         duration: 3000,
       }));
 
-      setInviteMemberForm({ email: '', role: 'MEMBER' });
+      setInviteMemberForm({ email: '' });
       setShowInviteMemberModal(false);
     } catch (err) {
       const message = (err as ApiError).message || 'Failed to send invitation';
@@ -281,19 +355,96 @@ export const TeamsAdmin: React.FC = () => {
     }
   };
 
+  const handleEditMember = async (memberId: string, currentName: string, currentEmail: string) => {
+    if (!currentTeam) return;
+
+    const nextName = window.prompt('Update member name', currentName)?.trim();
+    if (!nextName) {
+      return;
+    }
+
+    const nextEmail = window.prompt('Update member email', currentEmail)?.trim();
+    if (!nextEmail) {
+      return;
+    }
+
+    try {
+      dispatch(setLoading(true));
+      await updateTeamMemberProfile(currentTeam.id, memberId, {
+        name: nextName,
+        email: nextEmail,
+      });
+      await loadTeamMembers(currentTeam.id);
+      dispatch(addToast({
+        type: 'success',
+        message: 'Member profile updated',
+        duration: 3000,
+      }));
+    } catch (err) {
+      const message = (err as ApiError).message || 'Failed to update member details';
+      dispatch(setError(message));
+      dispatch(addToast({
+        type: 'error',
+        message,
+        duration: 3000,
+      }));
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  const handleResetCredentials = async (memberId: string) => {
+    if (!currentTeam) return;
+
+    if (!window.confirm('Reset this member credentials and generate a new temporary password?')) {
+      return;
+    }
+
+    try {
+      dispatch(setLoading(true));
+      const response = await resetTeamMemberCredentials(currentTeam.id, memberId);
+      dispatch(addToast({
+        type: 'success',
+        message: `Credentials reset: ${response.credentials.email} / ${response.credentials.temporaryPassword}`,
+        duration: 8000,
+      }));
+    } catch (err) {
+      const message = (err as ApiError).message || 'Failed to reset member credentials';
+      dispatch(setError(message));
+      dispatch(addToast({
+        type: 'error',
+        message,
+        duration: 3000,
+      }));
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  const canCreateTeam = (user?.teams?.length ?? 0) === 0 || user?.teams?.some((team) => team.role === 'LEAD' || team.role === 'MANAGER');
   const canManageTeam = currentTeam?.role === 'MANAGER' || currentTeam?.role === 'LEAD';
+  const canInviteMembers = currentTeam?.role === 'LEAD';
   const canChangeRoles = currentTeam?.role === 'MANAGER';
 
   return (
     <div className="teams-admin">
       <div className="teams-admin-header">
-        <h1>Teams Management</h1>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowCreateTeamModal(true)}
-        >
-          + Create Team
-        </button>
+        <div>
+          <h1>Teams</h1>
+          <p className="teams-subtitle">
+            {canCreateTeam
+              ? 'Leader mode: manage member accounts, profile details, and credentials.'
+              : 'Member mode: view your team roster and collaboration updates.'}
+          </p>
+        </div>
+        {canCreateTeam && (
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowCreateTeamModal(true)}
+          >
+            + Create Team
+          </button>
+        )}
       </div>
 
       {error && (
@@ -314,7 +465,23 @@ export const TeamsAdmin: React.FC = () => {
           <h2>Your Teams</h2>
           {teams.length === 0 ? (
             <div className="empty-state">
-              <p>No teams yet. Create one to get started!</p>
+              {canCreateTeam ? (
+                <>
+                  <p className="empty-state-title">No teams yet</p>
+                  <p>Create your first team to start inviting members and tracking collaboration.</p>
+                  <button
+                    className="btn btn-primary empty-state-cta"
+                    onClick={() => setShowCreateTeamModal(true)}
+                  >
+                    Create Your First Team
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="empty-state-title">No teams assigned</p>
+                  <p>You can view team members once a leader adds you to a team.</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="teams-grid">
@@ -353,33 +520,15 @@ export const TeamsAdmin: React.FC = () => {
                   <p className="team-description">{currentTeam.description}</p>
                 )}
               </div>
-              {canManageTeam && (
+              {canInviteMembers && (
                 <button
                   className="btn btn-secondary"
                   onClick={() => setShowInviteMemberModal(true)}
                 >
-                  + Invite Member
+                  + Add Member Account
                 </button>
               )}
             </div>
-
-            {pendingInvitations.length > 0 && (
-              <div className="pending-invitations">
-                <h3>Pending Invitations ({pendingInvitations.length})</h3>
-                <div className="invitations-list">
-                  {pendingInvitations.map((invitation) => (
-                    <div key={invitation.id} className="invitation-item">
-                      <div className="invitation-info">
-                        <span className="invitation-email">{invitation.email}</span>
-                        <span className="invitation-role">{invitation.role}</span>
-                        <span className="invitation-status">Pending</span>
-                      </div>
-                      <small>Expires: {new Date(invitation.expiresAt).toLocaleDateString()}</small>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="team-members">
               <h3>Team Members ({teamMembers.length})</h3>
@@ -393,7 +542,7 @@ export const TeamsAdmin: React.FC = () => {
                     <div className="col-name">Name</div>
                     <div className="col-email">Email</div>
                     <div className="col-role">Role</div>
-                    {canManageTeam && <div className="col-actions">Actions</div>}
+                    {canManageTeam && <div className="col-actions">Manage</div>}
                   </div>
                   {teamMembers.map((member) => (
                     <div key={member.userId} className="table-row">
@@ -424,6 +573,20 @@ export const TeamsAdmin: React.FC = () => {
                       {canManageTeam && member.userId !== user?.id && (
                         <div className="col-actions">
                           <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => handleEditMember(member.userId, member.name, member.email)}
+                          >
+                            Edit
+                          </button>
+                          {member.role === 'MEMBER' && (
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => handleResetCredentials(member.userId)}
+                            >
+                              Reset Credentials
+                            </button>
+                          )}
+                          <button
                             className="btn btn-danger btn-sm"
                             onClick={() => handleRemoveMember(member.userId)}
                           >
@@ -435,6 +598,53 @@ export const TeamsAdmin: React.FC = () => {
                   ))}
                 </div>
               )}
+            </div>
+
+            <div className="team-chat">
+              <div className="team-chat-header">
+                <h3>Project Follow-up Chat</h3>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={refreshChatMessages}
+                  disabled={chatLoading}
+                >
+                  {chatLoading ? 'Refreshing...' : 'Refresh'}
+                </button>
+              </div>
+
+              <div className="team-chat-messages">
+                {chatMessages.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No follow-up messages yet. Start the conversation.</p>
+                  </div>
+                ) : (
+                  chatMessages.map((message) => (
+                    <div key={message.id} className="team-chat-message">
+                      <div className="team-chat-message-header">
+                        <span className="team-chat-author">{message.userName || message.userEmail}</span>
+                        <span className="team-chat-time">{formatMessageTime(message.createdAt)}</span>
+                      </div>
+                      <p className="team-chat-text">{message.message}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <form className="team-chat-form" onSubmit={handleSendChatMessage}>
+                <textarea
+                  className="form-textarea"
+                  rows={3}
+                  placeholder="Add a follow-up update, blocker, or next step for this team..."
+                  value={chatMessageInput}
+                  onChange={(e) => setChatMessageInput(e.target.value)}
+                />
+                <div className="team-chat-actions">
+                  <button type="submit" className="btn btn-primary" disabled={chatSending || !chatMessageInput.trim()}>
+                    {chatSending ? 'Sending...' : 'Send Follow-up'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
@@ -505,7 +715,7 @@ export const TeamsAdmin: React.FC = () => {
         <div className="modal-overlay" onClick={() => setShowInviteMemberModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Invite Team Member</h2>
+              <h2>Create Member Account</h2>
               <button
                 className="modal-close"
                 onClick={() => setShowInviteMemberModal(false)}
@@ -527,33 +737,16 @@ export const TeamsAdmin: React.FC = () => {
                   }
                 />
               </div>
-              <div className="form-group">
-                <label htmlFor="member-role">Role *</label>
-                <select
-                  id="member-role"
-                  className="form-select"
-                  value={inviteMemberForm.role}
-                  onChange={(e) =>
-                    setInviteMemberForm({
-                      ...inviteMemberForm,
-                      role: e.target.value as 'LEAD' | 'MEMBER',
-                    })
-                  }
-                >
-                  <option value="MEMBER">Member</option>
-                  <option value="LEAD">Team Lead</option>
-                </select>
-              </div>
               <div className="form-info">
                 <p>
-                  <strong>Member:</strong> Can view team meetings and action items
+                  <strong>Role:</strong> Member accounts are provisioned automatically.
                 </p>
                 <p>
-                  <strong>Team Lead:</strong> Can also invite members and manage their tasks
+                  <strong>Credentials:</strong> A temporary password is generated once and shown after creation.
                 </p>
               </div>
               <div className="form-info alert-info">
-                <p>An invitation will be sent to the email address. They will need to accept it to join the team.</p>
+                <p>Share the generated credentials securely. Members can sign in immediately after creation.</p>
               </div>
               <div className="modal-actions">
                 <button
@@ -564,7 +757,7 @@ export const TeamsAdmin: React.FC = () => {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={isLoading}>
-                  {isLoading ? 'Sending...' : 'Send Invitation'}
+                  {isLoading ? 'Creating...' : 'Create Member Account'}
                 </button>
               </div>
             </form>

@@ -13,21 +13,29 @@ const Sidebar: React.FC = () => {
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const baseNavigation = [
-    { name: 'Home', href: '/dashboard', icon: Home },
+  const memberNavigation = [
+    { name: 'My Progress', href: '/dashboard', icon: Home },
+    { name: 'Teams', href: '/dashboard/teams', icon: Users },
+    { name: 'My Meetings', href: '/dashboard/meetings', icon: Calendar },
+    { name: 'My Action Items', href: '/dashboard/action-items', icon: ListTodo },
+    { name: 'Upload', href: '/dashboard/upload', icon: Upload },
+    { name: 'Workspace', href: '/dashboard/workspace', icon: Grid2X2 },
+    { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+  ];
+
+  const leaderNavigation = [
+    { name: 'Leader Home', href: '/dashboard', icon: Home },
     { name: 'Workspace', href: '/dashboard/workspace', icon: Grid2X2 },
     { name: 'Meetings', href: '/dashboard/meetings', icon: Calendar },
     { name: 'Upload', href: '/dashboard/upload', icon: Upload },
     { name: 'Action Items', href: '/dashboard/action-items', icon: ListTodo },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
     { name: 'Teams', href: '/dashboard/teams', icon: Users },
+    { name: 'Team Report', href: '/dashboard/team-report', icon: Users },
+    { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 
-  const managerNavigation = isManagerOrLead
-    ? [...baseNavigation, { name: 'Team Report', href: '/dashboard/team-report', icon: Users }]
-    : baseNavigation;
-
-  const navigation = [...managerNavigation, { name: 'Settings', href: '/dashboard/settings', icon: Settings }];
+  const navigation = isManagerOrLead ? leaderNavigation : memberNavigation;
 
   const handleLogout = () => {
     dispatch(logout());
@@ -68,7 +76,7 @@ const Sidebar: React.FC = () => {
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors relative group',
                   isActive
                     ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-[#F2F7FD] hover:text-[#2F80ED]'
+                    : 'text-muted-foreground hover:bg-[#edf2e8] hover:text-[#335444]'
                 )}
                 title={!isExpanded ? item.name : undefined}
               >

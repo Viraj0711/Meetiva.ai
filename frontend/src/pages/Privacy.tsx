@@ -4,7 +4,7 @@ import GradientOrbs from '@/components/GradientOrbs';
 
 const PrivacyPage: React.FC = () => {
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-br text-emerald-800 via-white text-emerald-800 overflow-hidden">
       <GradientOrbs />
 
       {/* Navbar */}
@@ -140,7 +140,7 @@ const PrivacyPage: React.FC = () => {
             <section>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">9. Third-Party Services</h2>
               <p className="text-gray-700 leading-relaxed">
-                Our service may integrate with third-party services (such as JIRA, Slack, or Google Calendar). These
+                Our service may integrate with third-party services (such as Google Calendar). These
                 third parties have their own privacy policies, and we encourage you to review them.
               </p>
             </section>
@@ -159,7 +159,7 @@ const PrivacyPage: React.FC = () => {
               <p className="text-gray-700 leading-relaxed">
                 If you have any questions about this Privacy Policy, please contact us at:
               </p>
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <div className="mt-4 p-4 text-emerald-800 rounded-lg">
                 <p className="text-gray-700">
                   <strong>Email:</strong> privacy@meetiva.ai<br />
                   <strong>Address:</strong> 123 Innovation Drive, San Francisco, CA 94102
@@ -179,3 +179,5 @@ const PrivacyPage: React.FC = () => {
 };
 
 export default PrivacyPage;
+
+

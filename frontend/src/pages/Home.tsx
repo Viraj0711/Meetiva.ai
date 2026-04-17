@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -29,7 +29,7 @@ const Home: React.FC = () => {
       title: 'Upload Meeting',
       description: 'Upload a new meeting recording or transcript',
       href: '/dashboard/upload',
-      color: 'from-blue-500 to-cyan-500',
+      color: 'text-emerald-800 to-lime-700',
     },
     {
       icon: <Calendar className="w-6 h-6" />,
@@ -86,7 +86,7 @@ const Home: React.FC = () => {
     },
     {
       title: 'Explore integrations',
-      description: 'Connect with JIRA, Trello, or Slack to streamline your workflow.',
+      description: 'Connect with Google Calendar to streamline your scheduling workflow.',
       action: 'View Settings',
       href: '/dashboard/settings',
     },
@@ -105,7 +105,7 @@ const Home: React.FC = () => {
       
       <div className="relative z-10 space-y-8">
       {/* Welcome Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-600 p-8 text-white shadow-xl">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-800 via-emerald-700 to-lime-700 p-8 text-white shadow-xl">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative z-10 flex items-start justify-between gap-6">
           <div className="flex-1">
@@ -116,7 +116,7 @@ const Home: React.FC = () => {
               </span>
             </div>
             <h1 className="text-4xl font-bold mb-3">
-              Hello, {user?.name || 'there'}! 👋
+              Hello, {user?.name || 'there'}! ??
             </h1>
             <p className="text-lg opacity-90 max-w-2xl">
               Ready to turn your meetings into Meetiva? Upload a meeting, review action items, or
@@ -125,7 +125,7 @@ const Home: React.FC = () => {
           </div>
           <div className="flex-shrink-0">
             <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center text-4xl font-bold shadow-xl">
-              {user?.name?.charAt(0).toUpperCase() || '👤'}
+              {user?.name?.charAt(0).toUpperCase() || '??'}
             </div>
           </div>
         </div>
@@ -145,17 +145,17 @@ const Home: React.FC = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action, index) => (
             <Link key={index} to={action.href}>
-              <Card className="group h-full p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border-2 hover:border-blue-200">
+              <Card className="group h-full p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border-2 hover:text-emerald-800">
                 <div
                   className={`w-16 h-16 bg-gradient-to-br ${action.color} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg text-white`}
                 >
                   {action.icon}
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2 group-hover:text-blue-400 transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2 group-hover:text-emerald-800 transition-colors">
                   {action.title}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{action.description}</p>
-                <div className="mt-4 flex items-center text-blue-400 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="mt-4 flex items-center text-emerald-800 text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
                   Get Started <ArrowRight className="w-4 h-4 ml-1" />
                 </div>
               </Card>
@@ -169,7 +169,7 @@ const Home: React.FC = () => {
         {/* Platform Features */}
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br text-emerald-800 to-purple-500 rounded-lg flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Platform Features</h2>
@@ -177,8 +177,8 @@ const Home: React.FC = () => {
           <div className="space-y-4">
             {features.map((feature, index) => (
               <div key={index} className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <div className="text-blue-600 dark:text-blue-400">{feature.icon}</div>
+                <div className="w-10 h-10 text-emerald-800 dark:text-emerald-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="text-emerald-800 dark:text-emerald-800">{feature.icon}</div>
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{feature.title}</h3>
@@ -201,7 +201,7 @@ const Home: React.FC = () => {
             {tips.map((tip, index) => (
               <div
                 key={index}
-                className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
+                className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:text-emerald-800 text-emerald-800 dark:text-emerald-800 transition-all"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -214,7 +214,7 @@ const Home: React.FC = () => {
                       </Button>
                     </Link>
                   </div>
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                  <div className="w-8 h-8 bg-gradient-to-br text-emerald-800 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                     {index + 1}
                   </div>
                 </div>
@@ -244,12 +244,12 @@ const Home: React.FC = () => {
           </Link>
 
           <Link to="/dashboard/meetings">
-            <Card className="group p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer border-2 hover:border-blue-400">
+            <Card className="group p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer border-2 hover:text-emerald-800">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <div className="w-12 h-12 text-emerald-800 dark:text-emerald-800 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Calendar className="w-6 h-6 text-emerald-800 dark:text-emerald-800" />
                 </div>
-                <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-400 transition-colors" />
+                <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-800 transition-colors" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">All Meetings</h3>
               <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -280,3 +280,5 @@ const Home: React.FC = () => {
 };
 
 export default Home;
+
+

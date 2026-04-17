@@ -41,8 +41,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         };
       default:
         return {
-          iconColor: 'text-blue-600',
-          bgColor: 'bg-blue-100',
+          iconColor: 'text-emerald-700',
+          bgColor: 'bg-emerald-100',
           confirmVariant: 'default' as const,
         };
     }

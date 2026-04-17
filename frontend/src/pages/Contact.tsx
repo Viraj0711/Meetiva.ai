@@ -6,7 +6,7 @@ import GradientOrbs from '@/components/GradientOrbs';
 
 const ContactPage: React.FC = () => {
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-br text-emerald-800 via-white text-emerald-800 overflow-hidden">
       <GradientOrbs />
 
       {/* Navbar */}
@@ -44,7 +44,7 @@ const ContactPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
                   <input
                     type="text"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 text-emerald-800 focus:border-transparent transition-all"
                     placeholder="Your name"
                   />
                 </div>
@@ -52,7 +52,7 @@ const ContactPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                   <input
                     type="email"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 text-emerald-800 focus:border-transparent transition-all"
                     placeholder="your.email@company.com"
                   />
                 </div>
@@ -60,7 +60,7 @@ const ContactPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
                   <input
                     type="text"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 text-emerald-800 focus:border-transparent transition-all"
                     placeholder="How can we help?"
                   />
                 </div>
@@ -68,7 +68,7 @@ const ContactPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
                   <textarea
                     rows={5}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 text-emerald-800 focus:border-transparent transition-all resize-none"
                     placeholder="Tell us more about your needs..."
                   />
                 </div>
@@ -135,3 +135,5 @@ const ContactPage: React.FC = () => {
 };
 
 export default ContactPage;
+
+

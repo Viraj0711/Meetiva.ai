@@ -54,10 +54,10 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
             'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[10px]',
             'bg-white border border-[#DDE6F0] text-[#333333]',
             'transition-all duration-200 ease-in-out',
-            'focus:outline-none focus:ring-2 focus:ring-[rgba(47,128,237,0.15)] focus:border-[#2F80ED]',
-            !disabled && 'hover:bg-[#F2F7FD] hover:border-[#2F80ED] cursor-pointer',
+            'focus:outline-none focus:ring-2 focus:ring-[rgba(47,128,237,0.15)] focus:border-[text-emerald-800]',
+            !disabled && 'hover:bg-[#F2F7FD] hover:border-[text-emerald-800] cursor-pointer',
             disabled && 'opacity-50 cursor-not-allowed bg-gray-50',
-            isOpen && 'border-[#2F80ED] ring-2 ring-[rgba(47,128,237,0.15)]'
+            isOpen && 'border-[text-emerald-800] ring-2 ring-[rgba(47,128,237,0.15)]'
           )}
         >
           <span className={cn('text-sm', !selectedOption && 'text-[#828282]')}>
@@ -91,8 +91,8 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                   className={cn(
                     'w-full flex items-center justify-between gap-2 px-3 py-2',
                     'text-sm text-left transition-all duration-200 ease-in-out',
-                    'hover:bg-[#F2F7FD] hover:text-[#2F80ED]',
-                    isSelected && 'bg-[#E6F0FA] text-[#2F80ED] font-medium',
+                    'hover:bg-[#F2F7FD] hover:text-[text-emerald-800]',
+                    isSelected && 'bg-[#E6F0FA] text-[text-emerald-800] font-medium',
                     !isSelected && 'text-[#333333]'
                   )}
                 >
@@ -111,3 +111,5 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
 Select.displayName = 'Select';
 
 export { Select };
+
+

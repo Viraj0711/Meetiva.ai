@@ -114,8 +114,8 @@ const Dashboard: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">This Week</p>
               <p className="text-3xl font-bold mt-2">{stats.thisWeekMeetings}</p>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-12 h-12 text-emerald-800 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-emerald-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
@@ -283,3 +283,5 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
+

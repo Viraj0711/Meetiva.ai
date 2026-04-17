@@ -1,10 +1,10 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 
 const Landing: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white text-emerald-800">
       {/* Navbar */}
       <nav className="container mx-auto px-6 py-4">
         <div className="flex justify-between items-center">
@@ -68,7 +68,7 @@ const Landing: React.FC = () => {
               <span className="font-medium">Enterprise Security</span>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-sm">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-emerald-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               <span className="font-medium">Real-time Processing</span>
@@ -112,9 +112,9 @@ const Landing: React.FC = () => {
           </div>
 
           {/* Feature 2 */}
-          <div className="group bg-white p-8 rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300">
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-              <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="group bg-white p-8 rounded-xl border border-gray-200 hover:text-emerald-800 hover:shadow-xl transition-all duration-300">
+            <div className="w-14 h-14 bg-gradient-to-br text-emerald-800 text-emerald-800 rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <svg className="w-7 h-7 text-emerald-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </div>
@@ -154,8 +154,7 @@ const Landing: React.FC = () => {
               Seamless Integrations
             </h3>
             <p className="text-gray-600 leading-relaxed">
-              Sync with JIRA, Trello, Asana, Google Calendar, and Slack. Create tickets, 
-              schedule reminders, and notify teamsall automatically.
+              Sync with Google Calendar to schedule reminders and keep your meetings aligned automatically.
             </p>
           </div>
 
@@ -195,7 +194,7 @@ const Landing: React.FC = () => {
 
       {/* CTA Section */}
       <section className="container mx-auto px-6 py-20">
-        <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-blue-600 rounded-2xl p-12 text-center text-white shadow-2xl relative overflow-hidden">
+        <div className="bg-gradient-to-r from-purple-600 via-purple-700 text-emerald-800 rounded-2xl p-12 text-center text-white shadow-2xl relative overflow-hidden">
           {/* Decorative elements */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-32 -mt-32"></div>
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
@@ -236,3 +235,5 @@ const Landing: React.FC = () => {
 };
 
 export default Landing;
+
+

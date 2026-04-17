@@ -91,7 +91,7 @@ const DashboardEnhanced: React.FC = () => {
 
       setActionItemsByStatus([
         { name: 'Completed', value: statusCounts.completed, color: '#10b981' },
-        { name: 'In Progress', value: statusCounts.inProgress, color: '#3b82f6' },
+        { name: 'In Progress', value: statusCounts.inProgress, color: '#335444' },
         { name: 'Pending', value: statusCounts.pending, color: '#f59e0b' },
         { name: 'Overdue', value: statusCounts.overdue, color: '#ef4444' },
       ]);
@@ -158,8 +158,8 @@ const DashboardEnhanced: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-blue-100">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 text-emerald-800">
+          <div className="absolute inset-0 bg-gradient-to-br text-emerald-800/5 text-emerald-800 opacity-0 group-hover:opacity-100 transition-opacity" />
           <CardContent className="p-6 relative">
             <div className="flex items-center justify-between">
               <div>
@@ -170,7 +170,7 @@ const DashboardEnhanced: React.FC = () => {
                   +12% from last month
                 </p>
               </div>
-              <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="h-12 w-12 bg-gradient-to-br text-emerald-800 to-lime-700 rounded-xl flex items-center justify-center shadow-lg">
                 <Calendar className="h-6 w-6 text-white" />
               </div>
             </div>
@@ -203,7 +203,7 @@ const DashboardEnhanced: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg. Duration</p>
                 <p className="text-3xl font-bold text-gray-900 mt-2">{stats.averageDuration}m</p>
-                <p className="text-xs text-blue-600 mt-1 flex items-center">
+                <p className="text-xs text-emerald-800 mt-1 flex items-center">
                   <Clock className="w-3 h-3 mr-1" />
                   Optimal range
                 </p>
@@ -241,7 +241,7 @@ const DashboardEnhanced: React.FC = () => {
         <Card className="shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center">
-              <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
+              <BarChart3 className="w-5 h-5 mr-2 text-emerald-800" />
               Weekly Activity
             </CardTitle>
             <CardDescription>Meetings and action items this week</CardDescription>
@@ -251,8 +251,8 @@ const DashboardEnhanced: React.FC = () => {
               <AreaChart data={weeklyData}>
                 <defs>
                   <linearGradient id="colorMeetings" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#335444" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#335444" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorActions" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
@@ -273,7 +273,7 @@ const DashboardEnhanced: React.FC = () => {
                 <Area
                   type="monotone"
                   dataKey="meetings"
-                  stroke="#3b82f6"
+                  stroke="#335444"
                   fillOpacity={1}
                   fill="url(#colorMeetings)"
                   name="Meetings"
@@ -333,7 +333,7 @@ const DashboardEnhanced: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center">
-                  <FileText className="w-5 h-5 mr-2 text-blue-600" />
+                  <FileText className="w-5 h-5 mr-2 text-emerald-800" />
                   Recent Meetings
                 </CardTitle>
                 <CardDescription>Your latest meeting summaries</CardDescription>
@@ -355,11 +355,11 @@ const DashboardEnhanced: React.FC = () => {
                   <Link
                     key={meeting.id}
                     to={`/dashboard/meetings/${meeting.id}`}
-                    className="block p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all group"
+                    className="block p-4 rounded-lg border border-gray-200 hover:text-emerald-800 hover:shadow-md transition-all group"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        <h3 className="font-semibold text-gray-900 group-hover:text-emerald-800 transition-colors">
                           {meeting.title}
                         </h3>
                         <div className="flex items-center gap-3 mt-2 text-sm text-gray-600">
@@ -375,7 +375,7 @@ const DashboardEnhanced: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      <ArrowUpRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                      <ArrowUpRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-800 transition-colors" />
                     </div>
                   </Link>
                 ))
@@ -411,7 +411,7 @@ const DashboardEnhanced: React.FC = () => {
                 upcomingActions.map((action) => (
                   <div
                     key={action.id}
-                    className="p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all"
+                    className="p-4 rounded-lg border border-gray-200 hover:text-emerald-800 hover:shadow-md transition-all"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -423,7 +423,7 @@ const DashboardEnhanced: React.FC = () => {
                                   ? 'bg-red-100 text-red-700'
                                   : action.priority === 'medium'
                                     ? 'bg-amber-100 text-amber-700'
-                                    : 'bg-blue-100 text-blue-700'
+                                    : 'text-emerald-800 text-emerald-800'
                                 }`}
                             >
                               {action.priority}
@@ -463,8 +463,8 @@ const DashboardEnhanced: React.FC = () => {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Link to="/dashboard/upload">
-              <Button variant="outline" className="w-full h-24 flex flex-col items-center justify-center gap-2 hover:bg-blue-50 hover:border-blue-300">
-                <Plus className="w-6 h-6 text-blue-600" />
+              <Button variant="outline" className="w-full h-24 flex flex-col items-center justify-center gap-2 text-emerald-800 hover:text-emerald-800">
+                <Plus className="w-6 h-6 text-emerald-800" />
                 <span className="text-sm font-medium">Upload Meeting</span>
               </Button>
             </Link>
@@ -494,3 +494,5 @@ const DashboardEnhanced: React.FC = () => {
 };
 
 export default DashboardEnhanced;
+
+

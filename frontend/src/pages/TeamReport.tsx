@@ -239,7 +239,7 @@ const TeamReport: React.FC = () => {
             {stats.topParticipants.map((participant, index) => (
               <div key={index} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-sm font-bold text-blue-900 dark:text-blue-100">
+                  <div className="w-8 h-8 rounded-full text-emerald-800 dark:text-emerald-800 flex items-center justify-center text-sm font-bold text-emerald-800 dark:text-emerald-800">
                     {index + 1}
                   </div>
                   <div>
@@ -302,9 +302,9 @@ const TeamReport: React.FC = () => {
                       {member.completedTasks}
                     </p>
                   </div>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                  <div className="text-emerald-800 dark:text-emerald-800/20 rounded-lg p-3">
                     <p className="text-xs text-gray-600 dark:text-gray-400">In Progress</p>
-                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    <p className="text-2xl font-bold text-emerald-800 dark:text-emerald-800">
                       {member.inProgressTasks}
                     </p>
                   </div>
@@ -389,4 +389,6 @@ const TeamReport: React.FC = () => {
 };
 
 export default TeamReport;
+
+
 

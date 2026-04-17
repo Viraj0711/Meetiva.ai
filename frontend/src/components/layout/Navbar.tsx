@@ -66,10 +66,10 @@ const Navbar: React.FC = () => {
       <div className="flex items-center gap-4">
         <div className="relative" ref={notificationRef}>
           <button 
-            className="relative rounded-lg p-2 hover:bg-[#F2F7FD] transition-colors group"
+            className="relative rounded-lg p-2 hover:bg-[#edf2e8] transition-colors group"
             onClick={() => setShowNotifications(!showNotifications)}
           >
-            <Bell className="h-5 w-5 text-[#2F80ED] group-hover:text-[#2563eb] transition-colors" />
+            <Bell className="h-5 w-5 text-[#335444] group-hover:text-[#254939] transition-colors" />
             {unreadCount > 0 && (
               <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                 {unreadCount}
@@ -88,7 +88,7 @@ const Navbar: React.FC = () => {
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                    className="text-xs text-emerald-800 hover:text-emerald-900 font-medium flex items-center gap-1"
                   >
                     <CheckCheck className="w-3 h-3" />
                     Mark all read
@@ -111,7 +111,7 @@ const Navbar: React.FC = () => {
                       key={notification.id}
                       className={cn(
                         "p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors group relative",
-                        !notification.read && "bg-blue-50/50"
+                        !notification.read && "bg-emerald-50/60"
                       )}
                     >
                       {notification.link ? (
@@ -148,7 +148,7 @@ const Navbar: React.FC = () => {
                   <Link
                     to="/dashboard/notifications"
                     onClick={() => setShowNotifications(false)}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-sm text-emerald-800 hover:text-emerald-900 font-medium"
                   >
                     View all notifications
                   </Link>
@@ -181,7 +181,7 @@ const NotificationContent: React.FC<{ notification: Notification }> = ({ notific
         <div className="flex items-start justify-between gap-2">
           <h4 className="font-semibold text-sm text-gray-900">{notification.title}</h4>
           {!notification.read && (
-            <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0 mt-1" />
+            <div className="w-2 h-2 bg-emerald-700 rounded-full flex-shrink-0 mt-1" />
           )}
         </div>
         <p className="text-sm text-gray-600 mt-1 line-clamp-2">{notification.message}</p>

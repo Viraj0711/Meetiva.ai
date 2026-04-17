@@ -57,12 +57,12 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Manrope', 'sans-serif'],
       },
       backgroundImage: {
-        'gradient-primary': 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)',
-        'gradient-secondary': 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
-        'gradient-accent': 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+        'gradient-primary': 'linear-gradient(135deg, #365f4a 0%, #254939 100%)',
+        'gradient-secondary': 'linear-gradient(135deg, #6f835a 0%, #4f6540 100%)',
+        'gradient-accent': 'linear-gradient(135deg, #a57c54 0%, #7b5c3f 100%)',
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },

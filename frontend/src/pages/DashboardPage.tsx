@@ -76,7 +76,7 @@ const DashboardPage: React.FC = () => {
                       {stats?.averageDuration ? `${Math.round(stats.averageDuration / 60)}m` : '0m'}
                     </p>
                   </div>
-                  <Clock className="h-10 w-10 text-blue-600" aria-hidden="true" />
+                  <Clock className="h-10 w-10 text-emerald-800" aria-hidden="true" />
                 </div>
               </CardContent>
             </Card>
@@ -139,3 +139,5 @@ const DashboardPage: React.FC = () => {
 };
 
 export default DashboardPage;
+
+

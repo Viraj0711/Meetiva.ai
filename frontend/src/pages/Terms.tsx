@@ -4,7 +4,7 @@ import GradientOrbs from '@/components/GradientOrbs';
 
 const TermsPage: React.FC = () => {
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-br text-emerald-800 via-white text-emerald-800 overflow-hidden">
       <GradientOrbs />
 
       {/* Navbar */}
@@ -126,3 +126,5 @@ const TermsPage: React.FC = () => {
 };
 
 export default TermsPage;
+
+

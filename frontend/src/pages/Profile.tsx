@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -26,51 +26,15 @@ interface LocalIntegration {
   description: string;
   icon: string;
   connected: boolean;
-  category: 'project' | 'calendar' | 'communication';
+  category: 'calendar';
 }
 
 const integrationMetadata: Record<string, Omit<LocalIntegration, 'id' | 'connected'>> = {
-  [IntegrationType.JIRA]: {
-    name: 'JIRA',
-    description: 'Automatically create tickets from action items',
-    icon: '',
-    category: 'project',
-  },
-  [IntegrationType.TRELLO]: {
-    name: 'Trello',
-    description: 'Sync tasks to Trello boards',
-    icon: '',
-    category: 'project',
-  },
-  [IntegrationType.ASANA]: {
-    name: 'Asana',
-    description: 'Create Asana tasks from meetings',
-    icon: '',
-    category: 'project',
-  },
-  'google-calendar': {
+  [IntegrationType.CALENDAR]: {
     name: 'Google Calendar',
     description: 'Schedule meetings and set reminders',
     icon: '',
     category: 'calendar',
-  },
-  'outlook': {
-    name: 'Outlook Calendar',
-    description: 'Integrate with Microsoft Outlook',
-    icon: '',
-    category: 'calendar',
-  },
-  [IntegrationType.SLACK]: {
-    name: 'Slack',
-    description: 'Send meeting summaries to Slack channels',
-    icon: '',
-    category: 'communication',
-  },
-  'teams': {
-    name: 'Microsoft Teams',
-    description: 'Share updates with Teams channels',
-    icon: '',
-    category: 'communication',
   },
 };
 
@@ -124,7 +88,6 @@ const Profile: React.FC = () => {
     actionItemReminders: true,
     overdueAlerts: true,
     weeklyReports: false,
-    slackNotifications: false,
     meetingProcessed: true,
   });
 
@@ -187,8 +150,8 @@ const Profile: React.FC = () => {
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Zap className="w-6 h-6 text-blue-600" />
+            <div className="w-12 h-12 text-emerald-800 rounded-lg flex items-center justify-center">
+              <Zap className="w-6 h-6 text-emerald-800" />
             </div>
             <div>
               <p className="text-2xl font-bold">{connectedCount}</p>
@@ -332,11 +295,11 @@ const Profile: React.FC = () => {
                 <label className="block text-sm font-medium mb-2">Confirm New Password</label>
                 <Input type="password" placeholder="" />
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-900">
+              <div className="text-emerald-800 border text-emerald-800 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-emerald-800 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-emerald-800">
                   <p className="font-medium mb-1">Password Requirements:</p>
-                  <ul className="list-disc list-inside space-y-1 text-blue-800">
+                  <ul className="list-disc list-inside space-y-1 text-emerald-800">
                     <li>At least 8 characters long</li>
                     <li>Include uppercase and lowercase letters</li>
                     <li>Include at least one number</li>
@@ -393,16 +356,15 @@ const Profile: React.FC = () => {
       {/* Integrations Tab */}
       {activeTab === 'integrations' && (
         <div className="space-y-6">
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+          <Card className="p-6 bg-gradient-to-br text-emerald-800 text-emerald-800 text-emerald-800">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 text-emerald-800 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Zap className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h3 className="font-bold text-lg mb-1">Connect Your Favorite Tools</h3>
                 <p className="text-sm text-gray-700">
-                  Integrate Meetiva with your project management and communication tools to create a seamless workflow. 
-                  Action items automatically sync, and meeting summaries are shared with your team.
+                  Connect Meetiva to Google Calendar to schedule meetings and stay synced with your timeline.
                 </p>
               </div>
             </div>
@@ -436,45 +398,9 @@ const Profile: React.FC = () => {
             </Card>
           )}
 
-          {/* Project Management */}
+          {/* Calendar */}
           {!loading && !error && (
           <>
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Briefcase className="w-5 h-5 text-muted-foreground" />
-              <h2 className="text-lg font-bold">Project Management</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {getIntegrationsByCategory('project').map((integration) => (
-                <Card key={integration.id} className="p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="text-4xl">{integration.icon}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold truncate">{integration.name}</h3>
-                          {integration.connected && (
-                            <Badge variant="default" className="flex-shrink-0">Connected</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground leading-snug">{integration.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    variant={integration.connected ? 'outline' : 'default'}
-                    size="sm"
-                    onClick={() => handleToggleIntegration(integration.id)}
-                    className="w-full"
-                  >
-                    {integration.connected ? 'Disconnect' : 'Connect'}
-                  </Button>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          {/* Calendar */}
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Globe className="w-5 h-5 text-muted-foreground" />
@@ -482,42 +408,6 @@ const Profile: React.FC = () => {
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {getIntegrationsByCategory('calendar').map((integration) => (
-                <Card key={integration.id} className="p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="text-4xl">{integration.icon}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold truncate">{integration.name}</h3>
-                          {integration.connected && (
-                            <Badge variant="default" className="flex-shrink-0">Connected</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground leading-snug">{integration.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    variant={integration.connected ? 'outline' : 'default'}
-                    size="sm"
-                    onClick={() => handleToggleIntegration(integration.id)}
-                    className="w-full"
-                  >
-                    {integration.connected ? 'Disconnect' : 'Connect'}
-                  </Button>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          {/* Communication */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Bell className="w-5 h-5 text-muted-foreground" />
-              <h2 className="text-lg font-bold">Communication</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {getIntegrationsByCategory('communication').map((integration) => (
                 <Card key={integration.id} className="p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-3 flex-1">
@@ -651,30 +541,6 @@ const Profile: React.FC = () => {
             </div>
           </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <Bell className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-bold">App Notifications</h2>
-            </div>
-            <div className="flex items-center justify-between py-4">
-              <div className="flex-1">
-                <p className="font-medium">Slack Notifications</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Send meeting summaries to connected Slack channels
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer ml-4">
-                <input
-                  type="checkbox"
-                  checked={notifications.slackNotifications}
-                  onChange={() => handleNotificationToggle('slackNotifications')}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-              </label>
-            </div>
-          </Card>
-
           <Card className="p-6 bg-amber-50 border-amber-200">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -694,3 +560,5 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+
+

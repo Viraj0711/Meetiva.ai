@@ -24,6 +24,7 @@ model User {
   sentInvitations    TeamInvitation[]
   googleCalendarAuth GoogleCalendarAuth?
   notifications      Notification[]
+  teamChatMessages   TeamChatMessage[]
 
   @@map("users")
 }
@@ -147,9 +148,25 @@ model Team {
   updatedAt   DateTime         @updatedAt
   teamMembers TeamMember[]
   invitations TeamInvitation[]
+  chatMessages TeamChatMessage[]
 
   @@index([managerId])
   @@map("teams")
+}
+
+model TeamChatMessage {
+  id        String   @id @default(uuid())
+  teamId    String
+  userId    String
+  message   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, createdAt])
+  @@index([userId])
+  @@map("team_chat_messages")
 }
 
 model TeamMember {

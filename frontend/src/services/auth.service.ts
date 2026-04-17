@@ -29,13 +29,13 @@ export const authService = {
   },
 
   /**
-   * Register new user
+   * Register new team leader
    */
   register: async (data: RegisterData): Promise<AuthResponse> => {
-    console.log('🚀 Registering user with URL:', `${API_BASE_URL}/auth/register`);
+    console.log('🚀 Registering leader with URL:', `${API_BASE_URL}/auth/register-leader`);
     console.log('📝 Registration data:', data);
     try {
-      const response = await axios.post<AuthResponse>(`${API_BASE_URL}/auth/register`, data);
+      const response = await axios.post<AuthResponse>(`${API_BASE_URL}/auth/register-leader`, data);
       console.log('✅ Registration successful:', response.data);
       return response.data;
     } catch (error: any) {

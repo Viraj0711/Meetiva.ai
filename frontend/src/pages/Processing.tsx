@@ -113,7 +113,7 @@ const Processing: React.FC = () => {
                 index < currentStep
                   ? 'bg-green-50 border border-green-200'
                   : index === currentStep
-                  ? 'bg-blue-50 border border-blue-200'
+                  ? 'text-emerald-800 border text-emerald-800'
                   : 'bg-gray-50 border border-gray-200'
               }`}
             >
@@ -125,7 +125,7 @@ const Processing: React.FC = () => {
                     </svg>
                   </div>
                 ) : index === currentStep ? (
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full text-emerald-800 flex items-center justify-center">
                     <LoadingSpinner size="sm" />
                   </div>
                 ) : (
@@ -144,7 +144,7 @@ const Processing: React.FC = () => {
       </Card>
 
       {/* Info Card */}
-      <Card className="p-6 bg-gradient-to-br from-purple-50 to-blue-50">
+      <Card className="p-6 bg-gradient-to-br from-purple-50 text-emerald-800">
         <h3 className="font-semibold mb-3">What's Happening?</h3>
         <ul className="space-y-2 text-sm text-gray-700">
           <li className="flex items-start">
@@ -194,3 +194,5 @@ const Processing: React.FC = () => {
 };
 
 export default Processing;
+
+

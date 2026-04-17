@@ -124,23 +124,23 @@ const Workspace: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-500 p-6 text-white shadow-lg">
+      <div className="rounded-2xl bg-gradient-to-r text-emerald-800 to-lime-700 p-6 text-white shadow-lg">
         <h1 className="text-3xl font-bold tracking-tight">Team Workspace</h1>
-        <p className="mt-2 text-sky-50">
+        <p className="mt-2 text-emerald-800">
           Shared execution center for project momentum, deadlines, and calendar coordination.
         </p>
       </div>
 
       {loading ? (
         <div className="flex h-48 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-sky-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-800" />
         </div>
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="p-5 border-sky-200/60">
+            <Card className="p-5 text-emerald-800">
               <p className="text-sm text-muted-foreground">Team Members</p>
-              <div className="mt-2 flex items-center gap-2 text-3xl font-bold text-sky-700">
+              <div className="mt-2 flex items-center gap-2 text-3xl font-bold text-emerald-800">
                 <Users className="h-7 w-7" />
                 {overview.teamSize}
               </div>
@@ -152,7 +152,7 @@ const Workspace: React.FC = () => {
                 {overview.cumulativeVelocity}/week
               </div>
             </Card>
-            <Card className="p-5 border-cyan-200/60">
+            <Card className="p-5 text-emerald-800">
               <p className="text-sm text-muted-foreground">Google Calendar</p>
               <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
                 {connection.connected ? (
@@ -295,7 +295,7 @@ const Workspace: React.FC = () => {
                   upcomingDeadlines.map((item: WorkspaceDeadline) => (
                     <div key={item.id} className="rounded-lg border p-3">
                       <div className="flex items-center gap-2 font-medium">
-                        <CalendarClock className="h-4 w-4 text-sky-600" />
+                        <CalendarClock className="h-4 w-4 text-emerald-800" />
                         {item.title}
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">
@@ -314,3 +314,5 @@ const Workspace: React.FC = () => {
 };
 
 export default Workspace;
+
+

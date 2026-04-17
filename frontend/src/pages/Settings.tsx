@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -17,55 +17,12 @@ const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'integrations' | 'notifications' | 'preferences'>('profile');
   const [integrations, setIntegrations] = useState<Integration[]>([
     {
-      id: 'jira',
-      name: 'JIRA',
-      description: 'Automatically create tickets from action items',
-      icon: '',
-      connected: false,
-    },
-    {
-      id: 'trello',
-      name: 'Trello',
-      description: 'Sync tasks to Trello boards',
-      icon: '',
-      connected: false,
-    },
-    {
-      id: 'asana',
-      name: 'Asana',
-      description: 'Create Asana tasks from meetings',
-      icon: '',
-      connected: false,
-    },
-    {
       id: 'google-calendar',
       name: 'Google Calendar',
       description: 'Schedule meetings and set reminders',
       icon: '',
       connected: true,
       status: 'active',
-    },
-    {
-      id: 'outlook',
-      name: 'Outlook Calendar',
-      description: 'Integrate with Microsoft Outlook',
-      icon: '',
-      connected: false,
-    },
-    {
-      id: 'slack',
-      name: 'Slack',
-      description: 'Send meeting summaries to Slack channels',
-      icon: '',
-      connected: true,
-      status: 'active',
-    },
-    {
-      id: 'teams',
-      name: 'Microsoft Teams',
-      description: 'Share updates with Teams channels',
-      icon: '',
-      connected: false,
     },
   ]);
 
@@ -74,7 +31,6 @@ const Settings: React.FC = () => {
     actionItemReminders: true,
     overdueAlerts: true,
     weeklyReports: false,
-    slackNotifications: true,
     meetingProcessed: true,
   });
 
@@ -205,92 +161,24 @@ const Settings: React.FC = () => {
       {/* Integrations Tab */}
       {activeTab === 'integrations' && (
         <div className="space-y-6">
-          <Card className="p-6 bg-blue-100 dark:bg-blue-500/20 border-blue-400">
+          <Card className="p-6 text-emerald-800 dark:text-emerald-800 text-emerald-800">
             <div className="flex items-start">
-              <svg className="w-6 h-6 text-blue-600 dark:text-blue-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-emerald-800 dark:text-emerald-800 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
                 <h3 className="font-semibold mb-1">Connect your tools</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Integrate Meetiva with your favorite project management and communication tools to streamline your workflow.
+                  Integrate Meetiva with Google Calendar to streamline your scheduling workflow.
                 </p>
               </div>
             </div>
           </Card>
 
           <div>
-            <h2 className="text-lg font-bold mb-4">Project Management</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              {integrations.filter(i => ['jira', 'trello', 'asana'].includes(i.id)).map((integration) => (
-                <Card key={integration.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start flex-1">
-                      <div className="text-4xl mr-4">{integration.icon}</div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold">{integration.name}</h3>
-                          {integration.connected && (
-                            <Badge variant="default">Connected</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{integration.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <Button
-                      variant={integration.connected ? 'outline' : 'default'}
-                      size="sm"
-                      onClick={() => handleToggleIntegration(integration.id)}
-                      className="w-full"
-                    >
-                      {integration.connected ? 'Disconnect' : 'Connect'}
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          <div>
             <h2 className="text-lg font-bold mb-4">Calendar</h2>
             <div className="grid gap-4 md:grid-cols-2">
-              {integrations.filter(i => ['google-calendar', 'outlook'].includes(i.id)).map((integration) => (
-                <Card key={integration.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start flex-1">
-                      <div className="text-4xl mr-4">{integration.icon}</div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold">{integration.name}</h3>
-                          {integration.connected && (
-                            <Badge variant="default">Connected</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{integration.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <Button
-                      variant={integration.connected ? 'outline' : 'default'}
-                      size="sm"
-                      onClick={() => handleToggleIntegration(integration.id)}
-                      className="w-full"
-                    >
-                      {integration.connected ? 'Disconnect' : 'Connect'}
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-lg font-bold mb-4">Communication</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              {integrations.filter(i => ['slack', 'teams'].includes(i.id)).map((integration) => (
+              {integrations.filter(i => ['google-calendar'].includes(i.id)).map((integration) => (
                 <Card key={integration.id} className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start flex-1">
@@ -411,24 +299,6 @@ const Settings: React.FC = () => {
             </div>
           </Card>
 
-          <Card className="p-6">
-            <h2 className="text-xl font-bold mb-6">Slack Notifications</h2>
-            <div className="flex items-center justify-between py-3">
-              <div>
-                <p className="font-medium">Slack Notifications</p>
-                <p className="text-sm text-muted-foreground">Send meeting summaries to connected Slack channels</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={notifications.slackNotifications}
-                  onChange={() => handleNotificationToggle('slackNotifications')}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-              </label>
-            </div>
-          </Card>
         </div>
       )}
 
@@ -520,3 +390,5 @@ const Settings: React.FC = () => {
 };
 
 export default Settings;
+
+

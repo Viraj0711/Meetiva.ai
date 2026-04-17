@@ -58,7 +58,7 @@ const PricingPage: React.FC = () => {
   ];
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-br text-emerald-800 via-white text-emerald-800 overflow-hidden">
       <GradientOrbs />
 
       {/* Navbar */}
@@ -101,7 +101,7 @@ const PricingPage: React.FC = () => {
               key={index}
               className={`relative bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg transition-all duration-300 border ${
                 plan.highlighted
-                  ? 'border-blue-500 ring-2 ring-blue-500 ring-offset-4 scale-105'
+                  ? 'text-emerald-800 ring-2 text-emerald-800 ring-offset-4 scale-105'
                   : 'border-white/50 hover:shadow-xl'
               }`}
             >
@@ -128,7 +128,7 @@ const PricingPage: React.FC = () => {
               <ul className="space-y-4 mb-8">
                 {plan.features.map((feature, i) => (
                   <li key={i} className="flex items-start">
-                    <Check className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                    <Check className="w-5 h-5 text-emerald-800 mr-3 mt-0.5 flex-shrink-0" />
                     <span className="text-gray-700">{feature}</span>
                   </li>
                 ))}
@@ -177,7 +177,7 @@ const PricingPage: React.FC = () => {
           <h2 className="text-4xl font-bold mb-4">Ready to Get Started?</h2>
           <p className="text-xl mb-8 opacity-90">Start your 14-day free trial today. No credit card required.</p>
           <Link to="/register">
-            <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
+            <Button size="lg" className="bg-white text-emerald-800 hover:bg-gray-100">
               Start Free Trial
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
@@ -194,3 +194,5 @@ const PricingPage: React.FC = () => {
 };
 
 export default PricingPage;
+
+

@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import AnimatedBackground from '@/components/AnimatedBackground';
@@ -39,42 +39,42 @@ const LandingPage: React.FC = () => {
       title: 'AI Transcription & Speaker ID',
       description:
         'Accurate real-time transcription with intelligent speaker identification, handling noisy audio and technical terminology.',
-      color: 'from-blue-500 to-cyan-500',
+      color: 'bg-emerald-800',
     },
     {
       icon: <CheckCircle className="w-6 h-6" />,
       title: 'Smart Action Item Extraction',
       description:
         'Automatically detect and extract action items with assigned owners, deadlines, and priority levels.',
-      color: 'from-cyan-500 to-blue-600',
+      color: 'bg-emerald-700',
     },
     {
       icon: <FileText className="w-6 h-6" />,
       title: 'Intelligent Summarization',
       description:
         'Generate structured summaries with key points, decisions, and discussion topics automatically.',
-      color: 'from-blue-600 to-indigo-500',
+      color: 'bg-emerald-700',
     },
     {
       icon: <BarChart3 className="w-6 h-6" />,
       title: 'Analytics & Insights',
       description:
         'Track meeting effectiveness, task completion rates, and productivity trends to improve performance.',
-      color: 'from-indigo-500 to-purple-500',
+      color: 'bg-emerald-900',
     },
     {
       icon: <Calendar className="w-6 h-6" />,
       title: 'Seamless Integrations',
       description:
-        'Sync with JIRA, Trello, Asana, Google Calendar, and Slack. Create tickets and notify teams automatically.',
-      color: 'from-purple-500 to-pink-500',
+        'Sync with Google Calendar to coordinate meetings and reminders automatically.',
+      color: 'bg-green-800',
     },
     {
       icon: <Zap className="w-6 h-6" />,
       title: 'Real-Time Processing',
       description:
         'Lightning-fast AI processing ensures your meetings are analyzed and actionable within minutes.',
-      color: 'from-amber-500 to-orange-500',
+      color: 'bg-green-700',
     },
   ];
 
@@ -105,12 +105,12 @@ const LandingPage: React.FC = () => {
     },
     {
       question: 'Do you integrate with our existing tools?',
-      answer: 'Yes, we integrate with JIRA, Trello, Asana, Linear, Google Calendar, Outlook, Slack, and Microsoft Teams. Custom integrations are available for enterprise customers.',
+      answer: 'Yes, Google Calendar integration is available today, and we are expanding support for additional tools.',
     },
   ];
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 overflow-hidden">
+    <div className="relative min-h-screen bg-[#edf2e8] overflow-hidden">
       <AnimatedBackground />
       <GradientOrbs />
 
@@ -118,23 +118,23 @@ const LandingPage: React.FC = () => {
       <nav className="relative z-10 container mx-auto px-6 py-4">
         <div className="flex justify-between items-center backdrop-blur-sm bg-white/70 rounded-2xl px-6 py-4 shadow-lg border border-white/20">
           <Link to="/" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+            <div className="w-10 h-10 bg-emerald-800 rounded-xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
               <span className="text-white font-bold text-xl">M</span>
             </div>
-            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+            <span className="text-2xl font-bold text-emerald-900">
               Meetiva.ai
             </span>
           </Link>
           <div className="hidden md:flex items-center space-x-8">
             <button
               onClick={() => scrollToSection('features')}
-              className="text-gray-700 hover:text-blue-600 font-medium transition-colors cursor-pointer"
+              className="text-gray-700 hover:text-emerald-800 font-medium transition-colors cursor-pointer"
             >
               Features
             </button>
             <button
               onClick={() => scrollToSection('pricing')}
-              className="text-gray-700 hover:text-blue-600 font-medium transition-colors cursor-pointer"
+              className="text-gray-700 hover:text-emerald-800 font-medium transition-colors cursor-pointer"
             >
               Pricing
             </button>
@@ -143,7 +143,7 @@ const LandingPage: React.FC = () => {
                 Login
               </Button>
             </Link>
-            <Link to="/register">
+            <Link to="/login">
               <Button className="shadow-lg hover:shadow-xl transition-shadow">
                 Get Started <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
@@ -152,7 +152,7 @@ const LandingPage: React.FC = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-gray-700 hover:text-blue-600 transition-colors"
+            className="md:hidden p-2 text-gray-700 hover:text-emerald-800 transition-colors"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -164,13 +164,13 @@ const LandingPage: React.FC = () => {
             <div className="flex flex-col space-y-4">
               <button
                 onClick={() => scrollToSection('features')}
-                className="text-gray-700 hover:text-blue-600 font-medium transition-colors text-left"
+                className="text-gray-700 hover:text-emerald-800 font-medium transition-colors text-left"
               >
                 Features
               </button>
               <button
                 onClick={() => scrollToSection('pricing')}
-                className="text-gray-700 hover:text-blue-600 font-medium transition-colors text-left"
+                className="text-gray-700 hover:text-emerald-800 font-medium transition-colors text-left"
               >
                 Pricing
               </button>
@@ -179,7 +179,7 @@ const LandingPage: React.FC = () => {
                   Login
                 </Button>
               </Link>
-              <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
+              <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
                 <Button className="shadow-lg hover:shadow-xl transition-shadow w-full">
                   Get Started <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -192,14 +192,14 @@ const LandingPage: React.FC = () => {
       {/* Hero Section */}
       <section className="relative z-10 container mx-auto px-6 py-20">
         <div className="text-center max-w-5xl mx-auto animate-fade-in">
-          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-semibold mb-6">
+          <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-900 px-4 py-2 rounded-full text-sm font-semibold mb-6">
             <Star className="w-4 h-4 fill-current" />
             Trusted by 1,000+ teams worldwide
           </div>
 
           <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
             Turn Meetings Into{' '}
-            <span className="bg-gradient-primary bg-clip-text text-transparent">
+            <span className="text-emerald-800">
               Results
             </span>
           </h1>
@@ -211,7 +211,7 @@ const LandingPage: React.FC = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Link to="/register">
+            <Link to="/login">
               <Button size="lg" className="text-lg px-8 py-6 shadow-2xl hover:shadow-3xl transition-all">
                 <Play className="w-5 h-5 mr-2" />
                 Start Free Trial
@@ -222,19 +222,19 @@ const LandingPage: React.FC = () => {
           {/* Trust Indicators */}
           <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-gray-600">
             <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-blue-600" />
+              <Shield className="w-5 h-5 text-emerald-800" />
               <span className="font-medium">Enterprise Security</span>
             </div>
             <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-amber-600" />
+              <Zap className="w-5 h-5 text-emerald-700" />
               <span className="font-medium">Real-Time Processing</span>
             </div>
             <div className="flex items-center gap-2">
-              <Globe className="w-5 h-5 text-cyan-600" />
+              <Globe className="w-5 h-5 text-emerald-800" />
               <span className="font-medium">50+ Languages</span>
             </div>
             <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-indigo-600" />
+              <Users className="w-5 h-5 text-emerald-700" />
               <span className="font-medium">Team Collaboration</span>
             </div>
           </div>
@@ -247,7 +247,7 @@ const LandingPage: React.FC = () => {
               key={index}
               className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 text-center shadow-lg hover:shadow-xl transition-shadow border border-white/50"
             >
-              <div className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
+              <div className="text-4xl font-bold text-emerald-800 mb-2">
                 {stat.value}
               </div>
               <div className="text-gray-600 font-medium">{stat.label}</div>
@@ -274,7 +274,7 @@ const LandingPage: React.FC = () => {
               className="group bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/50 hover:-translate-y-2"
             >
               <div
-                className={`w-14 h-14 bg-gradient-to-br ${feature.color} rounded-xl flex items-center justify-center mb-6 text-white shadow-lg group-hover:scale-110 transition-transform`}
+                className={`w-14 h-14 ${feature.color} rounded-xl flex items-center justify-center mb-6 text-white shadow-lg group-hover:scale-110 transition-transform`}
               >
                 {feature.icon}
               </div>
@@ -299,8 +299,8 @@ const LandingPage: React.FC = () => {
                 Start with our 14-day free trial. No credit card required. Experience the full power of AI-driven meeting intelligence.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-                <Link to="/register">
-                  <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 shadow-xl px-8 py-6 text-lg">
+                <Link to="/login">
+                  <Button size="lg" className="bg-white text-emerald-800 hover:bg-gray-100 shadow-xl px-8 py-6 text-lg">
                     Start Free Trial
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
@@ -335,7 +335,7 @@ const LandingPage: React.FC = () => {
             >
               <button
                 onClick={() => setActiveFaq(activeFaq === index ? null : index)}
-                className="w-full flex items-center justify-between p-6 text-left hover:bg-blue-50/50 transition-colors"
+                className="w-full flex items-center justify-between p-6 text-left text-emerald-800/50 transition-colors"
               >
                 <span className="font-semibold text-gray-900 text-lg">{faq.question}</span>
                 <ChevronRight
@@ -367,8 +367,8 @@ const LandingPage: React.FC = () => {
               meetings into Meetiva with AI-powered intelligence.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/register">
-                <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 shadow-xl px-8 py-6 text-lg">
+              <Link to="/login">
+                <Button size="lg" className="bg-white text-emerald-800 hover:bg-gray-100 shadow-xl px-8 py-6 text-lg">
                   Start Free Trial
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
@@ -376,7 +376,7 @@ const LandingPage: React.FC = () => {
               <Link to="/contact">
                 <Button
                   size="lg"
-                  className="bg-white text-blue-600 hover:bg-gray-100 shadow-xl px-8 py-6 text-lg"
+                  className="bg-white text-emerald-800 hover:bg-gray-100 shadow-xl px-8 py-6 text-lg"
                 >
                   Contact Sales
                 </Button>
@@ -409,29 +409,29 @@ const LandingPage: React.FC = () => {
           <div>
             <h4 className="font-bold text-gray-900 mb-4">Product</h4>
             <ul className="space-y-2 text-sm text-gray-600">
-              <li><Link to="/features" className="hover:text-blue-600">Features</Link></li>
-              <li><Link to="/pricing" className="hover:text-blue-600">Pricing</Link></li>
-              <li><Link to="/integrations" className="hover:text-blue-600">Integrations</Link></li>
-              <li><Link to="/security" className="hover:text-blue-600">Security</Link></li>
+              <li><Link to="/features" className="hover:text-emerald-800">Features</Link></li>
+              <li><Link to="/pricing" className="hover:text-emerald-800">Pricing</Link></li>
+              <li><Link to="/integrations" className="hover:text-emerald-800">Integrations</Link></li>
+              <li><Link to="/security" className="hover:text-emerald-800">Security</Link></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-bold text-gray-900 mb-4">Company</h4>
             <ul className="space-y-2 text-sm text-gray-600">
-              <li><Link to="/about" className="hover:text-blue-600">About</Link></li>
-              <li><Link to="/contact" className="hover:text-blue-600">Contact</Link></li>
-              <li><Link to="/careers" className="hover:text-blue-600">Careers</Link></li>
-              <li><Link to="/blog" className="hover:text-blue-600">Blog</Link></li>
+              <li><Link to="/about" className="hover:text-emerald-800">About</Link></li>
+              <li><Link to="/contact" className="hover:text-emerald-800">Contact</Link></li>
+              <li><Link to="/careers" className="hover:text-emerald-800">Careers</Link></li>
+              <li><Link to="/blog" className="hover:text-emerald-800">Blog</Link></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-bold text-gray-900 mb-4">Legal</h4>
             <ul className="space-y-2 text-sm text-gray-600">
-              <li><Link to="/privacy" className="hover:text-blue-600">Privacy Policy</Link></li>
-              <li><Link to="/terms" className="hover:text-blue-600">Terms of Service</Link></li>
-              <li><Link to="/cookies" className="hover:text-blue-600">Cookie Policy</Link></li>
+              <li><Link to="/privacy" className="hover:text-emerald-800">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-emerald-800">Terms of Service</Link></li>
+              <li><Link to="/cookies" className="hover:text-emerald-800">Cookie Policy</Link></li>
             </ul>
           </div>
         </div>
@@ -445,3 +445,5 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
+
+

@@ -36,36 +36,40 @@ const createToken = async (userId, email) => {
     const teams = await getUserTeams(userId);
     return jsonwebtoken_1.default.sign({ userId, email, teams }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
-// Register
+// Member self-registration is disabled in invite-only mode.
 router.post('/register', [
     (0, express_validator_1.body)('email').isEmail(),
     (0, express_validator_1.body)('name').trim().isLength({ min: 2, max: 50 }),
     (0, express_validator_1.body)('password').isLength({ min: 8 })
 ], async (req, res) => {
-    console.log('📝 Registration request received from:', req.ip);
-    console.log('📧 Email:', req.body.email);
-    console.log('🌐 Origin:', req.get('origin'));
-    console.log('🔧 User-Agent:', req.get('user-agent'));
-    console.log('📦 Request Headers:', JSON.stringify(req.headers, null, 2));
-    console.log('📋 Request Body:', JSON.stringify(req.body, null, 2));
+    return res.status(403).json({
+        message: 'This workspace is invite-only. Ask your team leader for credentials.'
+    });
+});
+// Team leaders can create their own account.
+router.post('/register-leader', [
+    (0, express_validator_1.body)('email').isEmail(),
+    (0, express_validator_1.body)('name').trim().isLength({ min: 2, max: 50 }),
+    (0, express_validator_1.body)('password').isLength({ min: 8 })
+], async (req, res) => {
     try {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
-            console.log('❌ Validation errors:', errors.array());
             return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
         }
         const { email, name, password } = req.body;
-        const existing = await prisma_1.default.user.findUnique({ where: { email: email.toLowerCase() } });
+        const normalizedEmail = String(email).toLowerCase();
+        const existing = await prisma_1.default.user.findUnique({ where: { email: normalizedEmail } });
         if (existing) {
             return res.status(400).json({ message: 'Email already registered' });
         }
         const hashedPassword = await bcrypt_1.default.hash(password, 10);
         const user = await prisma_1.default.user.create({
             data: {
-                email: email.toLowerCase(),
+                email: normalizedEmail,
                 name,
-                hashedPassword
-            }
+                hashedPassword,
+            },
         });
         const token = await createToken(user.id, user.email);
         res.status(201).json({
@@ -75,19 +79,12 @@ router.post('/register', [
                 email: user.email,
                 name: user.name,
                 createdAt: user.createdAt.toISOString(),
-                updatedAt: user.updatedAt.toISOString()
-            }
+                updatedAt: user.updatedAt.toISOString(),
+            },
         });
     }
     catch (error) {
-        console.error('❌ Registration error:', error);
-        console.error('❌ Error details:', {
-            message: error.message,
-            stack: error.stack,
-            code: error.code,
-            meta: error.meta
-        });
-        // Return detailed error for debugging
+        console.error('❌ Leader registration error:', error);
         const errorMessage = error.message || 'Registration failed';
         const status = error.code === 'P2002' ? 400 : 500;
         res.status(status).json({ message: errorMessage });

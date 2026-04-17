@@ -1,8 +1,8 @@
 .teams-admin {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  padding: 2rem;
+  gap: 1.5rem;
+  padding: 1.25rem;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -10,16 +10,26 @@
 .teams-admin-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  border: 1px solid #d8e0eb;
+  border-radius: 14px;
+  background: #f8fafc;
 }
 
 .teams-admin-header h1 {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: #0f172a;
   margin: 0;
+}
+
+.teams-subtitle {
+  margin: 0.35rem 0 0;
+  color: #475569;
+  font-size: 0.92rem;
 }
 
 .teams-loading {
@@ -52,8 +62,8 @@
 
 .teams-container {
   display: grid;
-  grid-template-columns: 350px 1fr;
-  gap: 2rem;
+  grid-template-columns: 320px 1fr;
+  gap: 1.25rem;
 }
 
 .teams-list {
@@ -65,9 +75,9 @@
 .teams-list h2,
 .team-details h2,
 .team-members h3 {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #0f172a;
   margin: 0;
 }
 
@@ -80,22 +90,23 @@
 }
 
 .team-card {
-  padding: 1rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  padding: 1rem 1rem;
+  border: 1px solid #d8e0eb;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: white;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
 .team-card:hover {
-  border-color: #0066cc;
-  background: #f9f9f9;
+  border-color: #1d4ed8;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
 }
 
 .team-card.active {
-  border-color: #0066cc;
-  background: #f0f7ff;
+  border-color: #1d4ed8;
+  background: #eff6ff;
 }
 
 .team-card-header {
@@ -109,17 +120,17 @@
 .team-card-header h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #0f172a;
   margin: 0;
   flex: 1;
 }
 
 .team-role-badge {
   display: inline-block;
-  padding: 0.25rem 0.75rem;
-  background: #0066cc;
-  color: white;
-  border-radius: 20px;
+  padding: 0.25rem 0.65rem;
+  background: #dbeafe;
+  color: #1e3a8a;
+  border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
@@ -141,11 +152,12 @@
 .team-details {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 2rem;
+  gap: 1.25rem;
+  border: 1px solid #d8e0eb;
+  border-radius: 14px;
+  padding: 1.25rem;
   background: white;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
 }
 
 .team-details-header {
@@ -160,6 +172,88 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.team-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  padding: 1rem;
+  background: #f8fafc;
+}
+
+.team-chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.team-chat-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.team-chat-messages {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.team-chat-message {
+  border: 1px solid #e8edf4;
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: #f9fbff;
+}
+
+.team-chat-message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.team-chat-author {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #1a1a1a;
+}
+
+.team-chat-time {
+  font-size: 0.75rem;
+  color: #666;
+  white-space: nowrap;
+}
+
+.team-chat-text {
+  margin: 0;
+  color: #2d3748;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.team-chat-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.team-chat-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .pending-invitations {
@@ -234,12 +328,12 @@
 }
 
 .empty-state {
-  padding: 2rem;
+  padding: 1.5rem;
   text-align: center;
-  color: #999;
-  background: #f9f9f9;
-  border-radius: 8px;
-  border: 1px dashed #e0e0e0;
+  color: #64748b;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
 }
 
 .empty-state p {
@@ -247,10 +341,21 @@
   font-size: 0.95rem;
 }
 
+.empty-state-title {
+  margin-bottom: 0.45rem !important;
+  font-size: 1rem !important;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.empty-state-cta {
+  margin-top: 0.9rem;
+}
+
 /* Table Styles */
 .members-table {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid #d8e0eb;
+  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -259,11 +364,13 @@
   grid-template-columns: 1.5fr 2fr 1fr 1fr;
   gap: 1rem;
   padding: 1rem;
-  background: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #334155;
   font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .table-row {
@@ -271,8 +378,12 @@
   grid-template-columns: 1.5fr 2fr 1fr 1fr;
   gap: 1rem;
   padding: 1rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #eef2f7;
   align-items: center;
+}
+
+.table-row:hover {
+  background: #fbfdff;
 }
 
 .table-row:last-child {
@@ -299,17 +410,17 @@
 .role-badge {
   display: inline-block;
   padding: 0.35rem 0.75rem;
-  background: #f0f0f0;
-  color: #333;
-  border-radius: 4px;
+  background: #f1f5f9;
+  color: #334155;
+  border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 500;
 }
 
 .role-select {
   padding: 0.35rem 0.5rem;
-  border: 1px solid #d0d0d0;
-  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
   font-size: 0.875rem;
   cursor: pointer;
   background: white;
@@ -337,7 +448,7 @@
 
 .modal {
   background: white;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 0;
   width: 90%;
   max-width: 500px;
@@ -351,7 +462,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .modal-header h2 {
@@ -403,8 +514,8 @@
 .form-textarea,
 .form-select {
   padding: 0.75rem;
-  border: 1px solid #d0d0d0;
-  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
   font-size: 0.95rem;
   font-family: inherit;
 }
@@ -413,8 +524,9 @@
 .form-textarea:focus,
 .form-select:focus {
   outline: none;
-  border-color: #0066cc;
-  background: #f0f7ff;
+  border-color: #3f6653;
+  box-shadow: 0 0 0 3px rgba(63, 102, 83, 0.14);
+  background: #fff;
 }
 
 .form-textarea {
@@ -458,7 +570,7 @@
 .btn {
   padding: 0.6rem 1.2rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -473,31 +585,31 @@
 }
 
 .btn-primary {
-  background: #0066cc;
+  background: #2f5d46;
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #0052a3;
+  background: #254939;
 }
 
 .btn-secondary {
-  background: #f0f0f0;
-  color: #1a1a1a;
-  border: 1px solid #d0d0d0;
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #e0e0e0;
+  background: #f1f5f9;
 }
 
 .btn-danger {
-  background: #ff4444;
+  background: #b91c1c;
   color: white;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #cc0000;
+  background: #dc2626;
 }
 
 .btn-sm {

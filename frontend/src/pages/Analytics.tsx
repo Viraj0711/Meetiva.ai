@@ -1,10 +1,11 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAppSelector } from '@/store/hooks';
 import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
 import { meetingService, actionItemService } from '@/services';
+import { getTeamChatStats } from '@/services/teams.service';
 
 interface AnalyticsData {
   meetingTrends: {
@@ -26,6 +27,18 @@ interface AnalyticsData {
     name: string;
     meetingCount: number;
   }[];
+  teamFollowUpChat: {
+    totalMessages: number;
+    followUpsLast7Days: number;
+    dailyTrend: Array<{ date: string; count: number }>;
+    teamStats: Array<{
+      teamId: string;
+      teamName: string;
+      messageCount: number;
+      activeParticipants: number;
+      lastMessageAt: string | null;
+    }>;
+  };
 }
 
 const Analytics: React.FC = () => {
@@ -45,6 +58,12 @@ const Analytics: React.FC = () => {
       completionRate: 0,
     },
     topParticipants: [],
+    teamFollowUpChat: {
+      totalMessages: 0,
+      followUpsLast7Days: 0,
+      dailyTrend: [],
+      teamStats: [],
+    },
   });
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
@@ -58,9 +77,10 @@ const Analytics: React.FC = () => {
     try {
       setLoading(true);
       
-      const [meetingStats, actionItems] = await Promise.all([
+      const [meetingStats, actionItems, chatStats] = await Promise.all([
         meetingService.getMeetingStats(),
-        actionItemService.getActionItems({ limit: 1000 })
+        actionItemService.getActionItems({ limit: 1000 }),
+        getTeamChatStats(timeRange),
       ]);
 
       const totalActions = actionItems.data?.length || 0;
@@ -84,6 +104,12 @@ const Analytics: React.FC = () => {
           completionRate: totalActions > 0 ? (completedActions / totalActions) * 100 : 0,
         },
         topParticipants: meetingStats.topParticipants || [],
+        teamFollowUpChat: {
+          totalMessages: chatStats.totalMessages || 0,
+          followUpsLast7Days: chatStats.followUpsLast7Days || 0,
+          dailyTrend: chatStats.dailyTrend || [],
+          teamStats: chatStats.teamStats || [],
+        },
       };
       
       setAnalytics(realData);
@@ -103,6 +129,12 @@ const Analytics: React.FC = () => {
           completionRate: 0,
         },
         topParticipants: [],
+        teamFollowUpChat: {
+          totalMessages: 0,
+          followUpsLast7Days: 0,
+          dailyTrend: [],
+          teamStats: [],
+        },
       });
     } finally {
       setLoading(false);
@@ -127,9 +159,9 @@ const Analytics: React.FC = () => {
     <div className="space-y-6">
       {/* Empty State Banner */}
       {hasNoData && (
-        <Card className="p-6 bg-blue-100 dark:bg-blue-500/20 border-blue-400">
+        <Card className="p-6 text-emerald-800 dark:text-emerald-800 text-emerald-800">
           <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-emerald-800 dark:text-emerald-800 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div className="flex-1">
@@ -185,7 +217,7 @@ const Analytics: React.FC = () => {
             <option value="quarter">Last Quarter</option>
             <option value="year">Last Year</option>
           </select>
-          <Button variant="outline" className="hover:bg-[#2F80ED] hover:text-white hover:border-[#2F80ED] transition-colors">
+          <Button variant="outline" className="hover:bg-[text-emerald-800] hover:text-white hover:border-[text-emerald-800] transition-colors">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
@@ -199,14 +231,14 @@ const Analytics: React.FC = () => {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-600 dark:text-gray-300">Avg. Meeting Duration</h3>
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-10 h-10 text-emerald-800 dark:text-emerald-800 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-emerald-800 dark:text-emerald-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
           <p className="text-3xl font-bold">{analytics.productivityMetrics.avgMeetingDuration} min</p>
-          <p className="text-sm text-green-600 mt-2">↓ 5% from last period</p>
+          <p className="text-sm text-green-600 mt-2">? 5% from last period</p>
         </Card>
 
         <Card className="p-6">
@@ -219,7 +251,7 @@ const Analytics: React.FC = () => {
             </div>
           </div>
           <p className="text-3xl font-bold">{analytics.productivityMetrics.avgActionItemsPerMeeting}</p>
-          <p className="text-sm text-green-600 mt-2">↑ 12% from last period</p>
+          <p className="text-sm text-green-600 mt-2">? 12% from last period</p>
         </Card>
 
         <Card className="p-6">
@@ -232,7 +264,22 @@ const Analytics: React.FC = () => {
             </div>
           </div>
           <p className="text-3xl font-bold">{analytics.productivityMetrics.completionRate}%</p>
-          <p className="text-sm text-green-600 mt-2">↑ 8% from last period</p>
+          <p className="text-sm text-green-600 mt-2">? 8% from last period</p>
+        </Card>
+
+        <Card className="p-6 md:col-span-3 lg:col-span-1">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-600 dark:text-gray-300">Team Follow-ups (7d)</h3>
+            <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-500/20 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-4 4v-4z" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-3xl font-bold">{analytics.teamFollowUpChat.followUpsLast7Days}</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            {analytics.teamFollowUpChat.totalMessages} total follow-up messages
+          </p>
         </Card>
       </div>
 
@@ -386,9 +433,75 @@ const Analytics: React.FC = () => {
         )}
       </Card>
 
+      {/* Team Follow-up Chat Analytics */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Team Follow-up Activity</h2>
+          <span className="text-sm text-muted-foreground">Collaboration signals from team chat</span>
+        </div>
+
+        {analytics.teamFollowUpChat.dailyTrend.length === 0 && analytics.teamFollowUpChat.teamStats.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700/50 flex items-center justify-center mb-3">
+              <svg className="w-7 h-7 text-gray-500 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-4 4v-4z" />
+              </svg>
+            </div>
+            <p className="font-medium text-gray-900 dark:text-gray-100">No follow-up activity yet</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">Use team chat to track project follow-ups.</p>
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground mb-3">Daily Follow-up Trend</h3>
+              <div className="space-y-3">
+                {analytics.teamFollowUpChat.dailyTrend.map((point) => {
+                  const maxTrendCount = Math.max(...analytics.teamFollowUpChat.dailyTrend.map((entry) => entry.count), 1);
+                  return (
+                    <div key={point.date}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>{new Date(point.date).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                        <span className="text-muted-foreground">{point.count}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                        <div
+                          className="h-2.5 rounded-full bg-indigo-500"
+                          style={{ width: `${(point.count / maxTrendCount) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground mb-3">By Team</h3>
+              <div className="space-y-3">
+                {analytics.teamFollowUpChat.teamStats
+                  .slice()
+                  .sort((a, b) => b.messageCount - a.messageCount)
+                  .map((team) => (
+                    <div key={team.teamId} className="rounded-lg border p-3 bg-white dark:bg-gray-800/40">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{team.teamName}</p>
+                        <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">{team.messageCount} msgs</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {team.activeParticipants} active participants
+                        {team.lastMessageAt ? ` � Last follow-up ${new Date(team.lastMessageAt).toLocaleString()}` : ''}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </Card>
+
       {/* Insights */}
       {!hasNoData && (
-        <Card className="p-6 bg-gradient-to-br from-purple-900/20 to-blue-900/20">
+        <Card className="p-6 bg-gradient-to-br from-purple-900/20 text-emerald-800">
           <h2 className="text-xl font-bold text-gray-100 mb-4">Key Insights</h2>
           <div className="grid gap-4 md:grid-cols-2">
           <div className="flex items-start">
@@ -405,8 +518,8 @@ const Analytics: React.FC = () => {
             </div>
           </div>
           <div className="flex items-start">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center mr-3 flex-shrink-0">
-              <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-8 h-8 rounded-lg text-emerald-800 flex items-center justify-center mr-3 flex-shrink-0">
+              <svg className="w-5 h-5 text-emerald-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -451,3 +564,5 @@ const Analytics: React.FC = () => {
 };
 
 export default Analytics;
+
+
