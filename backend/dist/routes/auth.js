@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const bcrypt_1 = __importDefault(require("bcrypt"));
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const crypto_1 = __importDefault(require("crypto"));
 const express_validator_1 = require("express-validator");
@@ -63,7 +63,7 @@ router.post('/register-leader', [
         if (existing) {
             return res.status(400).json({ message: 'Email already registered' });
         }
-        const hashedPassword = await bcrypt_1.default.hash(password, 10);
+        const hashedPassword = await bcryptjs_1.default.hash(password, 10);
         const user = await prisma_1.default.user.create({
             data: {
                 email: normalizedEmail,
@@ -109,7 +109,7 @@ router.post('/login', [
         if (!user) {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
-        const valid = await bcrypt_1.default.compare(password, user.hashedPassword);
+        const valid = await bcryptjs_1.default.compare(password, user.hashedPassword);
         if (!valid) {
             return res.status(401).json({ message: 'Invalid email or password' });
         }

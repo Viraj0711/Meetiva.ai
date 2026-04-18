@@ -53,7 +53,7 @@ async function main() {
 
   // Create test users
   console.log('👥 Creating test users...');
-  const bcrypt = require('bcrypt');
+  const bcrypt = require('bcryptjs');
   const password = await bcrypt.hash('Test123!@', 10);
 
   const manager = await prisma.user.upsert({
