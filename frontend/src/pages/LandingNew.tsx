@@ -337,195 +337,407 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Product Flow Pictures */}
-      <section className="relative z-10 container mx-auto px-6 py-12">
-        <div className="max-w-7xl mx-auto rounded-[2rem] border border-white/60 bg-white/30 backdrop-blur-xl p-7 md:p-10 shadow-[0_24px_80px_rgba(16,46,34,0.12)]">
-          <div className="text-center mb-10">
-            <Badge variant="success" className="mb-4">Visual Product Tour</Badge>
-            <h2 className="text-5xl font-bold text-gray-900 mb-4">How Meetiva Flows, In 4 Pictures</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              A visual sequence from raw conversation to team execution.
-            </p>
-          </div>
+      <section className="relative z-10 container mx-auto px-6 py-12 sm:py-16">
+        <div className="relative overflow-hidden rounded-[2rem] border border-white/60 bg-white/35 p-6 shadow-[0_24px_80px_rgba(16,46,34,0.12)] backdrop-blur-xl md:p-10 lg:p-12">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.8),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(192,243,204,0.45),transparent_35%)]" />
 
-          <div className="mx-auto w-full max-w-4xl">
-            <div className="relative h-[430px] md:h-[500px]">
-              {(() => {
-                const prevIndex = (activeFlowStep - 1 + flowSteps.length) % flowSteps.length;
-                const nextIndex = (activeFlowStep + 1) % flowSteps.length;
-                const activeStep = flowSteps[activeFlowStep];
-                const ActiveIcon = activeStep.icon;
-
-                return (
-                  <>
-                    <Card className="hidden md:block absolute left-0 top-14 w-[34%] rotate-[-6deg] border border-white/70 bg-white/55 backdrop-blur-xl shadow-[0_10px_24px_rgba(16,46,34,0.12)] transition-all duration-500">
-                      <CardContent className="p-4">
-                        <Badge variant="outline" className="mb-3 text-[11px]">Step {prevIndex + 1}</Badge>
-                        <h4 className="text-sm font-bold text-gray-800">{flowSteps[prevIndex].title}</h4>
-                        <p className="text-xs text-gray-600 mt-2">{flowSteps[prevIndex].subtitle}</p>
-                        <div className="mt-3 space-y-1.5">
-                          <div className="h-1.5 rounded bg-white/80" />
-                          <div className="h-1.5 w-4/5 rounded bg-white/75" />
-                          <div className="h-1.5 w-2/3 rounded bg-white/70" />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="hidden md:block absolute right-0 top-14 w-[34%] rotate-[6deg] border border-white/70 bg-white/55 backdrop-blur-xl shadow-[0_10px_24px_rgba(16,46,34,0.12)] transition-all duration-500">
-                      <CardContent className="p-4">
-                        <Badge variant="outline" className="mb-3 text-[11px]">Step {nextIndex + 1}</Badge>
-                        <h4 className="text-sm font-bold text-gray-800">{flowSteps[nextIndex].title}</h4>
-                        <p className="text-xs text-gray-600 mt-2">{flowSteps[nextIndex].subtitle}</p>
-                        <div className="mt-3 space-y-1.5">
-                          <div className="h-1.5 rounded bg-white/80" />
-                          <div className="h-1.5 w-4/5 rounded bg-white/75" />
-                          <div className="h-1.5 w-2/3 rounded bg-white/70" />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="absolute inset-x-0 mx-auto top-0 w-full md:w-[58%] overflow-hidden border border-white/70 bg-white/80 backdrop-blur-xl shadow-[0_18px_52px_rgba(14,44,33,0.2)] flow-card-enter-soft z-30">
-                      <CardContent className="p-0">
-                        <div className="p-4 border-b border-white/60 bg-white/45">
-                          <div className="relative h-44 rounded-2xl border border-white/80 bg-gradient-to-br from-white to-emerald-50/80 p-3 overflow-hidden shadow-inner">
-                            <div className="absolute -top-10 -left-8 h-18 w-18 rounded-full bg-emerald-200/40 blur-2xl" />
-                            <div className="absolute -bottom-10 -right-8 h-18 w-18 rounded-full bg-emerald-300/25 blur-2xl" />
-                            <div className="absolute top-3 left-3 inline-flex items-center rounded-full bg-emerald-900 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-                              Step {activeFlowStep + 1}
-                            </div>
-                            <div className="absolute top-3 right-3 h-8 w-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center z-10">
-                              <ActiveIcon className="h-4 w-4 text-emerald-900" />
-                            </div>
-
-                            {activeFlowStep === 0 && (
-                              <div className="relative z-[1] h-full pt-6 pr-10 flex flex-col justify-between">
-                                <div className="h-16 flex items-end gap-1.5">
-                                  {[18, 34, 24, 52, 36, 45, 28, 40, 24].map((height, barIndex) => (
-                                    <span
-                                      key={barIndex}
-                                      className="w-1.5 rounded-full bg-gradient-to-t from-emerald-800 to-emerald-300"
-                                      style={{ height }}
-                                    />
-                                  ))}
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div className="h-7 rounded-lg border border-[#d9e4d7] bg-white/90" />
-                                  <div className="h-7 rounded-lg border border-emerald-200 bg-emerald-100/80" />
-                                </div>
-                              </div>
-                            )}
-
-                            {activeFlowStep === 1 && (
-                              <div className="relative z-[1] h-full pt-6 pr-10 flex flex-col justify-between">
-                                <div className="grid grid-cols-12 gap-2">
-                                  <div className="col-span-7 space-y-2">
-                                    <div className="h-2 rounded bg-white" />
-                                    <div className="h-2 rounded bg-white" />
-                                    <div className="h-2 rounded bg-emerald-100" />
-                                    <div className="h-2 rounded bg-white" />
-                                  </div>
-                                  <div className="col-span-5 rounded-lg border border-emerald-200 bg-emerald-50 p-2 space-y-1.5">
-                                    <div className="h-1.5 rounded bg-emerald-200" />
-                                    <div className="h-1.5 rounded bg-white" />
-                                    <div className="h-1.5 rounded bg-white" />
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-3 gap-2">
-                                  <div className="h-7 rounded-lg border border-emerald-200 bg-emerald-100/80" />
-                                  <div className="h-7 rounded-lg border border-[#d9e4d7] bg-white/90" />
-                                  <div className="h-7 rounded-lg border border-[#d9e4d7] bg-white/90" />
-                                </div>
-                              </div>
-                            )}
-
-                            {activeFlowStep === 2 && (
-                              <div className="relative z-[1] h-full pt-6 pr-10 flex flex-col justify-between">
-                                <div className="space-y-2.5">
-                                  {['Owner: Alex', 'Owner: Priya', 'Owner: Sam'].map((label) => (
-                                    <div key={label} className="flex items-center justify-between rounded-lg border border-[#d9e4d7] bg-white/90 px-2 py-1.5">
-                                      <span className="text-[10px] font-medium text-gray-600">{label}</span>
-                                      <CheckCircle className="h-3.5 w-3.5 text-emerald-700" />
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div className="h-7 rounded-lg border border-emerald-200 bg-emerald-100/80" />
-                                  <div className="h-7 rounded-lg border border-[#d9e4d7] bg-white/90" />
-                                </div>
-                              </div>
-                            )}
-
-                            {activeFlowStep === 3 && (
-                              <div className="relative z-[1] h-full pt-6 pr-10 flex flex-col justify-between">
-                                <div className="h-20 rounded-xl border border-[#d9e4d7] bg-white/90 p-2">
-                                  <div className="h-full flex items-end gap-1.5">
-                                    <span className="w-2.5 rounded bg-emerald-200 h-4" />
-                                    <span className="w-2.5 rounded bg-emerald-300 h-7" />
-                                    <span className="w-2.5 rounded bg-emerald-400 h-10" />
-                                    <span className="w-2.5 rounded bg-emerald-600 h-13" />
-                                    <span className="w-2.5 rounded bg-emerald-800 h-16" />
-                                  </div>
-                                </div>
-                                <div className="h-2 rounded bg-emerald-100" />
-                                <div className="h-2 w-5/6 rounded bg-white" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="p-4">
-                          <Badge variant="info" className="mb-3 text-[11px] tracking-wide">Product Flow</Badge>
-                          <h3 className="text-lg font-bold text-gray-900">{activeStep.title}</h3>
-                          <p className="text-sm font-semibold text-emerald-900 mt-1">{activeStep.subtitle}</p>
-                          <p className="text-sm text-gray-600 mt-2 leading-relaxed">{activeStep.description}</p>
-                          <div className="mt-4">
-                            <span className={`inline-flex h-2.5 w-2.5 rounded-full ${activeStep.accent}`} />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                );
-              })()}
-            </div>
-
-            <div className="mt-6 flex items-center justify-center gap-3">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={showPreviousFlowStep}
-                className="h-9 w-9 rounded-full border-emerald-800/40 bg-white/80 hover:bg-white"
-                aria-label="Previous flow card"
-              >
-                <ChevronLeft className="h-4 w-4 text-emerald-900" />
-              </Button>
-
-              <div className="text-sm font-semibold text-emerald-900 min-w-12 text-center">
-                {activeFlowStep + 1} / {flowSteps.length}
+          <div className="relative mx-auto max-w-7xl space-y-10 lg:space-y-12">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-end">
+              <div className="max-w-3xl">
+                <Badge variant="success" className="mb-4 bg-emerald-100 text-emerald-900">
+                  Visual Product Tour
+                </Badge>
+                <h2 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+                  How Meetiva flows from conversation to execution.
+                </h2>
+                <p className="mt-5 max-w-2xl text-lg leading-8 text-gray-600 sm:text-xl">
+                  A guided tour of the pipeline that turns one meeting into clear decisions,
+                  owners, and follow-through.
+                </p>
               </div>
 
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={showNextFlowStep}
-                className="h-9 w-9 rounded-full border-emerald-800/40 bg-white/80 hover:bg-white"
-                aria-label="Next flow card"
-              >
-                <ChevronRight className="h-4 w-4 text-emerald-900" />
-              </Button>
+              <div className="grid gap-3 sm:grid-cols-3 lg:justify-self-end">
+                <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                    Steps
+                  </div>
+                  <div className="mt-2 text-2xl font-bold text-emerald-900">4</div>
+                  <div className="mt-1 text-sm text-gray-600">core stages</div>
+                </div>
+                <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                    Focus
+                  </div>
+                  <div className="mt-2 text-2xl font-bold text-emerald-900">Live</div>
+                  <div className="mt-1 text-sm text-gray-600">stateful tour</div>
+                </div>
+                <div className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                    Outcome
+                  </div>
+                  <div className="mt-2 text-2xl font-bold text-emerald-900">Clarity</div>
+                  <div className="mt-1 text-sm text-gray-600">and ownership</div>
+                </div>
+              </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-center gap-2">
-              {flowSteps.map((step, dotIndex) => (
-                <button
-                  key={step.title}
-                  type="button"
-                  onClick={() => setActiveFlowStep(dotIndex)}
-                  aria-label={`Go to ${step.title}`}
-                  className={`h-2.5 rounded-full transition-all ${
-                    dotIndex === activeFlowStep ? 'w-8 bg-emerald-800' : 'w-2.5 bg-emerald-300/70'
-                  }`}
-                />
-              ))}
+            <div className="grid gap-6 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)_minmax(220px,280px)] lg:items-center">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                {flowSteps.slice(0, 2).map((step, index) => (
+                  <button
+                    key={step.title}
+                    type="button"
+                    onClick={() => setActiveFlowStep(index)}
+                    aria-label={`Show ${step.title}`}
+                    aria-pressed={index === activeFlowStep}
+                    className={`hidden w-full cursor-pointer text-left sm:block rounded-[1.5rem] border border-white/70 bg-white/65 shadow-[0_10px_24px_rgba(16,46,34,0.12)] backdrop-blur-xl transition-all duration-500 ${
+                      index === activeFlowStep ? 'scale-100 opacity-100' : 'scale-[0.985] opacity-85'
+                    }`}
+                  >
+                    <CardContent className="p-5">
+                      <Badge variant="outline" className="mb-3 text-[11px]">
+                        Step {index + 1}
+                      </Badge>
+                      <h4 className="text-sm font-bold text-gray-800">{step.title}</h4>
+                      <p className="mt-2 text-sm text-gray-600">{step.subtitle}</p>
+                      <div className="mt-4 space-y-2">
+                        <div className="h-1.5 rounded-full bg-emerald-100" />
+                        <div className="h-1.5 w-4/5 rounded-full bg-white/85" />
+                        <div className="h-1.5 w-2/3 rounded-full bg-white/75" />
+                      </div>
+                    </CardContent>
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative min-h-[520px] md:min-h-[560px]">
+                {(() => {
+                  const activeStep = flowSteps[activeFlowStep];
+                  const ActiveIcon = activeStep.icon;
+
+                  return (
+                    <Card className="absolute inset-x-0 top-0 z-30 mx-auto overflow-hidden border-white/75 bg-white/85 shadow-[0_24px_72px_rgba(14,44,33,0.18)] backdrop-blur-xl flow-card-enter-soft md:w-[92%]">
+                      <CardContent className="p-0">
+                        <div className="border-b border-white/70 bg-white/55 px-5 py-4 sm:px-6">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <Badge variant="info" className="mb-3 text-[11px] tracking-wide">
+                                Product Flow
+                              </Badge>
+                              <h3 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                                {activeStep.title}
+                              </h3>
+                              <p className="mt-1 text-sm font-semibold text-emerald-900">
+                                {activeStep.subtitle}
+                              </p>
+                            </div>
+
+                            <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/80 px-3 py-2 text-sm font-semibold text-emerald-900 shadow-sm">
+                              <ActiveIcon className="h-4 w-4" />
+                              Step {activeFlowStep + 1} of {flowSteps.length}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-0 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.86fr)]">
+                          <div className="relative min-h-[320px] bg-gradient-to-br from-white via-emerald-50/55 to-lime-50/55 p-4 sm:p-5">
+                            <div className="absolute -left-10 top-6 h-28 w-28 rounded-full bg-emerald-200/35 blur-3xl" />
+                            <div className="absolute -right-8 bottom-0 h-24 w-24 rounded-full bg-lime-200/35 blur-3xl" />
+
+                            <div className="relative h-full rounded-[1.5rem] border border-white/80 bg-white/70 p-4 shadow-inner sm:p-5">
+                              <div className="flex items-start justify-between gap-4">
+                                <div>
+                                  <div className="inline-flex items-center rounded-full bg-emerald-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                                    {activeStep.title}
+                                  </div>
+                                  <div className="mt-3 text-sm font-semibold text-emerald-900">
+                                    {activeStep.subtitle}
+                                  </div>
+                                </div>
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-900 shadow-sm">
+                                  <ActiveIcon className="h-4 w-4" />
+                                </div>
+                              </div>
+
+                              <div className="relative z-[1] mt-5 flex h-full min-h-[220px] flex-col justify-between">
+                                {activeFlowStep === 0 && (
+                                  <>
+                                    <div className="grid items-stretch gap-3 sm:grid-cols-2">
+                                      <div className="flex min-h-[148px] flex-col justify-between rounded-2xl border border-[#dbe7d8] bg-white/90 p-3.5 shadow-sm">
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div>
+                                            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">
+                                              Incoming signal
+                                            </div>
+                                            <div className="mt-1 text-sm font-semibold text-emerald-900">
+                                              Recording pulse
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="mt-3 self-start rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] leading-none text-emerald-900">
+                                          Live
+                                        </div>
+
+                                        <div className="mt-3 flex flex-1 items-end gap-1.5">
+                                          {[18, 34, 24, 52, 36, 45, 28, 40, 24].map((height, barIndex) => (
+                                            <span
+                                              key={barIndex}
+                                              className="w-1.5 rounded-full bg-gradient-to-t from-emerald-800 to-emerald-300"
+                                              style={{ height }}
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                      <div className="flex min-h-[148px] flex-col justify-between rounded-2xl border border-[#dbe7d8] bg-emerald-50 p-3.5 shadow-sm">
+                                        <div>
+                                          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-800/70">
+                                            Capture status
+                                          </div>
+                                          <div className="mt-1 text-sm font-semibold text-emerald-900">
+                                            Audio is being indexed
+                                          </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                          <div className="h-2 rounded-full bg-emerald-200" />
+                                          <div className="h-2 rounded-full bg-white" />
+                                          <div className="h-2 rounded-full bg-white" />
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2.5">
+                                      <div className="h-9 rounded-2xl border border-[#dbe7d8] bg-white/95" />
+                                      <div className="h-9 rounded-2xl border border-emerald-200 bg-emerald-100/85" />
+                                      <div className="h-9 rounded-2xl border border-[#dbe7d8] bg-white/95" />
+                                    </div>
+                                  </>
+                                )}
+
+                                {activeFlowStep === 1 && (
+                                  <>
+                                    <div className="relative grid gap-3 sm:grid-cols-2 sm:items-stretch">
+                                      <div className="flex h-full min-h-[138px] flex-col justify-between rounded-2xl border border-[#dbe7d8] bg-white/90 p-4 pr-12 shadow-sm sm:pr-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div>
+                                            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">
+                                              Live transcript
+                                            </div>
+                                            <div className="mt-1 text-sm font-semibold text-emerald-900">
+                                              “Let’s align on next steps...”
+                                            </div>
+                                          </div>
+                                          <FileText className="h-5 w-5 text-emerald-700" />
+                                        </div>
+
+                                        <div className="mt-4 space-y-2">
+                                          <div className="h-2 rounded-full bg-emerald-100" />
+                                          <div className="h-2 w-11/12 rounded-full bg-white" />
+                                          <div className="h-2 w-9/12 rounded-full bg-emerald-100" />
+                                        </div>
+                                      </div>
+
+                                      <div className="flex h-full min-h-[138px] flex-col justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-4 pl-12 shadow-sm sm:pl-4">
+                                        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-800/70">
+                                          <Zap className="h-4 w-4" />
+                                          AI insight
+                                        </div>
+                                        <div className="mt-3 flex flex-col gap-2">
+                                          <div className="flex min-h-[38px] items-center justify-start rounded-full border border-white/90 bg-white/90 px-4 shadow-sm">
+                                            <div className="text-[9px] font-semibold uppercase tracking-[0.14em] leading-tight text-gray-500">
+                                              Summary
+                                            </div>
+                                          </div>
+                                          <div className="flex min-h-[38px] items-center justify-start rounded-full border border-white/90 bg-white/90 px-4 shadow-sm">
+                                            <div className="text-[9px] font-semibold uppercase tracking-[0.14em] leading-tight text-gray-500">
+                                              Owners
+                                            </div>
+                                          </div>
+                                          <div className="flex min-h-[38px] items-center justify-start rounded-full border border-white/90 bg-white/90 px-4 shadow-sm">
+                                            <div className="text-[9px] font-semibold uppercase tracking-[0.14em] leading-tight text-gray-500">
+                                              Tasks
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="pointer-events-none absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm">
+                                        <ArrowRight className="h-4 w-4" />
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+
+                                {activeFlowStep === 2 && (
+                                  <>
+                                    <div className="space-y-2.5">
+                                      {['Owner: Alex', 'Owner: Priya', 'Owner: Sam'].map((label) => (
+                                        <div
+                                          key={label}
+                                          className="flex items-center justify-between rounded-2xl border border-[#dbe7d8] bg-white/95 px-3 py-2.5 shadow-sm"
+                                        >
+                                          <span className="text-xs font-medium text-gray-600">{label}</span>
+                                          <CheckCircle className="h-4 w-4 text-emerald-700" />
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="h-10 rounded-2xl border border-emerald-200 bg-emerald-100/85" />
+                                      <div className="h-10 rounded-2xl border border-[#dbe7d8] bg-white/95" />
+                                    </div>
+                                  </>
+                                )}
+
+                                {activeFlowStep === 3 && (
+                                  <>
+                                    <div className="rounded-2xl border border-[#dbe7d8] bg-white/95 p-4 shadow-sm">
+                                      <div className="flex h-32 items-end gap-2">
+                                        <span className="w-3 rounded-full bg-emerald-200" style={{ height: 24 }} />
+                                        <span className="w-3 rounded-full bg-emerald-300" style={{ height: 44 }} />
+                                        <span className="w-3 rounded-full bg-emerald-400" style={{ height: 64 }} />
+                                        <span className="w-3 rounded-full bg-emerald-600" style={{ height: 88 }} />
+                                        <span className="w-3 rounded-full bg-emerald-800" style={{ height: 120 }} />
+                                      </div>
+                                    </div>
+                                    <div className="grid gap-3 sm:grid-cols-[1fr_0.8fr]">
+                                      <div className="h-10 rounded-2xl bg-emerald-100/90" />
+                                      <div className="h-10 rounded-2xl bg-white" />
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="border-t border-white/70 bg-white/65 p-5 sm:p-6 md:border-l md:border-t-0">
+                            <div className="flex h-full flex-col justify-between gap-6">
+                              <div>
+                                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">
+                                  <span className={`inline-flex h-2.5 w-2.5 rounded-full ${activeStep.accent}`} />
+                                  Flow snapshot
+                                </div>
+                                <p className="mt-4 text-sm leading-7 text-gray-600">
+                                  {activeStep.description}
+                                </p>
+
+                                <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2">
+                                  <div className="rounded-2xl border border-white/80 bg-white/80 p-4 shadow-sm">
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                                      Output
+                                    </div>
+                                    <div className="mt-2 text-sm font-semibold text-gray-900">
+                                      {activeFlowStep === 0
+                                        ? 'Audio captured'
+                                        : activeFlowStep === 1
+                                        ? 'Structured transcript'
+                                        : activeFlowStep === 2
+                                        ? 'Action items assigned'
+                                        : 'Team execution visible'}
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-2xl border border-white/80 bg-white/80 p-4 shadow-sm">
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                                      Result
+                                    </div>
+                                    <div className="mt-2 text-sm font-semibold text-emerald-900">
+                                      {activeFlowStep + 1} / {flowSteps.length}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="rounded-3xl border border-white/80 bg-gradient-to-br from-emerald-950 via-emerald-900 to-green-800 p-5 text-white shadow-[0_16px_36px_rgba(16,46,34,0.2)]">
+                                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
+                                    Current focus
+                                  </div>
+                                  <h4 className="mt-2 text-lg font-semibold">{activeStep.title}</h4>
+                                  <p className="mt-2 text-sm leading-6 text-white/75">
+                                    {activeStep.subtitle}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                {flowSteps.slice(2).map((step, index) => {
+                  const actualIndex = index + 2;
+                  const isActive = actualIndex === activeFlowStep;
+
+                  return (
+                    <button
+                      key={step.title}
+                      type="button"
+                      onClick={() => setActiveFlowStep(actualIndex)}
+                      aria-label={`Show ${step.title}`}
+                      aria-pressed={isActive}
+                      className={`hidden w-full cursor-pointer text-left sm:block min-h-[148px] rounded-[1.5rem] border border-white/70 bg-white/65 shadow-[0_10px_24px_rgba(16,46,34,0.12)] backdrop-blur-xl transition-all duration-500 ${
+                        isActive ? 'scale-100 opacity-100' : 'scale-[0.985] opacity-85'
+                      }`}
+                    >
+                      <CardContent className="flex h-full flex-col justify-between p-5">
+                        <Badge variant="outline" className="mb-3 text-[11px]">
+                          Step {actualIndex + 1}
+                        </Badge>
+                        <h4 className="text-sm font-bold text-gray-800">{step.title}</h4>
+                        <p className="mt-2 text-sm text-gray-600">{step.subtitle}</p>
+                        <div className="mt-4 space-y-2">
+                          <div className="h-1.5 rounded-full bg-emerald-100" />
+                          <div className="h-1.5 w-4/5 rounded-full bg-white/85" />
+                          <div className="h-1.5 w-2/3 rounded-full bg-white/75" />
+                        </div>
+                      </CardContent>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex items-center justify-center gap-3">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={showPreviousFlowStep}
+                  className="h-10 w-10 rounded-full border-emerald-800/40 bg-white/85 hover:bg-white"
+                  aria-label="Previous flow card"
+                >
+                  <ChevronLeft className="h-4 w-4 text-emerald-900" />
+                </Button>
+
+                <div className="min-w-20 text-center text-sm font-semibold text-emerald-900">
+                  {activeFlowStep + 1} / {flowSteps.length}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={showNextFlowStep}
+                  className="h-10 w-10 rounded-full border-emerald-800/40 bg-white/85 hover:bg-white"
+                  aria-label="Next flow card"
+                >
+                  <ChevronRight className="h-4 w-4 text-emerald-900" />
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-2.5">
+                {flowSteps.map((step, dotIndex) => (
+                  <button
+                    key={step.title}
+                    type="button"
+                    onClick={() => setActiveFlowStep(dotIndex)}
+                    aria-label={`Go to ${step.title}`}
+                    className={`h-2.5 rounded-full transition-all duration-300 ${
+                      dotIndex === activeFlowStep ? 'w-10 bg-emerald-900' : 'w-2.5 bg-emerald-300/70 hover:bg-emerald-400'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>
