@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -7,44 +8,31 @@ import { Badge } from '@/components/ui/Badge';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAppSelector } from '@/store/hooks';
 import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
+import { useMeetings } from '@/hooks';
 import { meetingService } from '@/services';
-import { Meeting } from '@/types';
 import { formatDate } from '@/utils';
 
 const Meetings: React.FC = () => {
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const queryClient = useQueryClient();
 
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showTeamMeetings, setShowTeamMeetings] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [deletingMeetingId, setDeletingMeetingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadMeetings();
-  }, [currentPage, filterStatus, showTeamMeetings]);
+  const { data: meetingsResponse, isLoading } = useMeetings({
+    page: currentPage,
+    limit: 10,
+    status: filterStatus === 'all' ? undefined : filterStatus,
+  });
 
-  const loadMeetings = async () => {
-    try {
-      setLoading(true);
-      const response = await meetingService.getMeetings({
-        page: currentPage,
-        limit: 10,
-        status: filterStatus === 'all' ? undefined : filterStatus,
-      });
-      setMeetings(response.data || []);
-      setTotalPages(Math.ceil((response.total || 0) / 10));
-    } catch (error) {
-      console.error('Failed to load meetings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const userId = useAppSelector((state) => state.auth.user?.id);
-  const displayedMeetings = showTeamMeetings ? meetings : meetings.filter((m) => m.userId === userId);
+  const meetings = meetingsResponse?.data || [];
+  const totalPages = meetingsResponse?.totalPages || 1;
+  const myMeetings = userId ? meetings.filter((m) => m.userId === userId) : [];
+  const displayedMeetings = showTeamMeetings ? meetings : myMeetings.length > 0 ? myMeetings : meetings;
 
   const filteredMeetings = displayedMeetings.filter((meeting) =>
     meeting.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -52,7 +40,7 @@ const Meetings: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'processed':
+      case 'completed':
         return 'default';
       case 'processing':
         return 'secondary';
@@ -60,6 +48,24 @@ const Meetings: React.FC = () => {
         return 'destructive';
       default:
         return 'default';
+    }
+  };
+
+  const handleDeleteMeeting = async (meetingId: string, meetingTitle: string) => {
+    const confirmed = window.confirm(`Delete \"${meetingTitle}\"? This action cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingMeetingId(meetingId);
+      await meetingService.deleteMeeting(meetingId);
+      await queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    } catch (error) {
+      console.error('Failed to delete meeting:', error);
+      window.alert(error instanceof Error ? error.message : 'Failed to delete meeting. Please try again.');
+    } finally {
+      setDeletingMeetingId(null);
     }
   };
 
@@ -104,7 +110,7 @@ const Meetings: React.FC = () => {
               }}
             >
               <option value="all">All Meetings</option>
-              <option value="processed">Processed</option>
+              <option value="completed">Completed</option>
               <option value="processing">Processing</option>
               <option value="pending">Pending</option>
               <option value="failed">Failed</option>
@@ -149,7 +155,7 @@ const Meetings: React.FC = () => {
       </Card>
 
       {/* Meetings List */}
-      {loading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center h-96">
           <LoadingSpinner size="lg" />
         </div>
@@ -224,6 +230,14 @@ const Meetings: React.FC = () => {
                         View Details
                       </Button>
                     </Link>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteMeeting(meeting.id, meeting.title)}
+                      disabled={deletingMeetingId === meeting.id}
+                    >
+                      {deletingMeetingId === meeting.id ? 'Deleting...' : 'Delete'}
+                    </Button>
                     {meeting.status === 'completed' && (
                       <>
                         <Button size="sm" variant="ghost">
@@ -255,7 +269,7 @@ const Meetings: React.FC = () => {
       )}
 
       {/* Pagination */}
-      {!loading && totalPages > 1 && (
+      {!isLoading && totalPages > 1 && (
         <div className="flex justify-center gap-2">
           <Button
             variant="outline"

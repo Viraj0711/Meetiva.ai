@@ -28,6 +28,12 @@ const jsonArrayToStringArray = (value: Prisma.JsonValue | null | undefined): str
   return value.filter((entry): entry is string => typeof entry === 'string');
 };
 
+const normalizeTranscriptForComparison = (text: string): string =>
+  text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .trim();
+
 // Helper to get the appropriate where clause based on user's role
 const getMeetingsWhereClause = async (req: AuthRequest): Promise<Prisma.MeetingWhereInput> => {
   try {
@@ -150,12 +156,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
         where,
         skip,
         take: limitNumber,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          _count: {
-            select: { actionItems: true }
-          }
-        }
+        orderBy: { createdAt: 'desc' }
       }),
       prisma.meeting.count({ where })
     ]);
@@ -177,9 +178,8 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 
 router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const meeting = await prisma.meeting.findFirst({
-      where: { id: req.params.id },
-      include: { actionItems: true }
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: req.params.id }
     });
 
     if (!meeting) {
@@ -258,6 +258,48 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
         message:
           'No transcript found. Upload an audio/video file (≤ 25 MB), a .txt transcript, ' +
           'or include transcriptText in the form body.',
+      });
+    }
+
+    // Prevent duplicate meetings for the same user by normalized transcript content.
+    const normalizedIncomingTranscript = normalizeTranscriptForComparison(transcriptText);
+    const existingMeetings = await prisma.meeting.findMany({
+      where: {
+        userId: req.userId!,
+        transcript: { isNot: null },
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        createdAt: true,
+        transcript: {
+          select: {
+            fullText: true,
+          },
+        },
+      },
+    });
+
+    const duplicateMeeting = existingMeetings.find((candidate) => {
+      const existingText = candidate.transcript?.fullText;
+      if (!existingText) {
+        return false;
+      }
+
+      return normalizeTranscriptForComparison(existingText) === normalizedIncomingTranscript;
+    });
+
+    if (duplicateMeeting) {
+      return res.status(409).json({
+        message: 'This meeting already exists in your workspace.',
+        code: 'MEETING_DUPLICATE',
+        existingMeeting: {
+          id: duplicateMeeting.id,
+          title: duplicateMeeting.title,
+          status: duplicateMeeting.status,
+          createdAt: duplicateMeeting.createdAt,
+        },
       });
     }
 
@@ -351,9 +393,9 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
 
 router.get('/:id/summary', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const meeting = await prisma.meeting.findFirst({
+    const meeting = await prisma.meeting.findUnique({
       where: { id: req.params.id },
-      include: { summary: true }
+      select: { id: true, userId: true }
     });
 
     if (!meeting) {
@@ -365,19 +407,23 @@ router.get('/:id/summary', authenticate, async (req: AuthRequest, res: Response)
       return res.status(403).json({ message: 'You do not have permission to view this meeting' });
     }
 
-    if (!meeting.summary) {
+    const summary = await prisma.meetingSummary.findUnique({
+      where: { meetingId: meeting.id }
+    });
+
+    if (!summary) {
       return res.status(404).json({ message: 'Summary not found for this meeting yet' });
     }
 
     res.json({
-      id: meeting.summary.id,
-      meetingId: meeting.summary.meetingId,
-      executiveSummary: meeting.summary.executiveSummary,
-      keyPoints: jsonArrayToStringArray(meeting.summary.keyPoints),
-      decisions: jsonArrayToStringArray(meeting.summary.decisions),
-      openQuestions: jsonArrayToStringArray(meeting.summary.openQuestions),
-      sentiment: meeting.summary.sentiment,
-      createdAt: meeting.summary.createdAt
+      id: summary.id,
+      meetingId: summary.meetingId,
+      executiveSummary: summary.executiveSummary,
+      keyPoints: jsonArrayToStringArray(summary.keyPoints),
+      decisions: jsonArrayToStringArray(summary.decisions),
+      openQuestions: jsonArrayToStringArray(summary.openQuestions),
+      sentiment: summary.sentiment,
+      createdAt: summary.createdAt
     });
   } catch (error) {
     console.error('Error fetching meeting summary:', error);
@@ -387,9 +433,9 @@ router.get('/:id/summary', authenticate, async (req: AuthRequest, res: Response)
 
 router.get('/:id/transcript', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const meeting = await prisma.meeting.findFirst({
+    const meeting = await prisma.meeting.findUnique({
       where: { id: req.params.id },
-      include: { transcript: true }
+      select: { id: true, userId: true }
     });
 
     if (!meeting) {
@@ -401,17 +447,21 @@ router.get('/:id/transcript', authenticate, async (req: AuthRequest, res: Respon
       return res.status(403).json({ message: 'You do not have permission to view this meeting' });
     }
 
-    if (!meeting.transcript) {
+    const transcript = await prisma.transcript.findUnique({
+      where: { meetingId: meeting.id }
+    });
+
+    if (!transcript) {
       return res.status(404).json({ message: 'Transcript not found for this meeting yet' });
     }
 
     res.json({
-      id: meeting.transcript.id,
-      meetingId: meeting.transcript.meetingId,
+      id: transcript.id,
+      meetingId: transcript.meetingId,
       segments: [],
-      fullText: meeting.transcript.fullText,
-      language: meeting.transcript.language,
-      createdAt: meeting.transcript.createdAt
+      fullText: transcript.fullText,
+      language: transcript.language,
+      createdAt: transcript.createdAt
     });
   } catch (error) {
     console.error('Error fetching transcript:', error);

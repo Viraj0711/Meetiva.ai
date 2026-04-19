@@ -13,7 +13,6 @@ import notificationsRoutes from './routes/notifications';
 import workspaceRoutes from './routes/workspace';
 import rateLimit from 'express-rate-limit';
 import { validateBackendEnv } from './lib/env';
-import { startDeadlineNotifier } from './jobs/deadlineNotifier';
 
 dotenv.config();
 validateBackendEnv();
@@ -87,12 +86,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 app.listen(PORT, '0.0.0.0', async () => {
-  try {
-    await startDeadlineNotifier();
-  } catch (error) {
-    console.error('⚠️ Failed to start deadline notifier:', error);
-    // Continue serving requests even if notifier fails
-  }
   console.log(`✅ Server running on http://localhost:${PORT}`);
   console.log(`🌐 Network access: http://0.0.0.0:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);

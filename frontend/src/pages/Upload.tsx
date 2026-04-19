@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useBeforeUnload } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Progress } from '@/components/ui/Progress';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { meetingService } from '@/services';
+import { meetingService, type DuplicateMeetingInfo, type UploadDuplicateError } from '@/services';
 import { retryWithBackoff, isRetryableError } from '@/utils/retry.utils';
 
 interface FileUploadState {
@@ -19,6 +20,7 @@ interface FileUploadState {
 
 const Upload: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [meetingTitle, setMeetingTitle] = useState('');
   const [uploadState, setUploadState] = useState<FileUploadState>({
@@ -32,6 +34,7 @@ const Upload: React.FC = () => {
   const [dragActive, setDragActive] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [duplicateMeeting, setDuplicateMeeting] = useState<DuplicateMeetingInfo | null>(null);
 
   const handleExcelDownload = async (exportUrl: string, meetingTitle?: string) => {
     setDownloading(true);
@@ -169,6 +172,7 @@ const Upload: React.FC = () => {
     if (!uploadState.file) return;
 
     try {
+      setDuplicateMeeting(null);
       setUploadState(prev => ({ ...prev, uploading: true, error: null, exportUrl: null, meetingId: null }));
 
       const result = await retryWithBackoff(
@@ -201,8 +205,20 @@ const Upload: React.FC = () => {
         exportUrl: result.actionItemsExportUrl,
         meetingId: result.data.id,
       }));
+      await queryClient.invalidateQueries({ queryKey: ['meetings'] });
     } catch (error) {
       console.error('Upload failed:', error);
+      if ((error as UploadDuplicateError)?.code === 'MEETING_DUPLICATE') {
+        const duplicateError = error as UploadDuplicateError;
+        setUploadState(prev => ({
+          ...prev,
+          uploading: false,
+          error: null,
+        }));
+        setDuplicateMeeting(duplicateError.existingMeeting);
+        return;
+      }
+
       const errorMessage = isRetryableError(error)
         ? 'Upload failed due to network issues. Please check your connection and try again.'
         : (error instanceof Error ? error.message : 'Failed to upload file. Please try again.');
@@ -229,6 +245,7 @@ const Upload: React.FC = () => {
       exportUrl: null,
       meetingId: null,
     });
+    setDuplicateMeeting(null);
     setMeetingTitle('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -245,6 +262,7 @@ const Upload: React.FC = () => {
       exportUrl: null,
       meetingId: null,
     });
+    setDuplicateMeeting(null);
     setMeetingTitle('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -276,7 +294,7 @@ const Upload: React.FC = () => {
       <div>
         <h1 className="text-3xl font-bold">Upload Meeting</h1>
         <p className="mt-2 text-muted-foreground">
-          Upload an audio recording, video file, or plain-text transcript — Whisper will transcribe
+          Upload an audio recording, video file, or plain-text transcript ï¿½ Whisper will transcribe
           audio/video, then Grok will summarise the meeting and extract action items.
         </p>
       </div>
@@ -362,7 +380,7 @@ const Upload: React.FC = () => {
                     TXT
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">Max 25 MB &nbsp;·&nbsp; Audio &amp; Video transcribed via Whisper</p>
+                <p className="text-xs text-muted-foreground">Max 25 MB &nbsp;ï¿½&nbsp; Audio &amp; Video transcribed via Whisper</p>
               </div>
             </div>
           ) : (
@@ -418,8 +436,8 @@ const Upload: React.FC = () => {
             <div className="flex justify-between text-sm">
               <span>
                 {uploadState.file && getFileCategory(uploadState.file) !== 'text'
-                  ? 'Uploading & transcribing with Whisper…'
-                  : 'Uploading…'}
+                  ? 'Uploading & transcribing with Whisperï¿½'
+                  : 'Uploadingï¿½'}
               </span>
               <span>{Math.round(uploadState.progress)}%</span>
             </div>
@@ -433,9 +451,28 @@ const Upload: React.FC = () => {
             <p className="text-sm text-destructive">{uploadState.error}</p>
           </div>
         )}
+
+        {duplicateMeeting && (
+          <div className="mt-4 p-4 border rounded-lg bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700">
+            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+              This meeting already exists and was not uploaded again.
+            </p>
+            <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
+              Existing meeting: {duplicateMeeting.title}
+            </p>
+            <div className="mt-3">
+              <Button
+                size="sm"
+                onClick={() => navigate(`/dashboard/meetings/${duplicateMeeting.id}`)}
+              >
+                Go to Existing Meeting
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
-      {/* Success Banner — shown after upload completes */}
+      {/* Success Banner ï¿½ shown after upload completes */}
       {uploadState.exportUrl && uploadState.meetingId && (
         <Card className="p-6 bg-green-50 dark:bg-green-900/20 border-green-400">
           <div className="flex items-start gap-3">
@@ -458,7 +495,7 @@ const Upload: React.FC = () => {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  {downloading ? 'Downloading…' : 'Download Tasks (Excel)'}
+                  {downloading ? 'Downloadingï¿½' : 'Download Tasks (Excel)'}
                 </button>
                 <button
                   onClick={() => navigate(`/dashboard/meetings/${uploadState.meetingId}`)}

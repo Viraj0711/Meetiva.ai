@@ -14,6 +14,18 @@ import {
   FilterParams,
 } from '@/types';
 
+export interface DuplicateMeetingInfo {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface UploadDuplicateError extends Error {
+  code: 'MEETING_DUPLICATE';
+  existingMeeting: DuplicateMeetingInfo;
+}
+
 export const meetingService = {
   /**
    * Get all meetings with pagination and filters
@@ -24,7 +36,7 @@ export const meetingService = {
     const response = await apiClient.get<PaginatedResponse<Meeting>>('/meetings', {
       params,
     });
-    return response.data;
+    return response;
   },
 
   /**
@@ -32,7 +44,7 @@ export const meetingService = {
    */
   getMeetingById: async (id: string): Promise<Meeting> => {
     const response = await apiClient.get<Meeting>(`/meetings/${id}`);
-    return response.data;
+    return response;
   },
 
   /**
@@ -40,7 +52,7 @@ export const meetingService = {
    */
   createMeeting: async (data: CreateMeetingRequest): Promise<Meeting> => {
     const response = await apiClient.post<Meeting>('/meetings', data);
-    return response.data;
+    return response;
   },
 
   /**
@@ -73,6 +85,13 @@ export const meetingService = {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+      if (response.status === 409 && errorData.code === 'MEETING_DUPLICATE' && errorData.existingMeeting) {
+        const duplicateError = new Error(errorData.message || 'Meeting already exists') as UploadDuplicateError;
+        duplicateError.code = 'MEETING_DUPLICATE';
+        duplicateError.existingMeeting = errorData.existingMeeting as DuplicateMeetingInfo;
+        throw duplicateError;
+      }
+
       throw new Error(errorData.message || 'Upload failed');
     }
 
@@ -85,7 +104,7 @@ export const meetingService = {
    */
   updateMeeting: async (id: string, data: UpdateMeetingRequest): Promise<Meeting> => {
     const response = await apiClient.patch<Meeting>(`/meetings/${id}`, data);
-    return response.data;
+    return response;
   },
 
   /**
@@ -100,7 +119,7 @@ export const meetingService = {
    */
   getMeetingSummary: async (meetingId: string): Promise<MeetingSummary> => {
     const response = await apiClient.get<MeetingSummary>(`/meetings/${meetingId}/summary`);
-    return response.data;
+    return response;
   },
 
   /**
@@ -108,7 +127,7 @@ export const meetingService = {
    */
   getMeetingTranscript: async (meetingId: string): Promise<Transcript> => {
     const response = await apiClient.get<Transcript>(`/meetings/${meetingId}/transcript`);
-    return response.data;
+    return response;
   },
 
   /**
@@ -116,7 +135,7 @@ export const meetingService = {
    */
   getMeetingActionItems: async (meetingId: string): Promise<ActionItem[]> => {
     const response = await apiClient.get<ActionItem[]>(`/meetings/${meetingId}/action-items`);
-    return response.data;
+    return response;
   },
 
   /**
@@ -124,7 +143,7 @@ export const meetingService = {
    */
   getMeetingStats: async (): Promise<MeetingStats> => {
     const response = await apiClient.get<MeetingStats>('/meetings/stats');
-    return response.data;
+    return response;
   },
 };
 
@@ -138,7 +157,7 @@ export const actionItemService = {
     const response = await apiClient.get<PaginatedResponse<ActionItem>>('/action-items', {
       params,
     });
-    return response.data;
+    return response;
   },
 
   /**
@@ -146,7 +165,7 @@ export const actionItemService = {
    */
   getActionItemById: async (id: string): Promise<ActionItem> => {
     const response = await apiClient.get<ActionItem>(`/action-items/${id}`);
-    return response.data;
+    return response;
   },
 
   /**
@@ -154,7 +173,7 @@ export const actionItemService = {
    */
   createActionItem: async (data: CreateActionItemRequest): Promise<ActionItem> => {
     const response = await apiClient.post<ActionItem>('/action-items', data);
-    return response.data;
+    return response;
   },
 
   /**
@@ -162,7 +181,7 @@ export const actionItemService = {
    */
   updateActionItem: async (id: string, data: UpdateActionItemRequest): Promise<ActionItem> => {
     const response = await apiClient.patch<ActionItem>(`/action-items/${id}`, data);
-    return response.data;
+    return response;
   },
 
   /**
@@ -177,6 +196,6 @@ export const actionItemService = {
    */
   completeActionItem: async (id: string): Promise<ActionItem> => {
     const response = await apiClient.post<ActionItem>(`/action-items/${id}/complete`);
-    return response.data;
+    return response;
   },
 };

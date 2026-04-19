@@ -246,7 +246,7 @@ const MeetingDetail: React.FC = () => {
 
       {activeTab === 'transcript' && (
         <div className="space-y-4">
-          {transcript && transcript.segments ? (
+          {transcript && transcript.segments && transcript.segments.length > 0 ? (
             <Card className="p-6">
               <div className="space-y-4">
                 {transcript.segments.map((segment, index) => (
@@ -265,6 +265,12 @@ const MeetingDetail: React.FC = () => {
                   </div>
                 ))}
               </div>
+            </Card>
+          ) : transcript?.fullText ? (
+            <Card className="p-6">
+              <pre className="whitespace-pre-wrap text-sm text-muted-foreground font-sans leading-relaxed">
+                {transcript.fullText}
+              </pre>
             </Card>
           ) : (
             <Card className="p-12 text-center">
