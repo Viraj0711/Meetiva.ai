@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarClock, CheckCircle2, Link2, Loader2, PlusCircle, Rocket, Users } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
@@ -26,6 +26,7 @@ const defaultOverview: WorkspaceOverview = {
 const Workspace: React.FC = () => {
   const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
+  const startTimeInputRef = useRef<HTMLInputElement | null>(null);
 
   const [overview, setOverview] = useState<WorkspaceOverview>(defaultOverview);
   const [connection, setConnection] = useState<CalendarConnectionStatus>({
@@ -51,6 +52,12 @@ const Workspace: React.FC = () => {
     () => overview.upcomingDeadlines.slice(0, 6),
     [overview.upcomingDeadlines]
   );
+
+  const toLocalDateTimeValue = (date: Date): string => {
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - offset * 60 * 1000);
+    return localDate.toISOString().slice(0, 16);
+  };
 
   const loadWorkspace = async () => {
     try {
@@ -90,10 +97,10 @@ const Workspace: React.FC = () => {
     }
   }, [googleConnectionQueryFlag]);
 
-  const handleConnectGoogle = () => {
+  const handleConnectGoogle = (forceReconnect = false) => {
     try {
       setIsConnecting(true);
-      window.location.href = calendarService.getGoogleConnectUrl();
+      window.location.href = calendarService.getGoogleConnectUrl(forceReconnect);
     } catch (error: any) {
       setIsConnecting(false);
       dispatch(addToast({ type: 'error', message: error.message || 'Unable to start OAuth flow.' }));
@@ -102,6 +109,11 @@ const Workspace: React.FC = () => {
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!eventForm.startTime) {
+      dispatch(addToast({ type: 'error', message: 'Please select appointment time.' }));
+      return;
+    }
+
     try {
       setIsCreatingEvent(true);
       await calendarService.createEvent(eventForm);
@@ -120,6 +132,20 @@ const Workspace: React.FC = () => {
     } finally {
       setIsCreatingEvent(false);
     }
+  };
+
+  const openStartTimePicker = () => {
+    const input = startTimeInputRef.current;
+    if (!input) return;
+
+    const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
+    if (typeof pickerInput.showPicker === 'function') {
+      pickerInput.showPicker();
+      return;
+    }
+
+    input.focus();
+    input.click();
   };
 
   return (
@@ -172,11 +198,16 @@ const Workspace: React.FC = () => {
             <Card className="p-5">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Calendar Integration</h2>
-                <Button onClick={handleConnectGoogle} isLoading={isConnecting}>
-                  Connect Google Calendar
-                </Button>
+                {!connection.connected ? (
+                  <Button onClick={() => handleConnectGoogle(false)} isLoading={isConnecting}>
+                    Connect Google Calendar
+                  </Button>
+                ) : (
+                  <Button variant="outline" onClick={() => handleConnectGoogle(true)} isLoading={isConnecting}>
+                    Reconnect Google Calendar
+                  </Button>
+                )}
               </div>
-
               <form onSubmit={handleCreateEvent} className="space-y-3">
                 <input
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
@@ -203,32 +234,37 @@ const Workspace: React.FC = () => {
                   }
                   disabled={!connection.connected || isCreatingEvent}
                 />
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Appointment Time</label>
+                  <button
+                    type="button"
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-left text-sm select-none"
+                    onClick={openStartTimePicker}
+                    disabled={!connection.connected || isCreatingEvent}
+                  >
+                    {eventForm.startTime
+                      ? new Date(eventForm.startTime).toLocaleString()
+                      : 'Select date and time'}
+                  </button>
                   <input
+                    ref={startTimeInputRef}
                     type="datetime-local"
-                    className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    className="sr-only"
                     value={eventForm.startTime}
                     onChange={(e) =>
-                      setEventForm((prev: CreateCalendarEventRequest) => ({
-                        ...prev,
-                        startTime: e.target.value,
-                      }))
+                      setEventForm((prev: CreateCalendarEventRequest) => {
+                        const nextStart = e.target.value;
+                        const endDate = new Date(nextStart);
+                        endDate.setMinutes(endDate.getMinutes() + 30);
+
+                        return {
+                          ...prev,
+                          startTime: nextStart,
+                          endTime: toLocalDateTimeValue(endDate),
+                        };
+                      })
                     }
                     disabled={!connection.connected || isCreatingEvent}
-                    required
-                  />
-                  <input
-                    type="datetime-local"
-                    className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                    value={eventForm.endTime}
-                    onChange={(e) =>
-                      setEventForm((prev: CreateCalendarEventRequest) => ({
-                        ...prev,
-                        endTime: e.target.value,
-                      }))
-                    }
-                    disabled={!connection.connected || isCreatingEvent}
-                    required
                   />
                 </div>
                 <Button

@@ -351,9 +351,11 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
         });
       }
 
+      // Keep meeting as 'processing' instead of immediately marking complete
+      // This allows users to see processing state before it's ready for review
       await tx.meeting.update({
         where: { id: createdMeeting.id },
-        data: { status: 'completed', processingProgress: 100, completedAt: new Date() },
+        data: { processingProgress: 100 },
       });
     });
 

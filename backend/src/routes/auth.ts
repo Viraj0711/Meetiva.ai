@@ -259,6 +259,11 @@ router.get('/google', async (req: Request, res: Response) => {
 
     const userId = verifyJwtAndGetUserId(jwtToken);
     const oauthClient = getGoogleOAuthClient();
+    const forceConsent = req.query.force === '1';
+    const existingGoogleAuth = await prisma.googleCalendarAuth.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
 
     const state = crypto.randomBytes(24).toString('hex');
 
@@ -278,10 +283,10 @@ router.get('/google', async (req: Request, res: Response) => {
 
     const authUrl = oauthClient.generateAuthUrl({
       access_type: 'offline',
-      prompt: 'consent',
       scope: googleCalendarScopes,
       state,
       include_granted_scopes: true,
+      ...(forceConsent || !existingGoogleAuth ? { prompt: 'consent' } : {}),
     });
 
     return res.redirect(authUrl);

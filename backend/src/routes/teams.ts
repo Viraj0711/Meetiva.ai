@@ -1034,14 +1034,23 @@ router.delete(
     try {
       const { teamId, userId } = req.params;
 
-      // Check if requester is MANAGER or LEAD
-      const requesterMembership = req.userTeams?.find(t => t.teamId === teamId);
+      // Check if requester is member of this team - always verify from DB instead of JWT
+      const requesterMembership = await prisma.teamMember.findUnique({
+        where: {
+          userId_teamId: {
+            userId: req.userId!,
+            teamId
+          }
+        }
+      });
+
       if (!requesterMembership) {
         return res.status(403).json({ message: 'Not a member of this team' });
       }
 
+      // Only MANAGER and LEAD can remove members, MEMBER cannot
       if (requesterMembership.role === 'MEMBER') {
-        return res.status(403).json({ message: 'Only MANAGER or LEAD can remove members' });
+        return res.status(403).json({ message: 'Only managers and team leads can remove members' });
       }
 
       // Prevent removing the last manager

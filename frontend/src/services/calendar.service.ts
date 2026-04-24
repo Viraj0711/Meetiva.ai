@@ -2,7 +2,7 @@ import { CalendarConnectionStatus, CalendarEvent, CreateCalendarEventRequest } f
 import { apiClient } from './api.client';
 
 export const calendarService = {
-  getGoogleConnectUrl: (): string => {
+  getGoogleConnectUrl: (forceReconnect = false): string => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
     const token = localStorage.getItem('token');
 
@@ -11,7 +11,8 @@ export const calendarService = {
     }
 
     const rootBase = apiBase.replace(/\/api\/v1\/?$/, '');
-    return `${rootBase}/auth/google?token=${encodeURIComponent(token)}`;
+    const forceQuery = forceReconnect ? '&force=1' : '';
+    return `${rootBase}/auth/google?token=${encodeURIComponent(token)}${forceQuery}`;
   },
 
   getConnectionStatus: async (): Promise<CalendarConnectionStatus> => {

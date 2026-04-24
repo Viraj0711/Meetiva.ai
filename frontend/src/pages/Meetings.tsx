@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -8,14 +7,13 @@ import { Badge } from '@/components/ui/Badge';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAppSelector } from '@/store/hooks';
 import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
-import { useMeetings } from '@/hooks';
-import { meetingService } from '@/services';
+import { useMeetings, useDeleteMeeting } from '@/hooks';
 import { formatDate } from '@/utils';
 
 const Meetings: React.FC = () => {
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const queryClient = useQueryClient();
+  const deleteMeeting = useDeleteMeeting();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -52,18 +50,14 @@ const Meetings: React.FC = () => {
   };
 
   const handleDeleteMeeting = async (meetingId: string, meetingTitle: string) => {
-    const confirmed = window.confirm(`Delete \"${meetingTitle}\"? This action cannot be undone.`);
+    const confirmed = window.confirm(`Delete "${meetingTitle}"? This action cannot be undone.`);
     if (!confirmed) {
       return;
     }
 
     try {
       setDeletingMeetingId(meetingId);
-      await meetingService.deleteMeeting(meetingId);
-      await queryClient.invalidateQueries({ queryKey: ['meetings'] });
-    } catch (error) {
-      console.error('Failed to delete meeting:', error);
-      window.alert(error instanceof Error ? error.message : 'Failed to delete meeting. Please try again.');
+      await deleteMeeting.mutateAsync(meetingId);
     } finally {
       setDeletingMeetingId(null);
     }
