@@ -30,25 +30,25 @@ export interface TeamMemberCredentialsResetResult {
 // Create a new team
 export const createTeam = async (data: CreateTeamRequest) => {
   const response = await apiClient.post<{ team: Team; membership: { role: string; status: string; acceptedAt: string } }>('/teams', data);
-  return response.data as { team: Team; membership: { role: string; status: string; acceptedAt: string } };
+  return response as { team: Team; membership: { role: string; status: string; acceptedAt: string } };
 };
 
 // Get all teams for current user
 export const getTeams = async () => {
   const response = await apiClient.get<{ teams: Team[] }>('/teams');
-  return response.data as { teams: Team[] };
+  return response as { teams: Team[] };
 };
 
 // Get a specific team's details
 export const getTeam = async (teamId: string) => {
   const response = await apiClient.get<Team>(`/teams/${teamId}`);
-  return response.data as Team;
+  return response as Team;
 };
 
 // Get team members
 export const getTeamMembers = async (teamId: string) => {
   const response = await apiClient.get<{ members: TeamMember[] }>(`/teams/${teamId}/members`);
-  return response.data as { members: TeamMember[] };
+  return response as { members: TeamMember[] };
 };
 
 // Add a member to a team
@@ -57,7 +57,7 @@ export const addTeamMember = async (
   data: AddTeamMemberRequest
 ) => {
   const response = await apiClient.post<TeamMember>(`/teams/${teamId}/members`, data);
-  return response.data as TeamMember;
+  return response as TeamMember;
 };
 
 // Update team member role
@@ -70,7 +70,7 @@ export const updateTeamMember = async (
     `/teams/${teamId}/members/${userId}`,
     data
   );
-  return response.data as { userId: string; role: string; updatedAt: string };
+  return response as { userId: string; role: string; updatedAt: string };
 };
 
 // Update team member profile details (name/email)
@@ -83,7 +83,7 @@ export const updateTeamMemberProfile = async (
     `/teams/${teamId}/members/${userId}/profile`,
     data
   );
-  return response.data as { member: TeamMember };
+  return response as { member: TeamMember };
 };
 
 // Reset team member credentials and return one-time temporary password
@@ -95,7 +95,7 @@ export const resetTeamMemberCredentials = async (
     `/teams/${teamId}/members/${userId}/credentials/reset`,
     {}
   );
-  return response.data as TeamMemberCredentialsResetResult;
+  return response as TeamMemberCredentialsResetResult;
 };
 
 // Remove team member
@@ -104,7 +104,13 @@ export const removeTeamMember = async (
   userId: string
 ) => {
   const response = await apiClient.delete<{ message: string }>(`/teams/${teamId}/members/${userId}`);
-  return response.data as { message: string };
+  return response as { message: string };
+};
+
+// Delete a team
+export const deleteTeam = async (teamId: string) => {
+  const response = await apiClient.delete<{ message: string }>(`/teams/${teamId}`);
+  return response as { message: string };
 };
 
 // Invite a member to a team
@@ -171,7 +177,7 @@ export const inviteTeamMember = async (
     `/teams/${teamId}/invite`,
     data
   );
-  return response.data as InvitedMemberResult;
+  return response as InvitedMemberResult;
 };
 
 // Get pending invitations for current user
@@ -179,7 +185,7 @@ export const getPendingInvitations = async () => {
   const response = await apiClient.get<{ invitations: TeamInvitation[] }>(
     '/teams/pending/invitations'
   );
-  return response.data as { invitations: TeamInvitation[] };
+  return response as { invitations: TeamInvitation[] };
 };
 
 // Accept an invitation
@@ -188,7 +194,7 @@ export const acceptInvitation = async (invitationId: string) => {
     `/teams/invitations/${invitationId}/accept`,
     {}
   );
-  return response.data as { teamMember: { teamId: string; role: string; status: string; acceptedAt: string } };
+  return response as { teamMember: { teamId: string; role: string; status: string; acceptedAt: string } };
 };
 
 // Get team chat messages
@@ -200,7 +206,7 @@ export const getTeamChatMessages = async (
     `/teams/${teamId}/chat/messages`,
     { params }
   );
-  return response.data as { messages: TeamChatMessage[] };
+  return response as { messages: TeamChatMessage[] };
 };
 
 // Post team follow-up message
@@ -209,7 +215,7 @@ export const postTeamChatMessage = async (teamId: string, message: string) => {
     `/teams/${teamId}/chat/messages`,
     { message }
   );
-  return response.data as { message: TeamChatMessage };
+  return response as { message: TeamChatMessage };
 };
 
 // Aggregate team follow-up chat stats for analytics
@@ -219,5 +225,5 @@ export const getTeamChatStats = async (
   const response = await apiClient.get<TeamChatStats>('/teams/chat/stats', {
     params: { range },
   });
-  return response.data as TeamChatStats;
+  return response as TeamChatStats;
 };

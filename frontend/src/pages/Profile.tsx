@@ -4,8 +4,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { useAppSelector } from '@/store/hooks';
-import { integrationService } from '@/services';
+import { authService, integrationService } from '@/services';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store';
+import { setUser } from '@/store/slices/authSlice';
 import {
   User,
   Mail,
@@ -39,11 +42,32 @@ const integrationMetadata: Record<string, Omit<LocalIntegration, 'id' | 'connect
 };
 
 const Profile: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
   const user = useAppSelector((state) => state.auth.user);
   const [activeTab, setActiveTab] = useState<'account' | 'integrations' | 'notifications'>('account');
   const [integrations, setIntegrations] = useState<LocalIntegration[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [profileForm, setProfileForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    company: '',
+    jobTitle: '',
+  });
+
+  useEffect(() => {
+    const firstName = user?.name?.split(' ')[0] || '';
+    const lastName = user?.name?.split(' ').slice(1).join(' ') || '';
+    setProfileForm((prev) => ({
+      ...prev,
+      firstName,
+      lastName,
+      email: user?.email || '',
+    }));
+  }, [user?.name, user?.email]);
 
   useEffect(() => {
     if (activeTab === 'integrations') {
@@ -128,6 +152,45 @@ const Profile: React.FC = () => {
   };
 
   const connectedCount = integrations.filter(i => i.connected).length;
+
+  const handleProfileChange = (field: keyof typeof profileForm, value: string) => {
+    setProfileForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleProfileCancel = () => {
+    const firstName = user?.name?.split(' ')[0] || '';
+    const lastName = user?.name?.split(' ').slice(1).join(' ') || '';
+    setProfileForm((prev) => ({
+      ...prev,
+      firstName,
+      lastName,
+      email: user?.email || '',
+    }));
+    setProfileMessage(null);
+  };
+
+  const handleProfileSave = async () => {
+    try {
+      setSavingProfile(true);
+      setProfileMessage(null);
+
+      const fullName = `${profileForm.firstName} ${profileForm.lastName}`.trim();
+      const response = await authService.updateProfile({
+        name: fullName,
+        email: profileForm.email.trim().toLowerCase(),
+      });
+
+      if (response?.token) {
+        localStorage.setItem('token', response.token);
+      }
+      dispatch(setUser(response.user));
+      setProfileMessage('Profile updated successfully.');
+    } catch (err: any) {
+      setProfileMessage(err?.response?.data?.message || 'Failed to save profile changes.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -233,20 +296,35 @@ const Profile: React.FC = () => {
               <h2 className="text-xl font-bold">Personal Information</h2>
             </div>
             <div className="space-y-4">
+              {profileMessage && (
+                <div className="rounded-lg border border-input bg-background px-3 py-2 text-sm">
+                  {profileMessage}
+                </div>
+              )}
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium mb-2">
                     <User className="w-4 h-4 text-muted-foreground" />
                     First Name
                   </label>
-                  <Input type="text" placeholder="John" defaultValue={user?.name?.split(' ')[0]} />
+                  <Input
+                    type="text"
+                    placeholder="John"
+                    value={profileForm.firstName}
+                    onChange={(e) => handleProfileChange('firstName', e.target.value)}
+                  />
                 </div>
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium mb-2">
                     <User className="w-4 h-4 text-muted-foreground" />
                     Last Name
                   </label>
-                  <Input type="text" placeholder="Smith" defaultValue={user?.name?.split(' ')[1]} />
+                  <Input
+                    type="text"
+                    placeholder="Smith"
+                    value={profileForm.lastName}
+                    onChange={(e) => handleProfileChange('lastName', e.target.value)}
+                  />
                 </div>
               </div>
               <div>
@@ -254,26 +332,43 @@ const Profile: React.FC = () => {
                   <Mail className="w-4 h-4 text-muted-foreground" />
                   Email Address
                 </label>
-                <Input type="email" placeholder="john@example.com" defaultValue={user?.email} />
+                <Input
+                  type="email"
+                  placeholder="john@example.com"
+                  value={profileForm.email}
+                  onChange={(e) => handleProfileChange('email', e.target.value)}
+                />
               </div>
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium mb-2">
                   <Building className="w-4 h-4 text-muted-foreground" />
                   Company
                 </label>
-                <Input type="text" placeholder="Acme Inc." />
+                <Input
+                  type="text"
+                  placeholder="Acme Inc."
+                  value={profileForm.company}
+                  onChange={(e) => handleProfileChange('company', e.target.value)}
+                />
               </div>
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium mb-2">
                   <Briefcase className="w-4 h-4 text-muted-foreground" />
                   Job Title
                 </label>
-                <Input type="text" placeholder="Product Manager" />
+                <Input
+                  type="text"
+                  placeholder="Product Manager"
+                  value={profileForm.jobTitle}
+                  onChange={(e) => handleProfileChange('jobTitle', e.target.value)}
+                />
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <Button variant="outline">Cancel</Button>
-              <Button>Save Changes</Button>
+              <Button variant="outline" onClick={handleProfileCancel}>Cancel</Button>
+              <Button onClick={handleProfileSave} disabled={savingProfile}>
+                {savingProfile ? 'Saving...' : 'Save Changes'}
+              </Button>
             </div>
           </Card>
 

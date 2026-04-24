@@ -64,7 +64,12 @@ const Sidebar: React.FC = () => {
           </div>
         </Link>
 
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav
+          className={cn(
+            'flex-1 space-y-1 py-4',
+            isExpanded ? 'px-3' : 'flex flex-col items-center px-0'
+          )}
+        >
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             const Icon = item.icon;
@@ -73,7 +78,10 @@ const Sidebar: React.FC = () => {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors relative group',
+                  'flex items-center rounded-lg text-sm font-medium transition-colors relative group',
+                  isExpanded
+                    ? 'gap-3 px-3 py-2'
+                    : 'h-10 w-10 justify-center p-0',
                   isActive
                     ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-[#edf2e8] hover:text-[#335444]'

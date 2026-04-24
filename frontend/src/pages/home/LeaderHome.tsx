@@ -7,6 +7,17 @@ import { actionItemService } from '@/services';
 import { getTeamMembers, getTeams } from '@/services/teams.service';
 import { ActionItem } from '@/types';
 import { AlertTriangle, CalendarClock, Gauge, ShieldCheck, Users, ArrowRight } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  CartesianGrid,
+  Cell,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 interface MemberRollup {
   userId: string;
@@ -17,6 +28,13 @@ interface MemberRollup {
   overdue: number;
   urgent: number;
   nextDeadline: string | null;
+}
+
+interface MemberChartRow {
+  name: string;
+  completed: number;
+  pending: number;
+  completionRate: number;
 }
 
 const isOpenStatus = (status: ActionItem['status']) => status === 'pending' || status === 'in_progress';
@@ -132,6 +150,19 @@ const LeaderHome: React.FC = () => {
     });
   }, [actionItems, memberNameByUserId, today]);
 
+  const memberChartData = useMemo<MemberChartRow[]>(() => {
+    return rollups.map((member) => {
+      const pending = Math.max(member.total - member.completed, 0);
+
+      return {
+        name: member.name,
+        completed: member.completed,
+        pending,
+        completionRate: member.total > 0 ? Math.round((member.completed / member.total) * 100) : 0,
+      };
+    });
+  }, [rollups]);
+
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -179,6 +210,71 @@ const LeaderHome: React.FC = () => {
             <CalendarClock className="h-5 w-5 text-orange-600" />
           </div>
           <p className="mt-3 text-3xl font-bold text-slate-900">{summary.urgent}</p>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card className="p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Task Status by Team Member</h2>
+              <p className="text-sm text-slate-500">Completed versus pending tasks for each member.</p>
+            </div>
+          </div>
+          <div className="mt-5 h-[380px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={memberChartData} layout="vertical" margin={{ top: 8, right: 24, left: 16, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis type="number" allowDecimals={false} stroke="#64748b" />
+                <YAxis type="category" dataKey="name" width={140} stroke="#64748b" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.5rem',
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="completed" stackId="tasks" fill="#10b981" name="Completed" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="pending" stackId="tasks" fill="#f59e0b" name="Pending" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Completion Rate by Member</h2>
+              <p className="text-sm text-slate-500">Percentage of assigned tasks completed by each team member.</p>
+            </div>
+          </div>
+          <div className="mt-5 h-[380px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={memberChartData} layout="vertical" margin={{ top: 8, right: 24, left: 16, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} stroke="#64748b" />
+                <YAxis type="category" dataKey="name" width={140} stroke="#64748b" />
+                <Tooltip
+                  formatter={(value: number) => [`${value}%`, 'Completion Rate']}
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.5rem',
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="completionRate" fill="#335444" name="Completion Rate" radius={[0, 8, 8, 0]}>
+                  {memberChartData.map((entry, index) => (
+                    <Cell
+                      key={`completion-cell-${entry.name}-${index}`}
+                      fill={entry.completionRate >= 75 ? '#10b981' : entry.completionRate >= 50 ? '#335444' : '#f59e0b'}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </Card>
       </div>
 

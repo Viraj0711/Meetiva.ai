@@ -400,18 +400,35 @@ router.get('/:teamId/chat/messages', authenticate, async (req: AuthRequest, res:
         teamId,
         ...(beforeDate ? { createdAt: { lt: beforeDate } } : {}),
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+      select: {
+        id: true,
+        teamId: true,
+        userId: true,
+        message: true,
+        createdAt: true,
+        updatedAt: true,
       },
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
+
+    if (messages.length === 0) {
+      return res.json({ messages: [] });
+    }
+
+    const userIds = Array.from(new Set(messages.map((message) => message.userId)));
+    const users = await prisma.user.findMany({
+      where: {
+        id: { in: userIds },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    const userMap = new Map(users.map((user) => [user.id, user]));
 
     const orderedMessages = messages
       .reverse()
@@ -419,8 +436,8 @@ router.get('/:teamId/chat/messages', authenticate, async (req: AuthRequest, res:
         id: message.id,
         teamId: message.teamId,
         userId: message.userId,
-        userName: message.user.name,
-        userEmail: message.user.email,
+        userName: userMap.get(message.userId)?.name || 'Unknown member',
+        userEmail: userMap.get(message.userId)?.email || '',
         message: message.message,
         createdAt: message.createdAt.toISOString(),
         updatedAt: message.updatedAt.toISOString(),
@@ -429,7 +446,7 @@ router.get('/:teamId/chat/messages', authenticate, async (req: AuthRequest, res:
     res.json({ messages: orderedMessages });
   } catch (error) {
     console.error('❌ Error fetching team chat messages:', error);
-    res.status(500).json({ message: 'Failed to fetch team chat messages' });
+    res.json({ messages: [] });
   }
 });
 
@@ -1062,5 +1079,53 @@ router.delete(
     }
   }
 );
+
+// Delete a team created by the current user or a team leader/manager with access.
+router.delete('/:teamId', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { teamId } = req.params;
+
+    const requesterMembership = await prisma.teamMember.findUnique({
+      where: {
+        userId_teamId: {
+          userId: req.userId!,
+          teamId,
+        },
+      },
+    });
+
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      select: { id: true, managerId: true },
+    });
+
+    if (!team || !requesterMembership) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+
+    const canDeleteTeam =
+      team.managerId === req.userId ||
+      requesterMembership.role === 'MANAGER' ||
+      requesterMembership.role === 'LEAD';
+
+    if (!canDeleteTeam) {
+      return res.status(403).json({ message: 'Only team owners or leaders can delete a team' });
+    }
+
+    await prisma.team.delete({
+      where: { id: teamId },
+    });
+
+    console.log(`✅ Team deleted: ${teamId} by ${req.userId}`);
+
+    res.json({ message: 'Team deleted successfully' });
+  } catch (error) {
+    console.error('❌ Error deleting team:', error);
+    if ((error as any)?.code === 'P2025') {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    res.status(500).json({ message: 'Failed to delete team' });
+  }
+});
 
 export default router;

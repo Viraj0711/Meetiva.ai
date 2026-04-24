@@ -125,7 +125,7 @@ const Workspace: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="rounded-2xl bg-gradient-to-r text-emerald-800 to-lime-700 p-6 text-white shadow-lg">
-        <h1 className="text-3xl font-bold tracking-tight">Team Workspace</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Team Workspace</h1>
         <p className="mt-2 text-emerald-800">
           Shared execution center for project momentum, deadlines, and calendar coordination.
         </p>

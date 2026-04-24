@@ -6,6 +6,7 @@ import {
   setCurrentTeam,
   setTeamMembers,
   addTeam,
+  removeTeam,
   removeTeamMember,
   setLoading,
   setError,
@@ -16,15 +17,13 @@ import {
   getTeams,
   getTeam,
   getTeamMembers,
-  getTeamChatMessages,
   inviteTeamMember,
-  postTeamChatMessage,
+  deleteTeam as apiDeleteTeam,
   updateTeamMemberProfile,
   resetTeamMemberCredentials,
   updateTeamMember as apiUpdateTeamMember,
   removeTeamMember as apiRemoveTeamMember,
 } from '@/services/teams.service';
-import type { TeamChatMessage } from '@/services/teams.service';
 import { Team, ApiError } from '@/types';
 import './TeamsAdmin.css';
 
@@ -37,15 +36,30 @@ interface InviteMemberForm {
   email: string;
 }
 
+interface EditMemberForm {
+  memberId: string;
+  name: string;
+  email: string;
+}
+
+interface IssuedCredentials {
+  email: string;
+  temporaryPassword: string;
+  memberName: string;
+  issuedAt: string;
+}
+
 export const TeamsAdmin: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { teams, currentTeam, teamMembers, isLoading, error } = useSelector(
     (state: RootState) => state.teams
   );
+  const [fetchedTeams, setFetchedTeams] = useState<Team[]>([]);
 
   const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
   const [showInviteMemberModal, setShowInviteMemberModal] = useState(false);
+  const [showEditMemberModal, setShowEditMemberModal] = useState(false);
   const [createTeamForm, setCreateTeamForm] = useState<CreateTeamForm>({
     name: '',
     description: '',
@@ -55,16 +69,20 @@ export const TeamsAdmin: React.FC = () => {
   });
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [newMemberRole, setNewMemberRole] = useState<'LEAD' | 'MEMBER'>('MEMBER');
-  const [chatMessages, setChatMessages] = useState<TeamChatMessage[]>([]);
-  const [chatMessageInput, setChatMessageInput] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const [chatSending, setChatSending] = useState(false);
+  const [editMemberForm, setEditMemberForm] = useState<EditMemberForm>({
+    memberId: '',
+    name: '',
+    email: '',
+  });
+  const [issuedCredentials, setIssuedCredentials] = useState<IssuedCredentials | null>(null);
 
   const loadTeams = React.useCallback(async () => {
     try {
       dispatch(setLoading(true));
       const response = await getTeams();
-      dispatch(setTeams(response?.teams ?? []));
+      const nextTeams = response?.teams ?? [];
+      setFetchedTeams(nextTeams);
+      dispatch(setTeams(nextTeams));
     } catch (err) {
       const message = (err as ApiError).message || 'Failed to load teams';
       dispatch(setError(message));
@@ -86,14 +104,21 @@ export const TeamsAdmin: React.FC = () => {
   const loadTeamMembers = React.useCallback(async (teamId: string) => {
     try {
       dispatch(setLoading(true));
-      const [teamData, membersData, chatData] = await Promise.all([
+      const [teamResult, membersResult] = await Promise.allSettled([
         getTeam(teamId),
         getTeamMembers(teamId),
-        getTeamChatMessages(teamId, { limit: 100 }),
       ]);
-      dispatch(setCurrentTeam(teamData));
-      dispatch(setTeamMembers(membersData?.members ?? []));
-      setChatMessages(chatData?.messages ?? []);
+
+      if (teamResult.status === 'rejected') {
+        throw teamResult.reason;
+      }
+
+      if (membersResult.status === 'rejected') {
+        throw membersResult.reason;
+      }
+
+      dispatch(setCurrentTeam(teamResult.value));
+      dispatch(setTeamMembers(membersResult.value?.members ?? []));
     } catch (err) {
       const message = (err as ApiError).message || 'Failed to load team details';
       dispatch(setError(message));
@@ -102,66 +127,38 @@ export const TeamsAdmin: React.FC = () => {
         message,
         duration: 3000,
       }));
-      setChatMessages([]);
     } finally {
       dispatch(setLoading(false));
     }
   }, [dispatch]);
 
-  const refreshChatMessages = React.useCallback(async () => {
+  const handleDeleteTeam = async () => {
     if (!currentTeam) return;
 
-    try {
-      setChatLoading(true);
-      const chatData = await getTeamChatMessages(currentTeam.id, { limit: 100 });
-      setChatMessages(chatData?.messages ?? []);
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to load team chat';
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      setChatLoading(false);
-    }
-  }, [currentTeam, dispatch]);
-
-  useEffect(() => {
-    if (!currentTeam) {
+    if (!window.confirm(`Delete team "${currentTeam.name}"? This cannot be undone.`)) {
       return;
     }
 
-    const intervalId = window.setInterval(() => {
-      refreshChatMessages();
-    }, 15000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [currentTeam, refreshChatMessages]);
-
-  const handleSendChatMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!currentTeam || !chatMessageInput.trim()) return;
-
     try {
-      setChatSending(true);
-      const response = await postTeamChatMessage(currentTeam.id, chatMessageInput.trim());
-      if (response?.message) {
-        setChatMessages((prev) => [...prev, response.message]);
-      }
-      setChatMessageInput('');
+      dispatch(setLoading(true));
+      await apiDeleteTeam(currentTeam.id);
+      dispatch(removeTeam(currentTeam.id));
+      setFetchedTeams((prev) => prev.filter((team) => team.id !== currentTeam.id));
+      dispatch(addToast({
+        type: 'success',
+        message: 'Team deleted successfully',
+        duration: 3000,
+      }));
     } catch (err) {
-      const message = (err as ApiError).message || 'Failed to send follow-up message';
+      const message = (err as ApiError).message || 'Failed to delete team';
+      dispatch(setError(message));
       dispatch(addToast({
         type: 'error',
         message,
         duration: 3000,
       }));
     } finally {
-      setChatSending(false);
+      dispatch(setLoading(false));
     }
   };
 
@@ -209,6 +206,7 @@ export const TeamsAdmin: React.FC = () => {
       };
       
       dispatch(addTeam(newTeam));
+      setFetchedTeams((prev) => [...prev, newTeam]);
       dispatch(addToast({
         type: 'success',
         message: `Team "${createTeamForm.name}" created successfully!`,
@@ -265,6 +263,13 @@ export const TeamsAdmin: React.FC = () => {
       await loadTeamMembers(currentTeam.id);
 
       if (response.temporaryCredentials) {
+        const memberName = response.member?.email || inviteMemberForm.email;
+        setIssuedCredentials({
+          email: response.temporaryCredentials.email,
+          temporaryPassword: response.temporaryCredentials.temporaryPassword,
+          memberName,
+          issuedAt: new Date().toISOString(),
+        });
         dispatch(addToast({
           type: 'success',
           message: `New credentials: ${response.temporaryCredentials.email} / ${response.temporaryCredentials.temporaryPassword}`,
@@ -355,26 +360,31 @@ export const TeamsAdmin: React.FC = () => {
     }
   };
 
-  const handleEditMember = async (memberId: string, currentName: string, currentEmail: string) => {
+  const handleOpenEditMember = (memberId: string, currentName: string, currentEmail: string) => {
+    setEditMemberForm({
+      memberId,
+      name: currentName,
+      email: currentEmail,
+    });
+    setShowEditMemberModal(true);
+  };
+
+  const handleEditMember = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!currentTeam) return;
 
-    const nextName = window.prompt('Update member name', currentName)?.trim();
-    if (!nextName) {
-      return;
-    }
-
-    const nextEmail = window.prompt('Update member email', currentEmail)?.trim();
-    if (!nextEmail) {
+    if (!editMemberForm.memberId || !editMemberForm.name.trim() || !editMemberForm.email.trim()) {
       return;
     }
 
     try {
       dispatch(setLoading(true));
-      await updateTeamMemberProfile(currentTeam.id, memberId, {
-        name: nextName,
-        email: nextEmail,
+      await updateTeamMemberProfile(currentTeam.id, editMemberForm.memberId, {
+        name: editMemberForm.name.trim(),
+        email: editMemberForm.email.trim(),
       });
       await loadTeamMembers(currentTeam.id);
+      setShowEditMemberModal(false);
       dispatch(addToast({
         type: 'success',
         message: 'Member profile updated',
@@ -403,6 +413,13 @@ export const TeamsAdmin: React.FC = () => {
     try {
       dispatch(setLoading(true));
       const response = await resetTeamMemberCredentials(currentTeam.id, memberId);
+      const member = teamMembers.find((item) => item.userId === memberId);
+      setIssuedCredentials({
+        email: response.credentials.email,
+        temporaryPassword: response.credentials.temporaryPassword,
+        memberName: member?.name || response.credentials.email,
+        issuedAt: new Date().toISOString(),
+      });
       dispatch(addToast({
         type: 'success',
         message: `Credentials reset: ${response.credentials.email} / ${response.credentials.temporaryPassword}`,
@@ -421,10 +438,34 @@ export const TeamsAdmin: React.FC = () => {
     }
   };
 
-  const canCreateTeam = (user?.teams?.length ?? 0) === 0 || user?.teams?.some((team) => team.role === 'LEAD' || team.role === 'MANAGER');
-  const canManageTeam = currentTeam?.role === 'MANAGER' || currentTeam?.role === 'LEAD';
-  const canInviteMembers = currentTeam?.role === 'LEAD';
-  const canChangeRoles = currentTeam?.role === 'MANAGER';
+  const copyIssuedCredentials = async () => {
+    if (!issuedCredentials) return;
+
+    const text = `Email: ${issuedCredentials.email}\nTemporary Password: ${issuedCredentials.temporaryPassword}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      dispatch(addToast({
+        type: 'success',
+        message: 'Credentials copied to clipboard',
+        duration: 2500,
+      }));
+    } catch {
+      dispatch(addToast({
+        type: 'error',
+        message: 'Could not copy credentials. Please copy manually.',
+        duration: 2500,
+      }));
+    }
+  };
+
+  const visibleTeams = fetchedTeams.length > 0 ? fetchedTeams : teams;
+  const currentTeamRole = currentTeam?.role;
+  const canCreateTeam =
+    visibleTeams.length === 0 ||
+    visibleTeams.some((team) => team.role === 'LEAD' || team.role === 'MANAGER');
+  const canManageTeam = currentTeamRole === 'MANAGER' || currentTeamRole === 'LEAD';
+  const canInviteMembers = currentTeamRole === 'LEAD';
+  const canChangeRoles = currentTeamRole === 'MANAGER';
 
   return (
     <div className="teams-admin">
@@ -463,7 +504,7 @@ export const TeamsAdmin: React.FC = () => {
       <div className="teams-container">
         <div className="teams-list">
           <h2>Your Teams</h2>
-          {teams.length === 0 ? (
+          {visibleTeams.length === 0 ? (
             <div className="empty-state">
               {canCreateTeam ? (
                 <>
@@ -485,7 +526,7 @@ export const TeamsAdmin: React.FC = () => {
             </div>
           ) : (
             <div className="teams-grid">
-              {teams.map((team) => (
+              {visibleTeams.map((team) => (
                 <div
                   key={team.id}
                   className={`team-card ${
@@ -520,17 +561,59 @@ export const TeamsAdmin: React.FC = () => {
                   <p className="team-description">{currentTeam.description}</p>
                 )}
               </div>
-              {canInviteMembers && (
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowInviteMemberModal(true)}
-                >
-                  + Add Member Account
-                </button>
-              )}
+              <div className="team-details-actions">
+                {canInviteMembers && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setShowInviteMemberModal(true)}
+                  >
+                    + Add Member Account
+                  </button>
+                )}
+                {(currentTeamRole === 'LEAD' || currentTeamRole === 'MANAGER') && (
+                  <button
+                    className="btn btn-danger"
+                    onClick={handleDeleteTeam}
+                  >
+                    Delete Team
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="team-members">
+              {issuedCredentials && (
+                <div className="credentials-card" role="status">
+                  <div className="credentials-card-header">
+                    <h4>Latest Issued Member Credentials</h4>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setIssuedCredentials(null)}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                  <p className="credentials-card-meta">
+                    For {issuedCredentials.memberName} • {new Date(issuedCredentials.issuedAt).toLocaleString()}
+                  </p>
+                  <div className="credentials-values">
+                    <p>
+                      <span className="credential-label">Email</span>
+                      <span className="credential-value">{issuedCredentials.email}</span>
+                    </p>
+                    <p>
+                      <span className="credential-label">Temporary Password</span>
+                      <span className="credential-value credential-secret">{issuedCredentials.temporaryPassword}</span>
+                    </p>
+                  </div>
+                  <p className="credentials-card-note">Store this securely. The temporary password is shown only when issued or reset.</p>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={copyIssuedCredentials}>
+                    Copy Credentials
+                  </button>
+                </div>
+              )}
+
               <h3>Team Members ({teamMembers.length})</h3>
               {teamMembers.length === 0 ? (
                 <div className="empty-state">
@@ -574,7 +657,7 @@ export const TeamsAdmin: React.FC = () => {
                         <div className="col-actions">
                           <button
                             className="btn btn-secondary btn-sm"
-                            onClick={() => handleEditMember(member.userId, member.name, member.email)}
+                            onClick={() => handleOpenEditMember(member.userId, member.name, member.email)}
                           >
                             Edit
                           </button>
@@ -596,6 +679,58 @@ export const TeamsAdmin: React.FC = () => {
                       )}
                     </div>
                   ))}
+
+                  {/* Edit Member Modal */}
+                  {showEditMemberModal && (
+                    <div className="modal-overlay" onClick={() => setShowEditMemberModal(false)}>
+                      <div className="modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                          <h2>Edit Member Details</h2>
+                          <button
+                            className="modal-close"
+                            onClick={() => setShowEditMemberModal(false)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <form onSubmit={handleEditMember}>
+                          <div className="form-group">
+                            <label htmlFor="edit-member-name">Name *</label>
+                            <input
+                              id="edit-member-name"
+                              type="text"
+                              className="form-input"
+                              value={editMemberForm.name}
+                              onChange={(e) => setEditMemberForm((prev) => ({ ...prev, name: e.target.value }))}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="edit-member-email">Email *</label>
+                            <input
+                              id="edit-member-email"
+                              type="email"
+                              className="form-input"
+                              value={editMemberForm.email}
+                              onChange={(e) => setEditMemberForm((prev) => ({ ...prev, email: e.target.value }))}
+                            />
+                          </div>
+                          <div className="modal-actions">
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => setShowEditMemberModal(false)}
+                            >
+                              Cancel
+                            </button>
+                            <button type="submit" className="btn btn-primary" disabled={isLoading}>
+                              {isLoading ? 'Saving...' : 'Save Changes'}
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               )}
             </div>
@@ -603,48 +738,10 @@ export const TeamsAdmin: React.FC = () => {
             <div className="team-chat">
               <div className="team-chat-header">
                 <h3>Project Follow-up Chat</h3>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={refreshChatMessages}
-                  disabled={chatLoading}
-                >
-                  {chatLoading ? 'Refreshing...' : 'Refresh'}
-                </button>
               </div>
-
-              <div className="team-chat-messages">
-                {chatMessages.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No follow-up messages yet. Start the conversation.</p>
-                  </div>
-                ) : (
-                  chatMessages.map((message) => (
-                    <div key={message.id} className="team-chat-message">
-                      <div className="team-chat-message-header">
-                        <span className="team-chat-author">{message.userName || message.userEmail}</span>
-                        <span className="team-chat-time">{formatMessageTime(message.createdAt)}</span>
-                      </div>
-                      <p className="team-chat-text">{message.message}</p>
-                    </div>
-                  ))
-                )}
+              <div className="empty-state">
+                <p>Follow-up chat is temporarily unavailable. You can still manage members and delete this team here.</p>
               </div>
-
-              <form className="team-chat-form" onSubmit={handleSendChatMessage}>
-                <textarea
-                  className="form-textarea"
-                  rows={3}
-                  placeholder="Add a follow-up update, blocker, or next step for this team..."
-                  value={chatMessageInput}
-                  onChange={(e) => setChatMessageInput(e.target.value)}
-                />
-                <div className="team-chat-actions">
-                  <button type="submit" className="btn btn-primary" disabled={chatSending || !chatMessageInput.trim()}>
-                    {chatSending ? 'Sending...' : 'Send Follow-up'}
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         )}

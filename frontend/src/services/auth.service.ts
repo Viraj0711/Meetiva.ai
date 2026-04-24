@@ -66,6 +66,17 @@ export const authService = {
   },
 
   /**
+   * Update current user profile
+   */
+  updateProfile: async (data: { name?: string; email?: string }): Promise<AuthResponse> => {
+    const token = localStorage.getItem('token');
+    const response = await axios.patch<AuthResponse>(`${API_BASE_URL}/auth/me`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  },
+
+  /**
    * Refresh access token
    */
   refreshToken: async (): Promise<{ token: string }> => {

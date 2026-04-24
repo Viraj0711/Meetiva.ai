@@ -10,6 +10,7 @@ const crypto_1 = __importDefault(require("crypto"));
 const express_validator_1 = require("express-validator");
 const prisma_1 = __importDefault(require("../lib/prisma"));
 const googleCalendar_1 = require("../services/googleCalendar");
+const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
 const OAUTH_STATE_COOKIE = 'google_oauth_state';
 const OAUTH_UID_COOKIE = 'google_oauth_uid';
@@ -131,6 +132,69 @@ router.post('/login', [
     catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ message: 'Login failed' });
+    }
+});
+// Get current authenticated user
+router.get('/me', auth_1.authenticate, async (req, res) => {
+    try {
+        const user = await prisma_1.default.user.findUnique({ where: { id: req.userId } });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        return res.json({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+        });
+    }
+    catch (error) {
+        console.error('❌ Failed to fetch profile:', error);
+        return res.status(500).json({ message: 'Failed to fetch profile' });
+    }
+});
+// Update current authenticated user profile
+router.patch('/me', auth_1.authenticate, [(0, express_validator_1.body)('name').optional().trim().isLength({ min: 2, max: 80 }),
+    (0, express_validator_1.body)('email').optional().isEmail()], async (req, res) => {
+    try {
+        const errors = (0, express_validator_1.validationResult)(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
+        }
+        const { name, email } = req.body;
+        const data = {};
+        if (typeof name === 'string' && name.trim()) {
+            data.name = name.trim();
+        }
+        if (typeof email === 'string' && email.trim()) {
+            data.email = email.trim().toLowerCase();
+        }
+        if (Object.keys(data).length === 0) {
+            return res.status(400).json({ message: 'No profile changes provided' });
+        }
+        const updated = await prisma_1.default.user.update({
+            where: { id: req.userId },
+            data,
+        });
+        const token = await createToken(updated.id, updated.email);
+        return res.json({
+            token,
+            user: {
+                id: updated.id,
+                email: updated.email,
+                name: updated.name,
+                createdAt: updated.createdAt.toISOString(),
+                updatedAt: updated.updatedAt.toISOString(),
+            },
+        });
+    }
+    catch (error) {
+        console.error('❌ Failed to update profile:', error);
+        if (error?.code === 'P2002') {
+            return res.status(409).json({ message: 'Email is already in use' });
+        }
+        return res.status(500).json({ message: 'Failed to update profile' });
     }
 });
 router.get('/google', async (req, res) => {
