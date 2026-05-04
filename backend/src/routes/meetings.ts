@@ -11,6 +11,7 @@ import {
   isAudioOrVideoFile,
   WHISPER_MAX_BYTES,
 } from '../services/whisperTranscriber';
+import { syncMeetingStatusFromActionItems } from '../services/meetingStatus';
 
 const router = Router();
 
@@ -603,7 +604,11 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       }
     });
 
-    res.json(updated);
+    await syncMeetingStatusFromActionItems(req.params.id);
+
+    const refreshed = await prisma.meeting.findUnique({ where: { id: req.params.id } });
+
+    res.json(refreshed ?? updated);
   } catch (error) {
     console.error('Error updating meeting:', error);
     res.status(500).json({ message: 'Failed to update meeting' });

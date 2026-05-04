@@ -13,7 +13,7 @@
     "test:e2e": "tsx tests/e2e-team-rbac.test.ts"
   },
   "dependencies": {
-    "@prisma/client": "6.19.1",
+    "@prisma/client": "6.19.3",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
@@ -23,11 +23,14 @@
     "express-rate-limit": "^8.3.1",
     "express-validator": "^7.2.1",
     "form-data": "^4.0.5",
-    "googleapis": "^144.0.0",
+    "googleapis": "^171.4.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
-    "node-fetch": "^3.3.2",
     "xlsx": "^0.18.5"
+  },
+  "overrides": {
+    "path-to-regexp": "0.1.13",
+    "lodash": "^4.17.24"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.8",
@@ -36,8 +39,7 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^2.1.0",
     "@types/node": "^22.10.5",
-    "@types/node-fetch": "^2.6.13",
-    "prisma": "6.19.1",
+    "prisma": "6.19.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }

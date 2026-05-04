@@ -18,7 +18,6 @@ const notifications_1 = __importDefault(require("./routes/notifications"));
 const workspace_1 = __importDefault(require("./routes/workspace"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const env_1 = require("./lib/env");
-const deadlineNotifier_1 = require("./jobs/deadlineNotifier");
 dotenv_1.default.config();
 (0, env_1.validateBackendEnv)();
 const app = (0, express_1.default)();
@@ -81,13 +80,6 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Internal server error' });
 });
 app.listen(PORT, '0.0.0.0', async () => {
-    try {
-        await (0, deadlineNotifier_1.startDeadlineNotifier)();
-    }
-    catch (error) {
-        console.error('⚠️ Failed to start deadline notifier:', error);
-        // Continue serving requests even if notifier fails
-    }
     console.log(`✅ Server running on http://localhost:${PORT}`);
     console.log(`🌐 Network access: http://0.0.0.0:${PORT}`);
     console.log(`🏥 Health check: http://localhost:${PORT}/health`);

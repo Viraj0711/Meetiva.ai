@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { canViewUserData } from '../middleware/authorize';
 import prisma from '../lib/prisma';
+import { syncMeetingStatusFromActionItems } from '../services/meetingStatus';
 
 const router = Router();
 
@@ -160,6 +161,8 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
       }
     });
 
+    await syncMeetingStatusFromActionItems(meetingId);
+
     res.status(201).json(actionItem);
   } catch (error) {
     console.error('Error creating action item:', error);
@@ -213,6 +216,8 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       data: updateData
     });
 
+    await syncMeetingStatusFromActionItems(actionItem.meetingId);
+
     res.json(updated);
   } catch (error) {
     console.error('Error updating action item:', error);
@@ -242,6 +247,8 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       where: { id: req.params.id }
     });
 
+    await syncMeetingStatusFromActionItems(actionItem.meetingId);
+
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting action item:', error);
@@ -269,6 +276,8 @@ router.post('/:id/complete', authenticate, async (req: AuthRequest, res: Respons
         completedAt: new Date()
       }
     });
+
+    await syncMeetingStatusFromActionItems(actionItem.meetingId);
 
     res.json(updated);
   } catch (error) {

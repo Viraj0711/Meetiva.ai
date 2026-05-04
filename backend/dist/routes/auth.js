@@ -155,8 +155,10 @@ router.get('/me', auth_1.authenticate, async (req, res) => {
     }
 });
 // Update current authenticated user profile
-router.patch('/me', auth_1.authenticate, [(0, express_validator_1.body)('name').optional().trim().isLength({ min: 2, max: 80 }),
-    (0, express_validator_1.body)('email').optional().isEmail()], async (req, res) => {
+router.patch('/me', auth_1.authenticate, [
+    (0, express_validator_1.body)('name').optional().trim().isLength({ min: 2, max: 80 }),
+    (0, express_validator_1.body)('email').optional().isEmail(),
+], async (req, res) => {
     try {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {

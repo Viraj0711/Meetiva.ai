@@ -7,6 +7,7 @@ const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const authorize_1 = require("../middleware/authorize");
 const prisma_1 = __importDefault(require("../lib/prisma"));
+const meetingStatus_1 = require("../services/meetingStatus");
 const router = (0, express_1.Router)();
 // Helper to get the appropriate where clause based on user's role
 const getActionItemsWhereClause = async (req) => {
@@ -141,6 +142,7 @@ router.post('/', auth_1.authenticate, async (req, res) => {
                 userId: req.userId
             }
         });
+        await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(meetingId);
         res.status(201).json(actionItem);
     }
     catch (error) {
@@ -189,6 +191,7 @@ router.patch('/:id', auth_1.authenticate, async (req, res) => {
             where: { id: req.params.id },
             data: updateData
         });
+        await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId);
         res.json(updated);
     }
     catch (error) {
@@ -214,6 +217,7 @@ router.delete('/:id', auth_1.authenticate, async (req, res) => {
         await prisma_1.default.actionItem.delete({
             where: { id: req.params.id }
         });
+        await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId);
         res.status(204).send();
     }
     catch (error) {
@@ -239,6 +243,7 @@ router.post('/:id/complete', auth_1.authenticate, async (req, res) => {
                 completedAt: new Date()
             }
         });
+        await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId);
         res.json(updated);
     }
     catch (error) {

@@ -44,6 +44,7 @@ const authorize_1 = require("../middleware/authorize");
 const prisma_1 = __importDefault(require("../lib/prisma"));
 const grokMeetingAnalyzer_1 = require("../services/grokMeetingAnalyzer");
 const whisperTranscriber_1 = require("../services/whisperTranscriber");
+const meetingStatus_1 = require("../services/meetingStatus");
 const router = (0, express_1.Router)();
 // Multer: keep limit at Whisper's hard cap (25 MB).
 const upload = (0, multer_1.default)({
@@ -56,6 +57,10 @@ const jsonArrayToStringArray = (value) => {
     }
     return value.filter((entry) => typeof entry === 'string');
 };
+const normalizeTranscriptForComparison = (text) => text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .trim();
 // Helper to get the appropriate where clause based on user's role
 const getMeetingsWhereClause = async (req) => {
     try {
@@ -156,12 +161,7 @@ router.get('/', auth_1.authenticate, async (req, res) => {
                 where,
                 skip,
                 take: limitNumber,
-                orderBy: { createdAt: 'desc' },
-                include: {
-                    _count: {
-                        select: { actionItems: true }
-                    }
-                }
+                orderBy: { createdAt: 'desc' }
             }),
             prisma_1.default.meeting.count({ where })
         ]);
@@ -182,9 +182,8 @@ router.get('/', auth_1.authenticate, async (req, res) => {
 });
 router.get('/:id', auth_1.authenticate, async (req, res) => {
     try {
-        const meeting = await prisma_1.default.meeting.findFirst({
-            where: { id: req.params.id },
-            include: { actionItems: true }
+        const meeting = await prisma_1.default.meeting.findUnique({
+            where: { id: req.params.id }
         });
         if (!meeting) {
             return res.status(404).json({ message: 'Meeting not found' });
@@ -252,6 +251,44 @@ router.post('/upload', auth_1.authenticate, upload.single('file'), async (req, r
                     'or include transcriptText in the form body.',
             });
         }
+        // Prevent duplicate meetings for the same user by normalized transcript content.
+        const normalizedIncomingTranscript = normalizeTranscriptForComparison(transcriptText);
+        const existingMeetings = await prisma_1.default.meeting.findMany({
+            where: {
+                userId: req.userId,
+                transcript: { isNot: null },
+            },
+            select: {
+                id: true,
+                title: true,
+                status: true,
+                createdAt: true,
+                transcript: {
+                    select: {
+                        fullText: true,
+                    },
+                },
+            },
+        });
+        const duplicateMeeting = existingMeetings.find((candidate) => {
+            const existingText = candidate.transcript?.fullText;
+            if (!existingText) {
+                return false;
+            }
+            return normalizeTranscriptForComparison(existingText) === normalizedIncomingTranscript;
+        });
+        if (duplicateMeeting) {
+            return res.status(409).json({
+                message: 'This meeting already exists in your workspace.',
+                code: 'MEETING_DUPLICATE',
+                existingMeeting: {
+                    id: duplicateMeeting.id,
+                    title: duplicateMeeting.title,
+                    status: duplicateMeeting.status,
+                    createdAt: duplicateMeeting.createdAt,
+                },
+            });
+        }
         // ── Step 2: persist meeting record ───────────────────────────────────────
         const createdMeeting = await prisma_1.default.meeting.create({
             data: {
@@ -295,9 +332,11 @@ router.post('/upload', auth_1.authenticate, upload.single('file'), async (req, r
                     })),
                 });
             }
+            // Keep meeting as 'processing' instead of immediately marking complete
+            // This allows users to see processing state before it's ready for review
             await tx.meeting.update({
                 where: { id: createdMeeting.id },
-                data: { status: 'completed', processingProgress: 100, completedAt: new Date() },
+                data: { processingProgress: 100 },
             });
         });
         const meeting = await prisma_1.default.meeting.findUnique({ where: { id: createdMeeting.id } });
@@ -332,9 +371,9 @@ router.post('/upload', auth_1.authenticate, upload.single('file'), async (req, r
 });
 router.get('/:id/summary', auth_1.authenticate, async (req, res) => {
     try {
-        const meeting = await prisma_1.default.meeting.findFirst({
+        const meeting = await prisma_1.default.meeting.findUnique({
             where: { id: req.params.id },
-            include: { summary: true }
+            select: { id: true, userId: true }
         });
         if (!meeting) {
             return res.status(404).json({ message: 'Meeting not found' });
@@ -343,18 +382,21 @@ router.get('/:id/summary', auth_1.authenticate, async (req, res) => {
         if (!(0, authorize_1.canViewUserData)(req.userId, meeting.userId, req.userTeams || [])) {
             return res.status(403).json({ message: 'You do not have permission to view this meeting' });
         }
-        if (!meeting.summary) {
+        const summary = await prisma_1.default.meetingSummary.findUnique({
+            where: { meetingId: meeting.id }
+        });
+        if (!summary) {
             return res.status(404).json({ message: 'Summary not found for this meeting yet' });
         }
         res.json({
-            id: meeting.summary.id,
-            meetingId: meeting.summary.meetingId,
-            executiveSummary: meeting.summary.executiveSummary,
-            keyPoints: jsonArrayToStringArray(meeting.summary.keyPoints),
-            decisions: jsonArrayToStringArray(meeting.summary.decisions),
-            openQuestions: jsonArrayToStringArray(meeting.summary.openQuestions),
-            sentiment: meeting.summary.sentiment,
-            createdAt: meeting.summary.createdAt
+            id: summary.id,
+            meetingId: summary.meetingId,
+            executiveSummary: summary.executiveSummary,
+            keyPoints: jsonArrayToStringArray(summary.keyPoints),
+            decisions: jsonArrayToStringArray(summary.decisions),
+            openQuestions: jsonArrayToStringArray(summary.openQuestions),
+            sentiment: summary.sentiment,
+            createdAt: summary.createdAt
         });
     }
     catch (error) {
@@ -364,9 +406,9 @@ router.get('/:id/summary', auth_1.authenticate, async (req, res) => {
 });
 router.get('/:id/transcript', auth_1.authenticate, async (req, res) => {
     try {
-        const meeting = await prisma_1.default.meeting.findFirst({
+        const meeting = await prisma_1.default.meeting.findUnique({
             where: { id: req.params.id },
-            include: { transcript: true }
+            select: { id: true, userId: true }
         });
         if (!meeting) {
             return res.status(404).json({ message: 'Meeting not found' });
@@ -375,16 +417,19 @@ router.get('/:id/transcript', auth_1.authenticate, async (req, res) => {
         if (!(0, authorize_1.canViewUserData)(req.userId, meeting.userId, req.userTeams || [])) {
             return res.status(403).json({ message: 'You do not have permission to view this meeting' });
         }
-        if (!meeting.transcript) {
+        const transcript = await prisma_1.default.transcript.findUnique({
+            where: { meetingId: meeting.id }
+        });
+        if (!transcript) {
             return res.status(404).json({ message: 'Transcript not found for this meeting yet' });
         }
         res.json({
-            id: meeting.transcript.id,
-            meetingId: meeting.transcript.meetingId,
+            id: transcript.id,
+            meetingId: transcript.meetingId,
             segments: [],
-            fullText: meeting.transcript.fullText,
-            language: meeting.transcript.language,
-            createdAt: meeting.transcript.createdAt
+            fullText: transcript.fullText,
+            language: transcript.language,
+            createdAt: transcript.createdAt
         });
     }
     catch (error) {
@@ -503,7 +548,9 @@ router.patch('/:id', auth_1.authenticate, async (req, res) => {
                 ...(status ? { status } : {})
             }
         });
-        res.json(updated);
+        await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(req.params.id);
+        const refreshed = await prisma_1.default.meeting.findUnique({ where: { id: req.params.id } });
+        res.json(refreshed ?? updated);
     }
     catch (error) {
         console.error('Error updating meeting:', error);
