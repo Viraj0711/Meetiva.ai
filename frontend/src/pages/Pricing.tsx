@@ -1,194 +1,129 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Check, ArrowRight } from 'lucide-react';
-import GradientOrbs from '@/components/GradientOrbs';
+import { Card } from '@/components/ui/Card';
+
+const plans = [
+  {
+    name: 'Starter',
+    price: '$29',
+    note: 'per seat / month',
+    description: 'For focused teams that want premium meeting intelligence without complexity.',
+    features: ['Unlimited summaries', 'Task extraction', 'Calendar sync', 'Team workspace'],
+    highlighted: false,
+  },
+  {
+    name: 'Growth',
+    price: '$59',
+    note: 'per seat / month',
+    description: 'For teams that need structure, momentum, and clear accountability.',
+    features: ['Everything in Starter', 'Advanced analytics', 'Role-based access', 'Priority support'],
+    highlighted: true,
+  },
+  {
+    name: 'Enterprise',
+    price: 'Custom',
+    note: 'tailored',
+    description: 'For organizations with security, onboarding, and scale requirements.',
+    features: ['SSO / SAML', 'Dedicated support', 'Custom onboarding', 'Policy controls'],
+    highlighted: false,
+  },
+];
 
 const PricingPage: React.FC = () => {
-  const plans = [
-    {
-      name: 'Starter',
-      price: '29',
-      description: 'Perfect for small teams getting started',
-      features: [
-        'Up to 10 meetings/month',
-        'AI transcription & summarization',
-        'Action item extraction',
-        'Basic integrations',
-        '5 GB storage',
-        'Email support',
-      ],
-      cta: 'Start Free Trial',
-      highlighted: false,
-    },
-    {
-      name: 'Professional',
-      price: '99',
-      description: 'For growing teams that need more',
-      features: [
-        'Unlimited meetings',
-        'Advanced AI features',
-        'Priority & sentiment analysis',
-        'All integrations',
-        '50 GB storage',
-        'Priority support',
-        'Custom workflows',
-        'Analytics dashboard',
-      ],
-      cta: 'Start Free Trial',
-      highlighted: true,
-    },
-    {
-      name: 'Enterprise',
-      price: 'Custom',
-      description: 'For large organizations with specific needs',
-      features: [
-        'Everything in Professional',
-        'Unlimited storage',
-        'SSO & SAML',
-        'Dedicated account manager',
-        'Custom integrations',
-        '99.9% SLA',
-        'Advanced security',
-        'On-premise deployment option',
-      ],
-      cta: 'Contact Sales',
-      highlighted: false,
-    },
-  ];
-
   return (
-    <div className="relative min-h-screen bg-gradient-to-br text-emerald-800 via-white text-emerald-800 overflow-hidden">
-      <GradientOrbs />
+    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.16),transparent_26%)]" />
+      <div className="absolute inset-0 fine-grid opacity-35" />
 
-      {/* Navbar */}
-      <nav className="relative z-10 container mx-auto px-6 py-4">
-        <div className="flex justify-between items-center backdrop-blur-sm bg-white/70 rounded-2xl px-6 py-4 shadow-lg border border-white/20">
-          <Link to="/" className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">M</span>
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-slate-950/60 backdrop-blur-2xl">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
+          <Link to="/" className="group flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(124,92,255,0.35)]">
+              <span className="text-sm font-bold text-white">M</span>
             </div>
-            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Meetiva.ai
-            </span>
+            <div>
+              <p className="text-sm uppercase tracking-[0.28em] text-white/45">Meetiva.ai</p>
+              <p className="text-sm font-medium text-white">Pricing</p>
+            </div>
           </Link>
-          <div className="flex items-center space-x-4">
-            <Link to="/login">
-              <Button variant="ghost">Login</Button>
-            </Link>
-            <Link to="/register">
-              <Button>Get Started</Button>
-            </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/login"><Button variant="ghost">Login</Button></Link>
+            <Link to="/register"><Button>Start free trial</Button></Link>
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* Hero Section */}
-      <section className="relative z-10 container mx-auto px-6 py-20 text-center">
-        <h1 className="text-6xl font-bold text-gray-900 mb-6">
-          Simple, Transparent <span className="bg-gradient-primary bg-clip-text text-transparent">Pricing</span>
-        </h1>
-        <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          Choose the perfect plan for your team. All plans include a 14-day free trial.
-        </p>
-      </section>
+      <main className="relative z-10 mx-auto max-w-7xl px-6 py-16 lg:py-20">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="max-w-3xl space-y-5">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80 backdrop-blur-xl">
+            <Sparkles className="h-3.5 w-3.5" />
+            Transparent pricing
+          </div>
+          <h1 className="font-display text-5xl font-bold tracking-tight text-white md:text-6xl">Plans built for premium meeting momentum.</h1>
+          <p className="max-w-2xl text-lg leading-8 text-white/60">Choose the tier that fits your team. Every plan keeps the same cinematic interface and AI-powered workflow.</p>
+        </motion.div>
 
-      {/* Pricing Cards */}
-      <section className="relative z-10 container mx-auto px-6 py-12">
-        <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        <div className="mt-12 grid gap-6 lg:grid-cols-3">
           {plans.map((plan, index) => (
-            <div
-              key={index}
-              className={`relative bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg transition-all duration-300 border ${
-                plan.highlighted
-                  ? 'text-emerald-800 ring-2 text-emerald-800 ring-offset-4 scale-105'
-                  : 'border-white/50 hover:shadow-xl'
-              }`}
-            >
-              {plan.highlighted && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-primary text-white px-4 py-1 rounded-full text-sm font-semibold">
-                  Most Popular
+            <motion.div key={plan.name} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ delay: index * 0.08 }} whileHover={{ y: -6 }}>
+              <Card className={`relative h-full p-7 ${plan.highlighted ? 'border-white/20 bg-[linear-gradient(180deg,rgba(124,92,255,0.18),rgba(255,255,255,0.04))] shadow-[0_40px_120px_rgba(124,92,255,0.16)]' : ''}`}>
+                {plan.highlighted && <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-gradient-primary px-4 py-1 text-xs font-semibold text-white">Most popular</div>}
+                <div className="space-y-3">
+                  <h3 className="text-2xl font-semibold text-white">{plan.name}</h3>
+                  <p className="text-sm leading-7 text-white/60">{plan.description}</p>
                 </div>
-              )}
-              
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-              <p className="text-gray-600 mb-6">{plan.description}</p>
-              
-              <div className="mb-6">
-                {typeof plan.price === 'number' || plan.price !== 'Custom' ? (
-                  <>
-                    <span className="text-5xl font-bold text-gray-900">${plan.price}</span>
-                    <span className="text-gray-600">/month</span>
-                  </>
-                ) : (
-                  <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                )}
-              </div>
-
-              <ul className="space-y-4 mb-8">
-                {plan.features.map((feature, i) => (
-                  <li key={i} className="flex items-start">
-                    <Check className="w-5 h-5 text-emerald-800 mr-3 mt-0.5 flex-shrink-0" />
-                    <span className="text-gray-700">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                className={`w-full ${plan.highlighted ? '' : 'variant-outline'}`}
-                size="lg"
-              >
-                {plan.cta}
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
+                <div className="mt-6 flex items-end gap-2">
+                  <span className="text-5xl font-bold tracking-tight text-white">{plan.price}</span>
+                  <span className="pb-1 text-sm text-white/45">{plan.note}</span>
+                </div>
+                <ul className="mt-7 space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-3 text-sm text-white/70">
+                      <Check className="mt-0.5 h-4 w-4 text-cyan-300" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/register" className="mt-8 block">
+                  <Button className="w-full" variant={plan.highlighted ? 'default' : 'outline'}>
+                    {plan.highlighted ? 'Start with Growth' : plan.name === 'Enterprise' ? 'Talk to sales' : 'Start free'}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </Card>
+            </motion.div>
           ))}
         </div>
-      </section>
 
-      {/* FAQ Section */}
-      <section className="relative z-10 container mx-auto px-6 py-20">
-        <h2 className="text-4xl font-bold text-center text-gray-900 mb-12">Frequently Asked Questions</h2>
-        <div className="max-w-3xl mx-auto space-y-6">
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/50">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Can I change plans later?</h3>
-            <p className="text-gray-600">
-              Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately.
-            </p>
-          </div>
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/50">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">What payment methods do you accept?</h3>
-            <p className="text-gray-600">
-              We accept all major credit cards (Visa, MasterCard, American Express) and offer invoice billing for Enterprise customers.
-            </p>
-          </div>
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/50">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Is there a setup fee?</h3>
-            <p className="text-gray-600">
-              No setup fees for any plan. Start using Meetiva immediately after signing up.
-            </p>
-          </div>
-        </div>
-      </section>
+        <section className="mt-16 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <Card className="p-7">
+            <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/70">What’s included</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-white">One product surface, many workflow benefits.</h2>
+            <p className="mt-3 text-white/60 leading-8">Every tier gets the same premium motion system, layered lighting, and visual storytelling. Higher plans simply unlock more control and scale.</p>
+          </Card>
+          <Card className="p-7">
+            <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/70">Questions</p>
+            <div className="mt-4 space-y-4 text-sm text-white/65">
+              <p><span className="font-semibold text-white">Can I change plans later?</span> Yes. Upgrade or downgrade at any time.</p>
+              <p><span className="font-semibold text-white">Do you offer a trial?</span> Yes, every account starts with a 14-day trial.</p>
+              <p><span className="font-semibold text-white">Do you support enterprise onboarding?</span> Yes, including SSO and custom setup.</p>
+            </div>
+          </Card>
+        </section>
 
-      {/* CTA */}
-      <section className="relative z-10 container mx-auto px-6 py-20">
-        <div className="bg-gradient-primary rounded-3xl p-12 text-center text-white shadow-2xl">
-          <h2 className="text-4xl font-bold mb-4">Ready to Get Started?</h2>
-          <p className="text-xl mb-8 opacity-90">Start your 14-day free trial today. No credit card required.</p>
-          <Link to="/register">
-            <Button size="lg" className="bg-white text-emerald-800 hover:bg-gray-100">
-              Start Free Trial
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="relative z-10 container mx-auto px-6 py-12 text-center border-t border-gray-200/50">
-        <p className="text-gray-600">&copy; {new Date().getFullYear()} Meetiva.ai. All rights reserved.</p>
-      </footer>
+        <section className="mt-16 rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.14),transparent_28%),rgba(255,255,255,0.03)] p-8 text-center backdrop-blur-2xl lg:p-12">
+          <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/70">Ready to move</p>
+          <h2 className="mt-4 font-display text-4xl font-bold tracking-tight text-white md:text-5xl">Start with the plan that fits your momentum.</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-white/60">Switch to a workspace that feels advanced, immersive, and built for follow-through.</p>
+          <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
+            <Link to="/register"><Button size="lg">Start free trial</Button></Link>
+            <Link to="/login"><Button size="lg" variant="outline">Sign in</Button></Link>
+          </div>
+        </section>
+      </main>
     </div>
   );
 };

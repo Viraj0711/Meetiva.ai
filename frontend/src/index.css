@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,77 +6,97 @@
 
 @layer base {
   :root {
-    --background: 84 24% 94%;
-    --foreground: 146 25% 14%;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 146 25% 14%;
+    --card: 226 36% 10%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 146 25% 14%;
+    --popover: 226 36% 10%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 146 34% 29%;
+    --primary: 258 89% 67%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 96 20% 88%;
-    --secondary-foreground: 146 25% 14%;
+    --secondary: 222 20% 16%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 90 16% 92%;
-    --muted-foreground: 146 12% 35%;
+    --muted: 222 18% 14%;
+    --muted-foreground: 214 18% 70%;
 
-    --accent: 34 38% 57%;
+    --accent: 190 95% 59%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 96 14% 82%;
-    --input: 96 14% 82%;
-    --ring: 146 34% 29%;
+    --border: 225 17% 18%;
+    --input: 225 17% 18%;
+    --ring: 258 89% 67%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
+    --accent-hex: #7c5cff;
+    --accent-2-hex: #30d5f6;
+    --gold-hex: #d4af37;
+    --muted-hex: #b8c2cf;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 6%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 226 36% 10%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 226 36% 10%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 142 32% 55%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 258 89% 67%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 222 20% 16%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 222 18% 14%;
+    --muted-foreground: 214 18% 70%;
 
-    --accent: 339 100% 75%;
+    --accent: 190 95% 59%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 142 32% 55%;
+    --border: 225 17% 18%;
+    --input: 225 17% 18%;
+    --ring: 258 89% 67%;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
-    --tw-ring-color: rgb(63 102 83 / 0.35);
+    --tw-ring-color: rgb(124 92 255 / 0.35);
   }
   html,
   body {
     @apply bg-background text-foreground;
-    font-family: 'Manrope', sans-serif;
+    font-family: 'Inter', sans-serif;
+    min-height: 100%;
+    background:
+      radial-gradient(circle at top left, rgba(124, 92, 255, 0.16), transparent 28%),
+      radial-gradient(circle at top right, rgba(48, 213, 246, 0.12), transparent 24%),
+      radial-gradient(circle at bottom center, rgba(212, 175, 55, 0.08), transparent 30%),
+      hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: rgba(124, 92, 255, 0.32);
+    color: white;
   }
 }
 
@@ -87,6 +107,18 @@
   
   .text-gradient-accent {
     @apply bg-gradient-accent bg-clip-text text-transparent;
+  }
+
+  .glass-panel {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  }
+
+  .fine-grid {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 36px 36px;
   }
 }
 

@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useBeforeUnload } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { ArrowRight, CheckCircle2, FileText, FileUp, Mic, Video } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -23,46 +24,13 @@ const Upload: React.FC = () => {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [meetingTitle, setMeetingTitle] = useState('');
-  const [uploadState, setUploadState] = useState<FileUploadState>({
-    file: null,
-    uploading: false,
-    progress: 0,
-    error: null,
-    exportUrl: null,
-    meetingId: null,
-  });
+  const [uploadState, setUploadState] = useState<FileUploadState>({ file: null, uploading: false, progress: 0, error: null, exportUrl: null, meetingId: null });
   const [dragActive, setDragActive] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [duplicateMeeting, setDuplicateMeeting] = useState<DuplicateMeetingInfo | null>(null);
 
-  const handleExcelDownload = async (exportUrl: string, meetingTitle?: string) => {
-    setDownloading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-      const response = await fetch(`${API_BASE_URL}${exportUrl}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error('Download failed');
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${(meetingTitle || 'meeting').replace(/[^a-z0-9-_]+/gi, '_')}_tasks.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      alert('Failed to download Excel file. Please try again.');
-    } finally {
-      setDownloading(false);
-    }
-  };
-
   const acceptedExtensions = '.mp3,.wav,.m4a,.aac,.mp4,.mpeg,.mov,.avi,.txt';
-
   const audioExtensions = ['mp3', 'wav', 'm4a', 'aac', 'mpeg'];
   const videoExtensions = ['mp4', 'mov', 'avi'];
 
@@ -73,17 +41,12 @@ const Upload: React.FC = () => {
     return 'text';
   };
 
-  useBeforeUnload(
-    React.useCallback(
-      (event) => {
-        if (uploadState.uploading) {
-          event.preventDefault();
-          return (event.returnValue = 'Upload in progress. Are you sure you want to leave?');
-        }
-      },
-      [uploadState.uploading]
-    )
-  );
+  useBeforeUnload(useCallback((event) => {
+    if (uploadState.uploading) {
+      event.preventDefault();
+      return (event.returnValue = 'Upload in progress. Are you sure you want to leave?');
+    }
+  }, [uploadState.uploading]));
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -92,142 +55,83 @@ const Upload: React.FC = () => {
         e.returnValue = '';
       }
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [uploadState.uploading]);
 
   const validateFile = (file: File): string | null => {
     const maxSize = 25 * 1024 * 1024;
-    if (file.size > maxSize) {
-      return 'File size must be less than 25MB (Whisper API limit)';
-    }
-
+    if (file.size > maxSize) return 'File size must be less than 25MB.';
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
     const validExtensions = ['mp3', 'wav', 'm4a', 'aac', 'mp4', 'mpeg', 'mov', 'avi', 'txt'];
-    
-    if (!fileExtension || !validExtensions.includes(fileExtension)) {
-      return 'Invalid file type. Please upload an audio, video, or .txt transcript file.';
-    }
-
+    if (!fileExtension || !validExtensions.includes(fileExtension)) return 'Upload an audio, video, or .txt transcript file.';
     return null;
   };
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
+    setDragActive(e.type === 'dragenter' || e.type === 'dragover');
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]);
   }, []);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
-    }
+    if (e.target.files?.[0]) handleFile(e.target.files[0]);
   };
 
   const handleFile = (file: File) => {
     const error = validateFile(file);
     if (error) {
-      setUploadState({
-        file: null,
-        uploading: false,
-        progress: 0,
-        error,
-        exportUrl: null,
-        meetingId: null,
-      });
+      setUploadState({ file: null, uploading: false, progress: 0, error, exportUrl: null, meetingId: null });
       return;
     }
+    setUploadState({ file, uploading: false, progress: 0, error: null, exportUrl: null, meetingId: null });
+    if (!meetingTitle) setMeetingTitle(file.name.replace(/\.[^/.]+$/, ''));
+  };
 
-    setUploadState({
-      file,
-      uploading: false,
-      progress: 0,
-      error: null,
-      exportUrl: null,
-      meetingId: null,
-    });
-
-    if (!meetingTitle) {
-      const fileName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
-      setMeetingTitle(fileName);
+  const handleExcelDownload = async (exportUrl: string, title?: string) => {
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+      const response = await fetch(`${API_BASE_URL}${exportUrl}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(title || 'meeting').replace(/[^a-z0-9-_]+/gi, '_')}_tasks.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
     }
   };
 
   const handleUpload = async () => {
     if (!uploadState.file) return;
-
     try {
       setDuplicateMeeting(null);
-      setUploadState(prev => ({ ...prev, uploading: true, error: null, exportUrl: null, meetingId: null }));
-
-      const result = await retryWithBackoff(
-        () => meetingService.uploadMeetingFile(
-          uploadState.file!,
-          meetingTitle || uploadState.file!.name,
-          `Meeting uploaded on ${new Date().toLocaleDateString()}`,
-          undefined,
-          (progress) => {
-            setUploadState(prev => ({ ...prev, progress }));
-          }
-        ),
-        {
-          maxAttempts: 3,
-          onRetry: (error, attempt) => {
-            console.log(`Upload retry ${attempt}:`, error);
-            setUploadState(prev => ({ 
-              ...prev, 
-              error: `Connection issue, retrying... (${attempt}/3)` 
-            }));
-          }
-        }
-      );
-
-      setUploadState(prev => ({
-        ...prev,
-        uploading: false,
-        progress: 100,
-        error: null,
-        exportUrl: result.actionItemsExportUrl,
-        meetingId: result.data.id,
-      }));
+      setUploadState((prev) => ({ ...prev, uploading: true, error: null, exportUrl: null, meetingId: null }));
+      const result = await retryWithBackoff(() => meetingService.uploadMeetingFile(uploadState.file!, meetingTitle || uploadState.file!.name, `Meeting uploaded on ${new Date().toLocaleDateString()}`, undefined, (progress) => setUploadState((prev) => ({ ...prev, progress }))), { maxAttempts: 3 });
+      setUploadState((prev) => ({ ...prev, uploading: false, progress: 100, error: null, exportUrl: result.actionItemsExportUrl, meetingId: result.data.id }));
       await queryClient.invalidateQueries({ queryKey: ['meetings'] });
     } catch (error) {
-      console.error('Upload failed:', error);
       if ((error as UploadDuplicateError)?.code === 'MEETING_DUPLICATE') {
-        const duplicateError = error as UploadDuplicateError;
-        setUploadState(prev => ({
-          ...prev,
-          uploading: false,
-          error: null,
-        }));
-        setDuplicateMeeting(duplicateError.existingMeeting);
+        setUploadState((prev) => ({ ...prev, uploading: false, error: null }));
+        setDuplicateMeeting((error as UploadDuplicateError).existingMeeting);
         return;
       }
-
-      const errorMessage = isRetryableError(error)
-        ? 'Upload failed due to network issues. Please check your connection and try again.'
-        : (error instanceof Error ? error.message : 'Failed to upload file. Please try again.');
-      
-      setUploadState(prev => ({
-        ...prev,
-        uploading: false,
-        error: errorMessage,
-      }));
+      const errorMessage = isRetryableError(error) ? 'Upload failed due to network issues. Please try again.' : (error instanceof Error ? error.message : 'Failed to upload file.');
+      setUploadState((prev) => ({ ...prev, uploading: false, error: errorMessage }));
     }
   };
 
@@ -236,37 +140,15 @@ const Upload: React.FC = () => {
       setShowCancelDialog(true);
       return;
     }
-    
-    setUploadState({
-      file: null,
-      uploading: false,
-      progress: 0,
-      error: null,
-      exportUrl: null,
-      meetingId: null,
-    });
+    setUploadState({ file: null, uploading: false, progress: 0, error: null, exportUrl: null, meetingId: null });
     setDuplicateMeeting(null);
     setMeetingTitle('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleCancelUpload = () => {
     setShowCancelDialog(false);
-    setUploadState({
-      file: null,
-      uploading: false,
-      progress: 0,
-      error: null,
-      exportUrl: null,
-      meetingId: null,
-    });
-    setDuplicateMeeting(null);
-    setMeetingTitle('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    clearFile();
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -274,295 +156,78 @@ const Upload: React.FC = () => {
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <ConfirmDialog
-        isOpen={showCancelDialog}
-        title="Cancel Upload?"
-        message="Upload is in progress. Are you sure you want to cancel? All progress will be lost."
-        confirmText="Yes, Cancel"
-        cancelText="Continue Upload"
-        variant="warning"
-        onConfirm={handleCancelUpload}
-        onCancel={() => setShowCancelDialog(false)}
-      />
+    <div className="relative mx-auto max-w-7xl space-y-8 overflow-hidden">
+      <ConfirmDialog isOpen={showCancelDialog} title="Cancel Upload?" message="Upload is in progress. Are you sure you want to cancel? All progress will be lost." confirmText="Yes, Cancel" cancelText="Continue Upload" variant="warning" onConfirm={handleCancelUpload} onCancel={() => setShowCancelDialog(false)} />
 
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Upload Meeting</h1>
-        <p className="mt-2 text-muted-foreground">
-          Upload an audio recording, video file, or plain-text transcript � Whisper will transcribe
-          audio/video, then Grok will summarise the meeting and extract action items.
-        </p>
-      </div>
+      <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
+        <div className="space-y-6">
+          <div className="rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.2),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.12),transparent_26%),rgba(255,255,255,0.03)] p-8 backdrop-blur-2xl">
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">Upload pipeline</p>
+            <h1 className="mt-3 font-display text-5xl font-bold tracking-tight text-white md:text-6xl">Upload meetings into a cinematic AI workflow.</h1>
+            <p className="mt-4 max-w-2xl text-lg leading-8 text-white/60">Drop in recordings, transcripts, or video files and watch Meetiva extract the signal, build tasks, and package the next steps.</p>
+          </div>
 
-      {/* Meeting Title */}
-      <Card className="p-6">
-        <label className="block mb-2 font-semibold">Meeting Title</label>
-        <Input
-          type="text"
-          placeholder="e.g., Sprint Planning Meeting - Q1 2025"
-          value={meetingTitle}
-          onChange={(e) => setMeetingTitle(e.target.value)}
-          disabled={uploadState.uploading}
-        />
-      </Card>
+          <Card className="p-7">
+            <label className="mb-3 block text-sm font-medium text-white/70">Meeting title</label>
+            <Input type="text" placeholder="Sprint planning, leadership sync, client review..." value={meetingTitle} onChange={(e) => setMeetingTitle(e.target.value)} disabled={uploadState.uploading} />
+          </Card>
 
-      {/* File Upload Area */}
-      <Card className="p-6">
-        <div
-          className={`relative border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-            dragActive ? 'border-primary bg-primary/5' : 'border-gray-300'
-          } ${uploadState.uploading ? 'opacity-50 pointer-events-none' : ''}`}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept={acceptedExtensions}
-            onChange={handleFileInput}
-            disabled={uploadState.uploading}
-          />
-
-          {!uploadState.file ? (
-            <div className="space-y-4">
-              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-lg font-semibold mb-1">
-                  Drag and drop your file here
-                </p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  or click to browse
-                </p>
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadState.uploading}
-                >
-                  Select File
-                </Button>
-              </div>
-              {/* Format chips */}
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex flex-wrap justify-center gap-2">
-                  {['MP3', 'WAV', 'M4A', 'AAC', 'MPEG'].map((fmt) => (
-                    <span key={fmt} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-emerald-800 dark:text-emerald-800 text-emerald-800 dark:text-emerald-800 text-xs font-medium">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                      </svg>
-                      {fmt}
-                    </span>
-                  ))}
+          <Card className="p-0 overflow-hidden">
+            <div className={`relative rounded-[1.5rem] border border-dashed p-8 md:p-10 transition-all ${dragActive ? 'border-cyan-300 bg-cyan-300/[0.06]' : 'border-white/10 bg-white/[0.03]'} ${uploadState.uploading ? 'pointer-events-none opacity-60' : ''}`} onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}>
+              <input ref={fileInputRef} type="file" className="hidden" accept={acceptedExtensions} onChange={handleFileInput} disabled={uploadState.uploading} />
+              {!uploadState.file ? (
+                <div className="space-y-6 text-center">
+                  <div className="mx-auto grid h-20 w-20 place-items-center rounded-[1.75rem] bg-gradient-primary shadow-[0_18px_40px_rgba(124,92,255,0.35)]"><FileUp className="h-9 w-9 text-white" /></div>
+                  <div><h2 className="text-2xl font-semibold text-white">Drag and drop a file or transcript</h2><p className="mt-2 text-sm text-white/55">Audio, video, and text files are supported.</p></div>
+                  <Button onClick={() => fileInputRef.current?.click()} disabled={uploadState.uploading} size="lg">Select file</Button>
+                  <div className="flex flex-wrap justify-center gap-2">{['MP3', 'WAV', 'M4A', 'MP4', 'MOV', 'TXT'].map((item) => (<span key={item} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-white/60">{item}</span>))}</div>
                 </div>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {['MP4', 'MOV', 'AVI'].map((fmt) => (
-                    <span key={fmt} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-medium">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-                      </svg>
-                      {fmt}
-                    </span>
-                  ))}
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-medium">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    TXT
-                  </span>
+              ) : (
+                <div className="space-y-6 text-center">
+                  <div className="mx-auto grid h-20 w-20 place-items-center rounded-[1.75rem] bg-white/[0.06] text-cyan-300">{getFileCategory(uploadState.file) === 'audio' ? <Mic className="h-9 w-9" /> : getFileCategory(uploadState.file) === 'video' ? <Video className="h-9 w-9" /> : <FileText className="h-9 w-9" />}</div>
+                  <div><h2 className="text-2xl font-semibold text-white">{uploadState.file.name}</h2><p className="mt-2 text-sm text-white/55">{formatFileSize(uploadState.file.size)} • {getFileCategory(uploadState.file)} file</p></div>
+                  {!uploadState.uploading && <Button variant="outline" onClick={clearFile}>Change file</Button>}
                 </div>
-                <p className="text-xs text-muted-foreground">Max 25 MB &nbsp;�&nbsp; Audio &amp; Video transcribed via Whisper</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
-                getFileCategory(uploadState.file) === 'audio'
-                  ? '#335444'
-                  : getFileCategory(uploadState.file) === 'video'
-                  ? 'bg-purple-100'
-                  : 'bg-gray-100'
-              }`}>
-                {getFileCategory(uploadState.file) === 'audio' ? (
-                  <svg className="w-8 h-8 text-emerald-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                  </svg>
-                ) : getFileCategory(uploadState.file) === 'video' ? (
-                  <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-                  </svg>
-                ) : (
-                  <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                )}
-              </div>
-              <div>
-                <p className="font-semibold">{uploadState.file.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {formatFileSize(uploadState.file.size)}
-                  {getFileCategory(uploadState.file) !== 'text' && (
-                    <span className="ml-2 text-xs text-primary font-medium">
-                      Will be transcribed with Whisper
-                    </span>
-                  )}
-                </p>
-              </div>
-              {!uploadState.uploading && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearFile}
-                >
-                  Change File
-                </Button>
               )}
             </div>
-          )}
+
+            {uploadState.uploading && <div className="border-t border-white/10 p-6"><div className="mb-2 flex items-center justify-between text-sm text-white/60"><span>{getFileCategory(uploadState.file!) === 'text' ? 'Uploading' : 'Uploading and transcribing'}</span><span>{Math.round(uploadState.progress)}%</span></div><Progress value={uploadState.progress} /></div>}
+            {uploadState.error && <div className="border-t border-white/10 p-6"><div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">{uploadState.error}</div></div>}
+          </Card>
+
+          {duplicateMeeting && <Card className="p-6 border-amber-400/20 bg-amber-500/10"><p className="font-medium text-amber-100">This meeting already exists.</p><p className="mt-1 text-sm text-amber-100/70">Existing meeting: {duplicateMeeting.title}</p><Button className="mt-4" variant="outline" onClick={() => navigate(`/dashboard/meetings/${duplicateMeeting.id}`)}>Open existing meeting</Button></Card>}
+
+          {uploadState.exportUrl && uploadState.meetingId && <Card className="p-6 border-emerald-400/20 bg-emerald-500/10"><div className="flex items-start gap-4"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-400/15 text-emerald-300"><CheckCircle2 className="h-6 w-6" /></div><div className="flex-1"><h3 className="text-lg font-semibold text-white">Meeting processed successfully</h3><p className="mt-2 text-sm leading-7 text-white/60">Your transcript, summary, decisions, and action items are ready.</p><div className="mt-5 flex flex-wrap gap-3"><Button onClick={() => handleExcelDownload(uploadState.exportUrl!, meetingTitle)} isLoading={downloading}>Download tasks</Button><Button variant="outline" onClick={() => navigate(`/dashboard/meetings/${uploadState.meetingId}`)}>Open meeting</Button><Button variant="ghost" onClick={() => navigate('/dashboard')}>Go to dashboard</Button></div></div></div></Card>}
         </div>
 
-        {/* Upload Progress */}
-        {uploadState.uploading && (
-          <div className="mt-6 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>
-                {uploadState.file && getFileCategory(uploadState.file) !== 'text'
-                  ? 'Uploading & transcribing with Whisper�'
-                  : 'Uploading�'}
-              </span>
-              <span>{Math.round(uploadState.progress)}%</span>
-            </div>
-            <Progress value={uploadState.progress} />
-          </div>
-        )}
+        <div className="space-y-6">
+          <Card className="p-6">
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">What happens next</p>
+            <div className="mt-5 space-y-4">{[['1', 'Whisper transcribes the file', 'Audio and video are converted into clean text with speaker context.'], ['2', 'AI extracts decisions and actions', 'Tasks are labeled, prioritized, and assigned.'], ['3', 'Output is synced into the workflow', 'Summaries, reminders, and exports stay visible.']].map(([step, title, description]) => (<div key={title} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><div className="flex items-center gap-3"><div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-primary text-xs font-bold text-white">{step}</div><div><p className="font-medium text-white">{title}</p><p className="mt-1 text-sm text-white/55">{description}</p></div></div></div>))}</div>
+          </Card>
 
-        {/* Error Message */}
-        {uploadState.error && (
-          <div className="mt-4 p-4 bg-destructive/10 border border-destructive rounded-lg">
-            <p className="text-sm text-destructive">{uploadState.error}</p>
-          </div>
-        )}
+          <Card className="p-6">
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">Supported formats</p>
+            <div className="mt-4 flex flex-wrap gap-2">{['MP3', 'WAV', 'M4A', 'AAC', 'MP4', 'MOV', 'AVI', 'TXT'].map((fmt) => (<span key={fmt} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/60">{fmt}</span>))}</div>
+            <p className="mt-4 text-sm leading-7 text-white/55">Max 25 MB. Uploads are processed securely and can be exported later as Excel task files.</p>
+          </Card>
 
-        {duplicateMeeting && (
-          <div className="mt-4 p-4 border rounded-lg bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700">
-            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-              This meeting already exists and was not uploaded again.
-            </p>
-            <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
-              Existing meeting: {duplicateMeeting.title}
-            </p>
-            <div className="mt-3">
-              <Button
-                size="sm"
-                onClick={() => navigate(`/dashboard/meetings/${duplicateMeeting.id}`)}
-              >
-                Go to Existing Meeting
-              </Button>
-            </div>
-          </div>
-        )}
-      </Card>
+          <Card className="p-6">
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">Activity preview</p>
+            <div className="mt-4 space-y-3">{['Summary generated', 'Tasks classified', 'Calendar reminder created'].map((item) => (<div key={item} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/75"><span>{item}</span><span className="text-cyan-300">live</span></div>))}</div>
+          </Card>
+        </div>
+      </div>
 
-      {/* Success Banner � shown after upload completes */}
-      {uploadState.exportUrl && uploadState.meetingId && (
-        <Card className="p-6 bg-green-50 dark:bg-green-900/20 border-green-400">
-          <div className="flex items-start gap-3">
-            <svg className="w-6 h-6 text-green-600 dark:text-green-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div className="flex-1">
-              <h3 className="font-semibold text-green-800 dark:text-green-200">
-                Meeting processed successfully!
-              </h3>
-              <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                Your meeting has been transcribed, summarised by Grok, and action items have been extracted.
-              </p>
-              <div className="flex flex-wrap gap-3 mt-4">
-                <button
-                  onClick={() => handleExcelDownload(uploadState.exportUrl!, meetingTitle)}
-                  disabled={downloading}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-medium rounded-md transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  {downloading ? 'Downloading�' : 'Download Tasks (Excel)'}
-                </button>
-                <button
-                  onClick={() => navigate(`/dashboard/meetings/${uploadState.meetingId}`)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 text-green-700 dark:text-green-300 text-sm font-medium rounded-md transition-colors"
-                >
-                  View Meeting Details
-                </button>
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:underline"
-                >
-                  Go to Dashboard
-                </button>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Processing Information */}
-      <Card className="p-6 text-emerald-800 dark:text-emerald-800 text-emerald-800">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center">
-          <svg className="w-5 h-5 mr-2 text-emerald-800 dark:text-emerald-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          What happens next?
-        </h3>
-        <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-          <li className="flex items-start">
-            <span className="mr-2">1.</span>
-            <span>Audio &amp; video files are transcribed automatically using OpenAI Whisper (max 25 MB)</span>
-          </li>
-          <li className="flex items-start">
-            <span className="mr-2">2.</span>
-            <span>Grok AI summarises the transcript and extracts key decisions and discussion points</span>
-          </li>
-          <li className="flex items-start">
-            <span className="mr-2">3.</span>
-            <span>Action items are identified with assignees, due dates, and priority levels</span>
-          </li>
-          <li className="flex items-start">
-            <span className="mr-2">4.</span>
-            <span>Download the extracted tasks as an Excel spreadsheet once processing is complete</span>
-          </li>
-        </ul>
-      </Card>
-
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-4">
-        <Button
-          variant="outline"
-          onClick={() => navigate('/dashboard')}
-          disabled={uploadState.uploading}
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={handleUpload}
-          disabled={!uploadState.file || uploadState.uploading || !meetingTitle.trim()}
-        >
-          {uploadState.uploading ? 'Uploading...' : 'Upload & Process'}
-        </Button>
+      <div className="flex justify-center pb-4 pt-2">
+        <Button onClick={handleUpload} disabled={!uploadState.file || uploadState.uploading || !meetingTitle.trim()} size="lg"><ArrowRight className="mr-2 h-4 w-4" />{uploadState.uploading ? 'Processing meeting' : 'Upload & process'}</Button>
       </div>
     </div>
   );
 };
 
 export default Upload;
-
-

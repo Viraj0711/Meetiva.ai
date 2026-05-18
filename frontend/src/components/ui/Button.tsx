@@ -3,15 +3,15 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold transition-transform transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(124,92,255,0.18)] disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold transition-all duration-300 ease-out transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(124,92,255,0.28)] disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-[linear-gradient(90deg,var(--accent-hex),var(--accent-2-hex))] text-white shadow-[0_12px_40px_rgba(124,92,255,0.18)] hover:-translate-y-1',
+        default: 'bg-[linear-gradient(135deg,var(--accent-hex),var(--accent-2-hex))] text-white shadow-[0_16px_50px_rgba(124,92,255,0.24)] hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(48,213,246,0.24)]',
         destructive: 'bg-[rgba(220,38,38,0.9)] text-white hover:brightness-95',
-        outline: 'bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.06)] text-[var(--muted-hex)] hover:brightness-110',
-        secondary: 'bg-[rgba(255,255,255,0.03)] text-[var(--muted-hex)]',
-        ghost: 'bg-transparent text-[var(--muted-hex)] hover:text-white',
+        outline: 'bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.09)] text-[var(--muted-hex)] hover:bg-[rgba(255,255,255,0.06)] hover:text-white',
+        secondary: 'bg-[rgba(255,255,255,0.05)] text-white/90 hover:bg-[rgba(255,255,255,0.08)]',
+        ghost: 'bg-transparent text-[var(--muted-hex)] hover:text-white hover:bg-[rgba(255,255,255,0.04)]',
         link: 'text-[var(--accent-hex)] underline-offset-4 hover:underline',
       },
       size: {
