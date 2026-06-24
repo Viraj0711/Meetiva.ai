@@ -13,12 +13,18 @@ import notificationsRoutes from './routes/notifications';
 import workspaceRoutes from './routes/workspace';
 import rateLimit from 'express-rate-limit';
 import { validateBackendEnv } from './lib/env';
+import { startDeadlineNotifier } from './jobs/deadlineNotifier';
+import { requestLogger } from './lib/requestLogger';
 
 dotenv.config();
 validateBackendEnv();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8000', 10);
+
+// ── API configuration constants ────────────────────────────────────────────
+const API_PREFIX = '/api/v1';
+const DEFAULT_JSON_BODY_LIMIT = '1mb'; // Express default is 100kb
 
 const frontendLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -46,22 +52,26 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: DEFAULT_JSON_BODY_LIMIT }));
+app.use(express.urlencoded({ extended: true, limit: DEFAULT_JSON_BODY_LIMIT }));
 app.use(cookieParser());
+
+// ── Request logging (BEFORE routes so it wraps every matched handler) ─────
+app.use(requestLogger);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/ai', aiRoutes);
-app.use('/api/v1/meetings', meetingsRoutes);
-app.use('/api/v1/action-items', actionItemsRoutes);
-app.use('/api/v1/teams', teamsRoutes);
-app.use('/api/v1/calendar', calendarRoutes);
-app.use('/api/v1/notifications', notificationsRoutes);
-app.use('/api/v1/workspace', workspaceRoutes);
+// ── Versioned API routes ───────────────────────────────────────────────────
+app.use(`${API_PREFIX}/auth`, authRoutes);
+app.use(`${API_PREFIX}/ai`, aiRoutes);
+app.use(`${API_PREFIX}/meetings`, meetingsRoutes);
+app.use(`${API_PREFIX}/action-items`, actionItemsRoutes);
+app.use(`${API_PREFIX}/teams`, teamsRoutes);
+app.use(`${API_PREFIX}/calendar`, calendarRoutes);
+app.use(`${API_PREFIX}/notifications`, notificationsRoutes);
+app.use(`${API_PREFIX}/workspace`, workspaceRoutes);
 
 // Alias routes for integrations that expect non-versioned auth/calendar paths.
 app.use('/auth', authRoutes);
@@ -74,12 +84,6 @@ app.get('*', frontendLimiter, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} from ${req.ip}`);
-  next();
-});
-
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err);
   res.status(500).json({ message: 'Internal server error' });
@@ -89,4 +93,7 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
   console.log(`🌐 Network access: http://0.0.0.0:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+
+  // Start background job: hourly deadline reminder sweep
+  startDeadlineNotifier();
 });

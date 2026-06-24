@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { AreaChart, Area, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis, Legend } from 'recharts';
 import { ArrowRight, Calendar, Clock, Sparkles, Users, CheckCircle2, Activity, Plus, FileText } from 'lucide-react';
 import { meetingService, actionItemService } from '@/services';
+import { Meeting, ActionItem } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
@@ -28,8 +29,8 @@ const DashboardEnhanced: React.FC = () => {
   const [stats, setStats] = useState({ totalMeetings: 0, completedActions: 0, averageDuration: 0, upcomingMeetings: 0 });
   const [weeklyData, setWeeklyData] = useState<{ name: string; meetings: number; actions: number }[]>([]);
   const [actionItemsByStatus, setActionItemsByStatus] = useState<{ name: string; value: number; color: string }[]>([]);
-  const [recentMeetings, setRecentMeetings] = useState<any[]>([]);
-  const [upcomingActions, setUpcomingActions] = useState<any[]>([]);
+  const [recentMeetings, setRecentMeetings] = useState<Meeting[]>([]);
+  const [upcomingActions, setUpcomingActions] = useState<ActionItem[]>([]);
   const actionCount = upcomingActions.length;
 
   useEffect(() => {
@@ -42,15 +43,19 @@ const DashboardEnhanced: React.FC = () => {
           actionItemService.getActionItems({ limit: 120 }),
         ]);
 
-        const items = actionItems.data || [];
+        const items: ActionItem[] = actionItems.data || [];
         setStats({
           totalMeetings: meetingStats.total || 0,
-          completedActions: items.filter((item) => item.status === 'completed').length,
+          completedActions: items.filter((item: ActionItem) => item.status === 'completed').length,
           averageDuration: meetingStats.avgDuration || 0,
-          upcomingMeetings: meetingStats.upcoming || 0,
+          upcomingMeetings: meetingStats.processingMeetings || 0,
         });
 
-        setWeeklyData(meetingStats.weeklyActivity || [
+        setWeeklyData(meetingStats.trends?.map((t) => ({
+          name: t.month,
+          meetings: t.count,
+          actions: 0,
+        })) || meetingStats.weeklyActivity || [
           { name: 'Mon', meetings: 0, actions: 0 },
           { name: 'Tue', meetings: 0, actions: 0 },
           { name: 'Wed', meetings: 0, actions: 0 },
@@ -58,10 +63,10 @@ const DashboardEnhanced: React.FC = () => {
           { name: 'Fri', meetings: 0, actions: 0 },
         ]);
 
-        const completed = items.filter((item) => item.status === 'completed').length;
-        const inProgress = items.filter((item) => item.status === 'in_progress').length;
-        const pending = items.filter((item) => item.status === 'pending').length;
-        const overdue = items.filter((item) => item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'completed').length;
+        const completed = items.filter((item: ActionItem) => item.status === 'completed').length;
+        const inProgress = items.filter((item: ActionItem) => item.status === 'in_progress').length;
+        const pending = items.filter((item: ActionItem) => item.status === 'pending').length;
+        const overdue = items.filter((item: ActionItem) => item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'completed').length;
 
         setActionItemsByStatus([
           { name: 'Completed', value: completed, color: '#30d5f6' },
@@ -70,8 +75,8 @@ const DashboardEnhanced: React.FC = () => {
           { name: 'Overdue', value: overdue, color: '#fb7185' },
         ]);
 
-        setRecentMeetings((meetings.data || []).slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 4));
-        setUpcomingActions(items.filter((item) => item.status !== 'completed').sort((a, b) => {
+        setRecentMeetings((meetings.data || []).slice().sort((a: Meeting, b: Meeting) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 4));
+        setUpcomingActions(items.filter((item: ActionItem) => item.status !== 'completed').sort((a: ActionItem, b: ActionItem) => {
           if (!a.dueDate) return 1;
           if (!b.dueDate) return -1;
           return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();

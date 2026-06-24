@@ -1,130 +1,88 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ShieldCheck, Sparkles } from 'lucide-react';
 import GradientOrbs from '@/components/GradientOrbs';
 
 const TermsPage: React.FC = () => {
   return (
-    <div className="relative min-h-screen bg-gradient-to-br text-emerald-800 via-white text-emerald-800 overflow-hidden">
+    <div className="scene-shell relative min-h-screen overflow-hidden bg-background text-foreground">
       <GradientOrbs />
+      <div className="absolute inset-0 fine-grid opacity-25" />
 
-      {/* Navbar */}
-      <nav className="relative z-10 container mx-auto px-6 py-4">
-        <div className="flex justify-between items-center backdrop-blur-sm bg-white/70 rounded-2xl px-6 py-4 shadow-lg border border-white/20">
-          <Link to="/" className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">M</span>
+      <div className="relative z-10 mx-auto max-w-5xl px-6 py-6 lg:px-8 lg:py-8">
+        <div className="mb-10 flex items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur-2xl">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary text-white shadow-[0_18px_40px_rgba(124,92,255,0.35)]">
+              <span className="font-bold">M</span>
             </div>
-            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Meetiva.ai
-            </span>
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-white/45">Meetiva.ai</p>
+              <p className="text-sm font-medium text-white">Terms</p>
+            </div>
+          </Link>
+          <Link to="/contact" className="text-sm text-cyan-300 transition hover:text-white">
+            Contact support
           </Link>
         </div>
-      </nav>
 
-      {/* Content */}
-      <section className="relative z-10 container mx-auto px-6 py-20">
-        <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-sm rounded-2xl p-12 shadow-xl border border-white/50">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">Terms of Service</h1>
-          <p className="text-gray-600 mb-8">Last updated: {new Date().toLocaleDateString()}</p>
+        <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-8 backdrop-blur-2xl lg:p-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80">
+            <ShieldCheck className="h-3.5 w-3.5" /> Terms of service
+          </div>
+          <h1 className="mt-6 font-display text-4xl font-bold tracking-tight text-white md:text-5xl">
+            Terms that match the product: clear, direct, and built for trust.
+          </h1>
+          <p className="mt-5 max-w-3xl text-lg leading-8 text-white/60">
+            By using Meetiva.ai, you agree to the terms below. They define the service, account responsibilities, acceptable use, and the practical boundaries around your data.
+          </p>
 
-          <div className="prose prose-lg max-w-none space-y-8">
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Acceptance of Terms</h2>
-              <p className="text-gray-700 leading-relaxed">
-                By accessing and using Meetiva.ai ("Service"), you accept and agree to be bound by the terms and
-                provision of this agreement. If you do not agree to abide by the above, please do not use this service.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Use License</h2>
-              <p className="text-gray-700 leading-relaxed mb-4">
-                Permission is granted to temporarily use Meetiva.ai for personal and commercial use. This is the
-                grant of a license, not a transfer of title, and under this license you may not:
-              </p>
-              <ul className="list-disc pl-6 space-y-2 text-gray-700">
-                <li>Modify or copy the materials</li>
-                <li>Use the materials for any commercial purpose without proper licensing</li>
-                <li>Attempt to decompile or reverse engineer any software contained on Meetiva.ai</li>
-                <li>Remove any copyright or other proprietary notations from the materials</li>
-                <li>Transfer the materials to another person or "mirror" the materials on any other server</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">3. User Data and Privacy</h2>
-              <p className="text-gray-700 leading-relaxed">
-                Your use of the Service is also governed by our Privacy Policy. We collect and process data as
-                described in our Privacy Policy. You retain all rights to your data, and we will never sell your
-                data to third parties.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">4. Account Terms</h2>
-              <ul className="list-disc pl-6 space-y-2 text-gray-700">
-                <li>You must be 18 years or older to use this Service</li>
-                <li>You must provide your legal full name, valid email address, and any other information requested</li>
-                <li>You are responsible for maintaining the security of your account and password</li>
-                <li>You are responsible for all activities that occur under your account</li>
-                <li>You may not use the Service for any illegal or unauthorized purpose</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">5. Payment Terms</h2>
-              <p className="text-gray-700 leading-relaxed">
-                Valid payment information is required for paid accounts. You will be charged in advance on a
-                recurring basis. Fees are non-refundable except when required by law. We reserve the right to
-                change our fees with 30 days notice.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">6. Cancellation and Termination</h2>
-              <p className="text-gray-700 leading-relaxed">
-                You may cancel your account at any time. We reserve the right to suspend or terminate your account
-                if you breach these Terms of Service. Upon termination, your right to use the Service will
-                immediately cease.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">7. Limitation of Liability</h2>
-              <p className="text-gray-700 leading-relaxed">
-                In no event shall Meetiva.ai or its suppliers be liable for any damages (including, without
-                limitation, damages for loss of data or profit, or due to business interruption) arising out of the
-                use or inability to use the Service.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">8. Changes to Terms</h2>
-              <p className="text-gray-700 leading-relaxed">
-                We reserve the right to modify these terms at any time. We will notify users of any material changes
-                via email or through the Service. Continued use of the Service after such modifications constitutes
-                acceptance of the updated terms.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">9. Contact Information</h2>
-              <p className="text-gray-700 leading-relaxed">
-                If you have any questions about these Terms, please contact us at legal@meetiva.ai
-              </p>
-            </section>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {[
+              ['Service', 'AI meeting intelligence and workspace tools.'],
+              ['Accounts', 'You are responsible for activity on your account.'],
+              ['Data', 'You control what you upload and what we process.'],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/42">{label}</p>
+                <p className="mt-2 text-sm font-semibold text-white">{value}</p>
+              </div>
+            ))}
           </div>
         </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="relative z-10 container mx-auto px-6 py-12 text-center border-t border-gray-200/50">
-        <p className="text-gray-600">&copy; {new Date().getFullYear()} Meetiva.ai. All rights reserved.</p>
-      </footer>
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          {[
+            {
+              title: 'Acceptable use',
+              body: 'Do not attempt to misuse the platform, disrupt services, or upload content you do not have the right to share.',
+            },
+            {
+              title: 'Limitations',
+              body: 'We provide the service as-is, with improvements and changes shipped over time as the product evolves.',
+            },
+            {
+              title: 'Account safety',
+              body: 'Keep your credentials secure and notify us if you suspect unauthorized access or account abuse.',
+            },
+            {
+              title: 'Updates',
+              body: 'We may revise these terms when necessary. The latest version will always be the one shown on this page.',
+            },
+          ].map((section) => (
+            <div key={section.title} className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
+              <div className="flex items-center gap-3">
+                <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white/[0.06] text-cyan-300">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <h2 className="text-xl font-semibold text-white">{section.title}</h2>
+              </div>
+              <p className="mt-4 text-sm leading-7 text-white/60">{section.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
 
 export default TermsPage;
-
-

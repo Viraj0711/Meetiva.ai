@@ -1,12 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Mail, MapPin, Phone } from 'lucide-react';
 import GradientOrbs from '@/components/GradientOrbs';
+import { contactFormSchema, zodResolver } from '@/lib/validation';
+import type { z } from 'zod';
+
+type ContactFormData = z.infer<typeof contactFormSchema>;
 
 const ContactPage: React.FC = () => {
+  const [submitted, setSubmitted] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<ContactFormData>({
+    resolver: zodResolver(contactFormSchema),
+    defaultValues: { name: '', email: '', subject: '', message: '' },
+  });
+
+  const onSubmit = async (data: ContactFormData) => {
+    // Simulate API call — no backend contact endpoint exists
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    console.log('Contact form submitted:', data);
+    setSubmitted(true);
+    reset();
+  };
   return (
-    <div className="relative min-h-screen bg-gradient-to-br text-emerald-800 via-white text-emerald-800 overflow-hidden">
+    <div className="relative min-h-screen bg-background overflow-hidden">
       <GradientOrbs />
 
       {/* Navbar */}
@@ -39,41 +63,58 @@ const ContactPage: React.FC = () => {
             {/* Contact Form */}
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/50">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Send us a message</h2>
-              <form className="space-y-6">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                {submitted && (
+                  <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+                    Thank you! We'll get back to you soon.
+                  </div>
+                )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
                   <input
                     type="text"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 text-emerald-800 focus:border-transparent transition-all"
+                    id="contact-name"
+                    className={`w-full px-4 py-3 rounded-lg border transition-all ${errors.name ? 'border-red-400' : 'border-gray-300 focus:ring-2 focus:border-transparent'}`}
                     placeholder="Your name"
+                    {...register('name')}
                   />
+                  {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
                   <input
                     type="email"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 text-emerald-800 focus:border-transparent transition-all"
+                    id="contact-email"
+                    className={`w-full px-4 py-3 rounded-lg border transition-all ${errors.email ? 'border-red-400' : 'border-gray-300 focus:ring-2 focus:border-transparent'}`}
                     placeholder="your.email@company.com"
+                    {...register('email')}
                   />
+                  {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
                   <input
                     type="text"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 text-emerald-800 focus:border-transparent transition-all"
+                    id="contact-subject"
+                    className={`w-full px-4 py-3 rounded-lg border transition-all ${errors.subject ? 'border-red-400' : 'border-gray-300 focus:ring-2 focus:border-transparent'}`}
                     placeholder="How can we help?"
+                    {...register('subject')}
                   />
+                  {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject.message}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Message *</label>
                   <textarea
                     rows={5}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 text-emerald-800 focus:border-transparent transition-all resize-none"
+                    id="contact-message"
+                    className={`w-full px-4 py-3 rounded-lg border transition-all resize-none ${errors.message ? 'border-red-400' : 'border-gray-300 focus:ring-2 focus:border-transparent'}`}
                     placeholder="Tell us more about your needs..."
+                    {...register('message')}
                   />
+                  {errors.message && <p className="text-xs text-red-500 mt-1">{errors.message.message}</p>}
                 </div>
-                <Button className="w-full" size="lg">
-                  Send Message
+                <Button type="submit" className="w-full" size="lg" isLoading={isSubmitting}>
+                  {isSubmitting ? 'Sending...' : 'Send Message'}
                 </Button>
               </form>
             </div>

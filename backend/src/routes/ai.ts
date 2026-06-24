@@ -1,4 +1,8 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
+import z from 'zod';
+import { authenticate, AuthRequest } from '../middleware/auth';
+import { grokLimiter } from '../lib/rateLimiters';
+import { validate } from '../lib/validation';
 
 type GrokRole = 'system' | 'user' | 'assistant';
 
@@ -7,17 +11,30 @@ interface GrokMessage {
   content: string;
 }
 
-interface GrokChatRequestBody {
-  prompt?: string;
-  messages?: GrokMessage[];
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
+interface GrokChatCompletionResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
 }
+
+const grokChatSchema = z.object({
+  prompt: z.string().optional(),
+  messages: z.array(z.object({
+    role: z.enum(['system', 'user', 'assistant']),
+    content: z.string(),
+  })).optional(),
+  model: z.string().optional(),
+  temperature: z.number().min(0).max(2).optional(),
+  maxTokens: z.number().int().min(1).max(128000).optional(),
+}).refine(data => data.prompt || (Array.isArray(data.messages) && data.messages.length > 0), {
+  message: 'Provide either `prompt` or a non-empty `messages` array.',
+});
 
 const router = Router();
 
-router.post('/grok', async (req: Request, res: Response) => {
+router.post('/grok', grokLimiter, authenticate, validate(grokChatSchema), async (req: AuthRequest, res: Response) => {
   try {
     const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
     const baseUrl = process.env.XAI_BASE_URL || 'https://api.x.ai/v1';
@@ -29,7 +46,7 @@ router.post('/grok', async (req: Request, res: Response) => {
       });
     }
 
-    const { prompt, messages, model, temperature, maxTokens } = req.body as GrokChatRequestBody;
+    const { prompt, messages, model, temperature, maxTokens } = req.body as z.infer<typeof grokChatSchema>;
 
     const normalizedMessages: GrokMessage[] =
       Array.isArray(messages) && messages.length > 0
@@ -38,11 +55,6 @@ router.post('/grok', async (req: Request, res: Response) => {
           ? [{ role: 'user', content: prompt }]
           : [];
 
-    if (normalizedMessages.length === 0) {
-      return res.status(400).json({
-        message: 'Provide either `prompt` or a non-empty `messages` array.'
-      });
-    }
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -58,7 +70,7 @@ router.post('/grok', async (req: Request, res: Response) => {
       })
     });
 
-    const result = await response.json().catch(() => null);
+    const result = (await response.json().catch(() => null)) as GrokChatCompletionResponse | null;
 
     if (!response.ok) {
       return res.status(response.status).json({

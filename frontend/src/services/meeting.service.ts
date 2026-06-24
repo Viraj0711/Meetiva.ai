@@ -1,4 +1,5 @@
 import { apiClient } from './api.client';
+import { API_BASE_URL } from './api.config';
 import {
   Meeting,
   MeetingSummary,
@@ -36,7 +37,7 @@ export const meetingService = {
     const response = await apiClient.get<PaginatedResponse<Meeting>>('/meetings', {
       params,
     });
-    return response;
+    return response.data;
   },
 
   /**
@@ -44,7 +45,7 @@ export const meetingService = {
    */
   getMeetingById: async (id: string): Promise<Meeting> => {
     const response = await apiClient.get<Meeting>(`/meetings/${id}`);
-    return response;
+    return response.data;
   },
 
   /**
@@ -52,7 +53,7 @@ export const meetingService = {
    */
   createMeeting: async (data: CreateMeetingRequest): Promise<Meeting> => {
     const response = await apiClient.post<Meeting>('/meetings', data);
-    return response;
+    return response.data;
   },
 
   /**
@@ -73,7 +74,6 @@ export const meetingService = {
     if (participants) formData.append('participants', JSON.stringify(participants));
 
     const token = localStorage.getItem('token');
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
     
     const response = await fetch(`${API_BASE_URL}/meetings/upload`, {
       method: 'POST',
@@ -104,7 +104,7 @@ export const meetingService = {
    */
   updateMeeting: async (id: string, data: UpdateMeetingRequest): Promise<Meeting> => {
     const response = await apiClient.patch<Meeting>(`/meetings/${id}`, data);
-    return response;
+    return response.data;
   },
 
   /**
@@ -119,7 +119,7 @@ export const meetingService = {
    */
   getMeetingSummary: async (meetingId: string): Promise<MeetingSummary> => {
     const response = await apiClient.get<MeetingSummary>(`/meetings/${meetingId}/summary`);
-    return response;
+    return response.data;
   },
 
   /**
@@ -127,7 +127,7 @@ export const meetingService = {
    */
   getMeetingTranscript: async (meetingId: string): Promise<Transcript> => {
     const response = await apiClient.get<Transcript>(`/meetings/${meetingId}/transcript`);
-    return response;
+    return response.data;
   },
 
   /**
@@ -135,7 +135,7 @@ export const meetingService = {
    */
   getMeetingActionItems: async (meetingId: string): Promise<ActionItem[]> => {
     const response = await apiClient.get<ActionItem[]>(`/meetings/${meetingId}/action-items`);
-    return response;
+    return response.data;
   },
 
   /**
@@ -143,7 +143,7 @@ export const meetingService = {
    */
   getMeetingStats: async (): Promise<MeetingStats> => {
     const response = await apiClient.get<MeetingStats>('/meetings/stats');
-    return response;
+    return response.data;
   },
 };
 
@@ -157,7 +157,7 @@ export const actionItemService = {
     const response = await apiClient.get<PaginatedResponse<ActionItem>>('/action-items', {
       params,
     });
-    return response;
+    return response.data;
   },
 
   /**
@@ -165,7 +165,7 @@ export const actionItemService = {
    */
   getActionItemById: async (id: string): Promise<ActionItem> => {
     const response = await apiClient.get<ActionItem>(`/action-items/${id}`);
-    return response;
+    return response.data;
   },
 
   /**
@@ -173,7 +173,7 @@ export const actionItemService = {
    */
   createActionItem: async (data: CreateActionItemRequest): Promise<ActionItem> => {
     const response = await apiClient.post<ActionItem>('/action-items', data);
-    return response;
+    return response.data;
   },
 
   /**
@@ -181,7 +181,7 @@ export const actionItemService = {
    */
   updateActionItem: async (id: string, data: UpdateActionItemRequest): Promise<ActionItem> => {
     const response = await apiClient.patch<ActionItem>(`/action-items/${id}`, data);
-    return response;
+    return response.data;
   },
 
   /**
@@ -196,6 +196,6 @@ export const actionItemService = {
    */
   completeActionItem: async (id: string): Promise<ActionItem> => {
     const response = await apiClient.post<ActionItem>(`/action-items/${id}/complete`);
-    return response;
+    return response.data;
   },
 };

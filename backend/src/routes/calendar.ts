@@ -1,25 +1,21 @@
-import { Router, Request, Response } from 'express';
-import { body, query, validationResult } from 'express-validator';
+import { Router, Response } from 'express';
+import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import {
   getCalendarConnectionStatus,
   getGoogleCalendarClient,
   revokeGoogleConnection,
 } from '../services/googleCalendar';
+import { apiLimiter } from '../lib/rateLimiters';
+import { validate, createEventSchema } from '../lib/validation';
 
 const router = Router();
 
-const getValidationError = (req: Request, res: Response): boolean => {
-  const errors = validationResult(req);
-  if (errors.isEmpty()) {
-    return false;
-  }
+const maxResultsSchema = z.object({
+  maxResults: z.coerce.number().int().min(1).max(50).optional().default(20),
+});
 
-  res.status(400).json({ message: 'Invalid input', errors: errors.array() });
-  return true;
-};
-
-router.get('/status', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/status', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const status = await getCalendarConnectionStatus(req.userId!);
     return res.json({ data: status });
@@ -31,15 +27,12 @@ router.get('/status', authenticate, async (req: AuthRequest, res: Response) => {
 
 router.get(
   '/events',
+  apiLimiter,
   authenticate,
-  [query('maxResults').optional().isInt({ min: 1, max: 50 })],
+  validate(maxResultsSchema, 'query'),
   async (req: AuthRequest, res: Response) => {
-    if (getValidationError(req, res)) {
-      return;
-    }
-
     try {
-      const maxResults = req.query.maxResults ? Number(req.query.maxResults) : 20;
+      const { maxResults } = req.query as unknown as z.infer<typeof maxResultsSchema>;
       const calendar = await getGoogleCalendarClient(req.userId!);
 
       const result = await calendar.events.list({
@@ -59,7 +52,7 @@ router.get(
   }
 );
 
-router.get('/events/upcoming', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/events/upcoming', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const calendar = await getGoogleCalendarClient(req.userId!);
     const result = await calendar.events.list({
@@ -80,32 +73,19 @@ router.get('/events/upcoming', authenticate, async (req: AuthRequest, res: Respo
 
 router.post(
   '/create-event',
+  apiLimiter,
   authenticate,
-  [
-    body('title').isString().trim().isLength({ min: 1, max: 140 }),
-    body('description').optional().isString().trim().isLength({ max: 5000 }),
-    body('startTime').isISO8601(),
-    body('endTime').isISO8601(),
-    body('timeZone').optional().isString().trim().isLength({ min: 1, max: 100 }),
-  ],
+  validate(createEventSchema),
   async (req: AuthRequest, res: Response) => {
-    if (getValidationError(req, res)) {
-      return;
-    }
-
-    const { title, description, startTime, endTime, timeZone } = req.body;
-
-    if (new Date(endTime).getTime() <= new Date(startTime).getTime()) {
-      return res.status(400).json({ message: 'endTime must be later than startTime' });
-    }
-
     try {
+      const { title, description, startTime, endTime, timeZone } = req.body as z.infer<typeof createEventSchema>;
+
       const calendar = await getGoogleCalendarClient(req.userId!);
       const result = await calendar.events.insert({
         calendarId: 'primary',
         requestBody: {
           summary: title.trim(),
-          description: typeof description === 'string' ? description.trim() : '',
+          description: description || '',
           start: { dateTime: new Date(startTime).toISOString(), timeZone: timeZone || 'UTC' },
           end: { dateTime: new Date(endTime).toISOString(), timeZone: timeZone || 'UTC' },
         },
@@ -120,7 +100,7 @@ router.post(
   }
 );
 
-router.post('/disconnect', authenticate, async (req: AuthRequest, res: Response) => {
+router.post('/disconnect', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     await revokeGoogleConnection(req.userId!);
     return res.json({ message: 'Google Calendar disconnected' });

@@ -30,7 +30,13 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || '') as JwtPayload;
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('JWT_SECRET is not configured');
+      return res.status(500).json({ message: 'Authentication configuration error' });
+    }
+
+    const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
 
     if (!decoded?.userId) {
       return res.status(401).json({ message: 'Invalid token payload' });

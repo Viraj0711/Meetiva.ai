@@ -1,9 +1,12 @@
 import { Router, Response } from 'express';
 import { Prisma } from '@prisma/client';
+import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { canViewUserData } from '../middleware/authorize';
 import prisma from '../lib/prisma';
 import { syncMeetingStatusFromActionItems } from '../services/meetingStatus';
+import { apiLimiter } from '../lib/rateLimiters';
+import { validate, createActionItemSchema, updateActionItemSchema } from '../lib/validation';
 
 const router = Router();
 
@@ -57,7 +60,7 @@ const getActionItemsWhereClause = async (req: AuthRequest): Promise<Prisma.Actio
   }
 };
 
-router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '10', status } = req.query;
     const pageNumber = Math.max(1, parseInt(page as string, 10) || 1);
@@ -106,7 +109,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/:id', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const actionItem = await prisma.actionItem.findFirst({
       where: {
@@ -133,9 +136,9 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
+router.post('/', apiLimiter, authenticate, validate(createActionItemSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const { meetingId, title, description, assignee, dueDate, priority } = req.body;
+    const { meetingId, title, description, assignee, dueDate, priority } = req.body as z.infer<typeof createActionItemSchema>;
 
     const meeting = await prisma.meeting.findFirst({
       where: {
@@ -170,9 +173,9 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+router.patch('/:id', apiLimiter, authenticate, validate(updateActionItemSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, assignee, dueDate, priority, status } = req.body;
+    const { title, description, assignee, dueDate, priority, status } = req.body as z.infer<typeof updateActionItemSchema>;
 
     const actionItem = await prisma.actionItem.findFirst({
       where: {
@@ -225,7 +228,7 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+router.delete('/:id', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const actionItem = await prisma.actionItem.findFirst({
       where: {
@@ -256,7 +259,7 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/:id/complete', authenticate, async (req: AuthRequest, res: Response) => {
+router.post('/:id/complete', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const actionItem = await prisma.actionItem.findFirst({
       where: {

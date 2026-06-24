@@ -5,11 +5,12 @@ import { MeetingStatus, MeetingPriority } from '@/types';
  */
 export const getStatusColor = (status: MeetingStatus): string => {
   const colors: Record<MeetingStatus, string> = {
-    [MeetingStatus.UPLOADING]: 'text-emerald-800 text-emerald-800',
-    [MeetingStatus.PROCESSING]: 'text-emerald-800 text-emerald-800',
+    [MeetingStatus.PENDING]: 'bg-yellow-100 text-amber-800',
+    [MeetingStatus.UPLOADING]: 'text-cyan-300',
+    [MeetingStatus.PROCESSING]: 'text-cyan-300',
     [MeetingStatus.TRANSCRIBING]: 'bg-purple-100 text-purple-800',
     [MeetingStatus.ANALYZING]: 'bg-indigo-100 text-indigo-800',
-    [MeetingStatus.COMPLETED]: 'bg-green-100 text-green-800',
+    [MeetingStatus.COMPLETED]: 'bg-white/[0.06] text-cyan-300',
     [MeetingStatus.FAILED]: 'bg-red-100 text-red-800',
   };
   return colors[status] || 'bg-gray-100 text-gray-800';
@@ -33,6 +34,7 @@ export const getPriorityColor = (priority: MeetingPriority): string => {
  */
 export const getStatusLabel = (status: MeetingStatus): string => {
   const labels: Record<MeetingStatus, string> = {
+    [MeetingStatus.PENDING]: 'Pending',
     [MeetingStatus.UPLOADING]: 'Uploading',
     [MeetingStatus.PROCESSING]: 'Processing',
     [MeetingStatus.TRANSCRIBING]: 'Transcribing',

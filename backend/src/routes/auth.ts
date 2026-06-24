@@ -1,8 +1,8 @@
-﻿import { Router, Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { body, validationResult } from 'express-validator';
+import z from 'zod';
 import prisma from '../lib/prisma';
 import { TeamInfo } from '../middleware/auth';
 import {
@@ -11,6 +11,16 @@ import {
   upsertGoogleTokens,
 } from '../services/googleCalendar';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { authLimiter, authedLimiter } from '../lib/rateLimiters';
+import {
+  validate,
+  registerSchema,
+  loginSchema,
+  passwordResetSchema,
+  passwordResetConfirmSchema,
+  updateProfileSchema,
+  emailField,
+} from '../lib/validation';
 
 const router = Router();
 
@@ -18,7 +28,12 @@ const OAUTH_STATE_COOKIE = 'google_oauth_state';
 const OAUTH_UID_COOKIE = 'google_oauth_uid';
 
 const verifyJwtAndGetUserId = (token: string): string => {
-  const decoded = jwt.verify(token, process.env.JWT_SECRET || '') as { userId?: string };
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+
+  const decoded = jwt.verify(token, jwtSecret) as { userId?: string };
 
   if (!decoded.userId) {
     throw new Error('Invalid token payload');
@@ -53,11 +68,8 @@ const createToken = async (userId: string, email: string): Promise<string> => {
 
 // Member self-registration is disabled in invite-only mode.
 router.post('/register',
-  [
-    body('email').isEmail(),
-    body('name').trim().isLength({ min: 2, max: 50 }),
-    body('password').isLength({ min: 8 })
-  ],
+  authLimiter,
+  validate(registerSchema),
   async (req: Request, res: Response) => {
     return res.status(403).json({
       message: 'This workspace is invite-only. Ask your team leader for credentials.'
@@ -67,22 +79,13 @@ router.post('/register',
 
 // Team leaders can create their own account.
 router.post('/register-leader',
-  [
-    body('email').isEmail(),
-    body('name').trim().isLength({ min: 2, max: 50 }),
-    body('password').isLength({ min: 8 })
-  ],
+  authLimiter,
+  validate(registerSchema),
   async (req: Request, res: Response) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
-      }
+      const { email, name, password } = req.body as z.infer<typeof registerSchema>;
 
-      const { email, name, password } = req.body;
-
-      const normalizedEmail = String(email).toLowerCase();
-      const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+      const existing = await prisma.user.findUnique({ where: { email } });
       if (existing) {
         return res.status(400).json({ message: 'Email already registered' });
       }
@@ -91,7 +94,7 @@ router.post('/register-leader',
 
       const user = await prisma.user.create({
         data: {
-          email: normalizedEmail,
+          email,
           name,
           hashedPassword,
         },
@@ -120,25 +123,13 @@ router.post('/register-leader',
 
 // Login
 router.post('/login',
-  [
-    body('email').isEmail(),
-    body('password').notEmpty()
-  ],
+  authLimiter,
+  validate(loginSchema),
   async (req: Request, res: Response) => {
-    console.log('🔐 Login request from:', req.ip);
-    console.log('📧 Login Email:', req.body.email);
-    console.log('🌐 Origin:', req.get('origin'));
-    
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        console.log('❌ Login validation errors:', errors.array());
-        return res.status(400).json({ message: 'Invalid input' });
-      }
+      const { email, password } = req.body as z.infer<typeof loginSchema>;
 
-      const { email, password } = req.body;
-
-      const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      const user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
         return res.status(401).json({ message: 'Invalid email or password' });
       }
@@ -172,7 +163,7 @@ router.post('/login',
 );
 
 // Get current authenticated user
-router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/me', authedLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.userId! } });
 
@@ -196,19 +187,12 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
 // Update current authenticated user profile
 router.patch(
   '/me',
+  authedLimiter,
   authenticate,
-  [
-    body('name').optional().trim().isLength({ min: 2, max: 80 }),
-    body('email').optional().isEmail(),
-  ],
+  validate(updateProfileSchema),
   async (req: AuthRequest, res: Response) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
-      }
-
-      const { name, email } = req.body as { name?: string; email?: string };
+      const { name, email } = req.body as z.infer<typeof updateProfileSchema>;
 
       const data: { name?: string; email?: string } = {};
       if (typeof name === 'string' && name.trim()) {
@@ -249,14 +233,162 @@ router.patch(
   }
 );
 
-router.get('/google', async (req: Request, res: Response) => {
-  try {
-    const jwtToken = typeof req.query.token === 'string' ? req.query.token : '';
+// ── Logout ────────────────────────────────────────────────────────────────
+// JWT is stateless — the client discards the token. This endpoint exists so the
+// frontend auth service can make a request and get a clean acknowledgment.
+router.post('/logout', (_req: Request, res: Response) => {
+  res.json({ message: 'Logged out successfully' });
+});
 
-    if (!jwtToken) {
-      return res.status(401).json({ message: 'Missing session token.' });
+// ── Refresh token ──────────────────────────────────────────────────────────
+// Issues a new JWT with fresh expiry using the current valid token.
+router.post('/refresh', authedLimiter, authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.userId! } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Account is inactive' });
     }
 
+    const token = await createToken(user.id, user.email);
+    return res.json({ token });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    return res.status(500).json({ message: 'Failed to refresh token' });
+  }
+});
+
+// ── Password reset request ─────────────────────────────────────────────────
+// In-memory store for reset tokens (survives until server restart).
+// For production, persist these tokens in the database.
+const passwordResetTokens = new Map<string, { userId: string; expiresAt: Date }>();
+
+router.post('/password-reset',
+  authLimiter,
+  validate(passwordResetSchema),
+  async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body as z.infer<typeof passwordResetSchema>;
+      const user = await prisma.user.findUnique({ where: { email } });
+
+      // Always return success to avoid revealing whether the email exists
+      if (!user) {
+        return res.json({ message: 'If the email is registered, a reset link has been sent.' });
+      }
+
+      const token = crypto.randomBytes(32).toString('hex');
+      passwordResetTokens.set(token, {
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+      });
+
+      console.log(`Password reset token for ${email}: ${token}`);
+      // In production, send this token via email (SMTP integration)
+
+      return res.json({ message: 'If the email is registered, a reset link has been sent.' });
+    } catch (error) {
+      console.error('Password reset request error:', error);
+      return res.status(500).json({ message: 'Failed to process password reset' });
+    }
+  }
+);
+
+// ── Password reset confirm ──────────────────────────────────────────────────
+router.post('/password-reset/confirm',
+  authLimiter,
+  validate(passwordResetConfirmSchema),
+  async (req: Request, res: Response) => {
+    try {
+      const { token, password } = req.body as z.infer<typeof passwordResetConfirmSchema>;
+      const stored = passwordResetTokens.get(token);
+
+      if (!stored || stored.expiresAt < new Date()) {
+        passwordResetTokens.delete(token);
+        return res.status(400).json({ message: 'Invalid or expired reset token' });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await prisma.user.update({
+        where: { id: stored.userId },
+        data: { hashedPassword },
+      });
+
+      passwordResetTokens.delete(token);
+
+      return res.json({ message: 'Password updated successfully' });
+    } catch (error) {
+      console.error('Password reset confirm error:', error);
+      return res.status(500).json({ message: 'Failed to reset password' });
+    }
+  }
+);
+
+/**
+ * POST /auth/google/init — Secure OAuth initialization.
+ *
+ * The frontend calls this endpoint with the JWT in the Authorization header
+ * (handled automatically by apiClient). The backend verifies the token,
+ * sets httpOnly cookies for the userId + OAuth state, and returns the
+ * Google authorization URL. The frontend then redirects the browser.
+ *
+ * This avoids passing the JWT as a URL query parameter (which could be
+ * leaked via server logs, Referer headers, or browser history).
+ */
+router.post('/google/init', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const oauthClient = getGoogleOAuthClient();
+    const forceConsent = req.query.force === '1';
+    const existingGoogleAuth = await prisma.googleCalendarAuth.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    const state = crypto.randomBytes(24).toString('hex');
+
+    res.cookie(OAUTH_STATE_COOKIE, state, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 10 * 60 * 1000,
+    });
+
+    res.cookie(OAUTH_UID_COOKIE, userId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 10 * 60 * 1000,
+    });
+
+    const authUrl = oauthClient.generateAuthUrl({
+      access_type: 'offline',
+      scope: googleCalendarScopes,
+      state,
+      include_granted_scopes: true,
+      ...(forceConsent || !existingGoogleAuth ? { prompt: 'consent' } : {}),
+    });
+
+    return res.json({ authUrl });
+  } catch (error) {
+    console.error('Google OAuth init failed:', error);
+    return res.status(500).json({ message: 'Failed to initialize Google OAuth.' });
+  }
+});
+
+/**
+ * GET /auth/google — Legacy OAuth init (kept for backward compatibility).
+ * Reads the JWT from the query string. New integrations should use
+ * POST /auth/google/init instead.
+ */
+router.get('/google', async (req: Request, res: Response) => {
+  const jwtToken = typeof req.query.token === 'string' ? req.query.token : '';
+  if (!jwtToken) {
+    return res.status(401).json({ message: 'Missing session token.' });
+  }
+
+  try {
     const userId = verifyJwtAndGetUserId(jwtToken);
     const oauthClient = getGoogleOAuthClient();
     const forceConsent = req.query.force === '1';

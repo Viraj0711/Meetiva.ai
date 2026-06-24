@@ -1,10 +1,19 @@
 import { Router, Response } from 'express';
-import { body, validationResult } from 'express-validator';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { authorize } from '../middleware/authorize';
 import prisma from '../lib/prisma';
-import bcrypt from 'bcryptjs';
+import { apiLimiter } from '../lib/rateLimiters';
+import {
+  validate,
+  createTeamSchema,
+  inviteMemberSchema,
+  updateMemberRoleSchema,
+  updateMemberProfileSchema,
+  chatMessageSchema,
+} from '../lib/validation';
 
 const router = Router();
 
@@ -41,89 +50,14 @@ const getAcceptedMembership = async (teamId: string, userId: string) => {
   });
 };
 
-// Utility: Get all team members a user can see based on hierarchy
-const getVisibleTeamIds = async (userId: string): Promise<string[]> => {
-  const teamMembers = await prisma.teamMember.findMany({
-    where: { 
-      userId,
-      status: 'ACCEPTED'
-    },
-    select: { teamId: true }
-  });
-  return teamMembers.map(tm => tm.teamId);
-};
-
-// Utility: Get all members visible to a user in their teams
-const getVisibleUserIds = async (userId: string, userRole: string): Promise<string[]> => {
-  if (userRole === 'MEMBER') {
-    // Members only see themselves
-    return [userId];
-  }
-
-  // Get all teams this user is MANAGER or LEAD in
-  const teamMemberships = await prisma.teamMember.findMany({
-    where: { 
-      userId,
-      status: 'ACCEPTED'
-    },
-    select: { teamId: true, role: true }
-  });
-
-  if (userRole === 'LEAD') {
-    // LEAD can see members in their teams
-    const teamIds = teamMemberships
-      .filter(tm => tm.role === 'LEAD')
-      .map(tm => tm.teamId);
-
-    if (teamIds.length === 0) return [userId];
-
-    const teamMembersInLedTeams = await prisma.teamMember.findMany({
-      where: {
-        teamId: { in: teamIds },
-        role: 'MEMBER',
-        status: 'ACCEPTED'
-      },
-      select: { userId: true }
-    });
-
-    return [userId, ...teamMembersInLedTeams.map(tm => tm.userId)];
-  }
-
-  if (userRole === 'MANAGER') {
-    // MANAGER can see everyone in their teams
-    const teamIds = teamMemberships.map(tm => tm.teamId);
-
-    if (teamIds.length === 0) return [userId];
-
-    const allTeamMembers = await prisma.teamMember.findMany({
-      where: {
-        teamId: { in: teamIds },
-        status: 'ACCEPTED'
-      },
-      select: { userId: true }
-    });
-
-    return [userId, ...allTeamMembers.map(tm => tm.userId)];
-  }
-
-  return [userId];
-};
-
 // Create a new team
 router.post(
   '/',
+  apiLimiter,
   authenticate,
-  [
-    body('name').trim().isLength({ min: 2, max: 100 }),
-    body('description').optional().trim().isLength({ max: 500 })
-  ],
+  validate(createTeamSchema),
   async (req: AuthRequest, res: Response) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
-      }
-
       const existingMemberships = await prisma.teamMember.findMany({
         where: {
           userId: req.userId!,
@@ -144,7 +78,7 @@ router.post(
         });
       }
 
-      const { name, description } = req.body;
+      const { name, description } = req.body as z.infer<typeof createTeamSchema>;
 
       // Create the team with manager
       const team = await prisma.team.create({
@@ -190,7 +124,7 @@ router.post(
 );
 
 // Get all teams for current user
-router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const teamMembers = await prisma.teamMember.findMany({
       where: { userId: req.userId! },
@@ -218,7 +152,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 });
 
 // Get team follow-up chat statistics for analytics dashboards
-router.get('/chat/stats', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/chat/stats', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const range = (req.query.range as string) || 'month';
     const daysByRange: Record<string, number> = {
@@ -342,7 +276,7 @@ router.get('/chat/stats', authenticate, async (req: AuthRequest, res: Response) 
 });
 
 // Get a specific team for current user
-router.get('/:teamId', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/:teamId', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { teamId } = req.params;
 
@@ -375,7 +309,7 @@ router.get('/:teamId', authenticate, async (req: AuthRequest, res: Response) => 
 });
 
 // Get team chat messages for follow-up discussion
-router.get('/:teamId/chat/messages', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/:teamId/chat/messages', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { teamId } = req.params;
     const limitInput = parseInt((req.query.limit as string) || '50', 10);
@@ -453,17 +387,12 @@ router.get('/:teamId/chat/messages', authenticate, async (req: AuthRequest, res:
 // Post a follow-up message to team chat
 router.post(
   '/:teamId/chat/messages',
+  apiLimiter,
   authenticate,
-  [body('message').trim().isLength({ min: 1, max: 2000 })],
+  validate(chatMessageSchema),
   async (req: AuthRequest, res: Response) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
-      }
-
       const { teamId } = req.params;
-
       const membership = await getAcceptedMembership(teamId, req.userId!);
       if (!membership || membership.status !== 'ACCEPTED') {
         return res.status(403).json({ message: 'Not a member of this team' });
@@ -508,6 +437,7 @@ router.post(
 // Get team members with hierarchy-aware visibility
 router.get(
   '/:teamId/members',
+  apiLimiter,
   authenticate,
   async (req: AuthRequest, res: Response) => {
     try {
@@ -561,18 +491,13 @@ router.get(
 // Leader-only invite: creates MEMBER credentials and membership in one step.
 router.post(
   '/:teamId/invite',
+  apiLimiter,
   authenticate,
-  [
-    body('email').isEmail()
-  ],
+  validate(inviteMemberSchema),
   async (req: AuthRequest, res: Response) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
-      }
-        const { teamId } = req.params;
-        const normalizedEmail = String(req.body.email).toLowerCase();
+      const { teamId } = req.params;
+      const normalizedEmail = String(req.body.email).toLowerCase();
 
       // Check if requester is member of this team
       const requesterMembership = await prisma.teamMember.findUnique({
@@ -682,7 +607,7 @@ router.post(
 );
 
 // Get pending invitations for current user
-router.get('/pending/invitations', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/pending/invitations', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const currentUser = await prisma.user.findUnique({
       where: { id: req.userId! }
@@ -726,6 +651,7 @@ router.get('/pending/invitations', authenticate, async (req: AuthRequest, res: R
 // Accept an invitation
 router.post(
   '/invitations/:invitationId/accept',
+  apiLimiter,
   authenticate,
   async (req: AuthRequest, res: Response) => {
     try {
@@ -795,19 +721,13 @@ router.post(
 // Change a team member's role (team leaders/managers)
 router.patch(
   '/:teamId/members/:userId',
+  apiLimiter,
   authenticate,
-  [
-    body('role').isIn(['LEAD', 'MEMBER'])
-  ],
+  validate(updateMemberRoleSchema),
   async (req: AuthRequest, res: Response) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
-      }
-
       const { teamId, userId } = req.params;
-      const { role } = req.body;
+      const { role } = req.body as z.infer<typeof updateMemberRoleSchema>;
 
       const requesterMembership = await prisma.teamMember.findUnique({
         where: {
@@ -871,20 +791,13 @@ router.patch(
 // Update member profile details (name/email) for team leaders.
 router.patch(
   '/:teamId/members/:userId/profile',
+  apiLimiter,
   authenticate,
-  [
-    body('name').optional().trim().isLength({ min: 2, max: 50 }),
-    body('email').optional().isEmail(),
-  ],
+  validate(updateMemberProfileSchema),
   async (req: AuthRequest, res: Response) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
-      }
-
       const { teamId, userId } = req.params;
-      const { name, email } = req.body as { name?: string; email?: string };
+      const { name, email } = req.body as z.infer<typeof updateMemberProfileSchema>;
 
       const requesterMembership = await prisma.teamMember.findUnique({
         where: {
@@ -958,6 +871,7 @@ router.patch(
 // Reset member credentials and return a one-time temporary password.
 router.post(
   '/:teamId/members/:userId/credentials/reset',
+  apiLimiter,
   authenticate,
   async (req: AuthRequest, res: Response) => {
     try {
@@ -1029,6 +943,7 @@ router.post(
 // Remove a member from a team (MANAGER can remove, LEAD can only remove MEMBERS)
 router.delete(
   '/:teamId/members/:userId',
+  apiLimiter,
   authenticate,
   async (req: AuthRequest, res: Response) => {
     try {
@@ -1090,7 +1005,7 @@ router.delete(
 );
 
 // Delete a team created by the current user or a team leader/manager with access.
-router.delete('/:teamId', authenticate, async (req: AuthRequest, res: Response) => {
+router.delete('/:teamId', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { teamId } = req.params;
 

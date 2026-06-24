@@ -87,18 +87,14 @@ export const integrationService = {
 
   /**
    * Get Google OAuth authorization URL
+   *
+   * Uses the secure POST /auth/google/init endpoint which passes the JWT
+   * via the Authorization header instead of a query string parameter.
+   * This prevents token leakage via server logs, Referer headers, or browser history.
    */
   getGoogleAuthUrl: async (_teamId: string): Promise<{ authUrl: string }> => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-    const rootBase = apiBase.replace(/\/api\/v1\/?$/, '');
-    return {
-      authUrl: `${rootBase}/auth/google?token=${encodeURIComponent(token)}`,
-    };
+    const response = await apiClient.post<{ authUrl: string }>('/auth/google/init');
+    return response.data;
   },
 
   /**

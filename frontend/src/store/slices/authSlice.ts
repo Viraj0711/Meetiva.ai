@@ -51,13 +51,9 @@ export const registerAsync = createAsyncThunk(
   async (data: RegisterData, { rejectWithValue }) => {
     try {
       const response = await authService.register(data);
-      console.log('registerAsync response:', response);
-      console.log('Has user?', response.user);
-      console.log('Has token?', response.token);
       return response;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      console.error('registerAsync error:', error);
       return rejectWithValue(err.response?.data?.message || 'Registration failed');
     }
   }

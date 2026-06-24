@@ -1,23 +1,20 @@
 import { Router, Response } from 'express';
-import { query, validationResult } from 'express-validator';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { apiLimiter } from '../lib/rateLimiters';
+import { validate, notificationQuerySchema } from '../lib/validation';
 
 const router = Router();
 
 router.get(
   '/',
+  apiLimiter,
   authenticate,
-  [query('limit').optional().isInt({ min: 1, max: 100 })],
+  validate(notificationQuerySchema, 'query'),
   async (req: AuthRequest, res: Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ message: 'Invalid query parameters', errors: errors.array() });
-    }
-
-    const limit = req.query.limit ? Number(req.query.limit) : 25;
-
     try {
+      const { limit } = req.query as unknown as { limit: number };
+
       const notifications = await prisma.notification.findMany({
         where: { userId: req.userId! },
         include: {
@@ -37,7 +34,7 @@ router.get(
   }
 );
 
-router.patch('/:id/read', authenticate, async (req: AuthRequest, res: Response) => {
+router.patch('/:id/read', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const target = await prisma.notification.findFirst({
       where: { id: req.params.id, userId: req.userId! },

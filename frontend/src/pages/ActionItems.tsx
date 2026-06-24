@@ -225,8 +225,8 @@ const ActionItems: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">Total</p>
               <p className="text-2xl font-bold">{displayedItems.length}</p>
             </div>
-            <div className="w-10 h-10 text-emerald-800 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-emerald-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-10 h-10 text-cyan-300 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
@@ -239,7 +239,7 @@ const ActionItems: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">Overdue</p>
               <p className="text-2xl font-bold text-red-600">{groupedItems.overdue.length}</p>
             </div>
-            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-white/[0.03] rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -253,7 +253,7 @@ const ActionItems: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">In Progress</p>
               <p className="text-2xl font-bold">{groupedItems.upcoming.length + groupedItems.today.length}</p>
             </div>
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-white/[0.03] rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -265,10 +265,10 @@ const ActionItems: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Completed</p>
-              <p className="text-2xl font-bold text-green-600">{groupedItems.completed.length}</p>
+              <p className="text-2xl font-bold text-cyan-300">{groupedItems.completed.length}</p>
             </div>
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-10 h-10 bg-white/[0.03] rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>

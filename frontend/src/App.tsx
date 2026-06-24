@@ -4,6 +4,8 @@ import { Provider } from 'react-redux';
 import { store } from '@/store';
 import { AppRouter } from '@/router';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import ThemeProvider from '@/components/ThemeProvider';
+import ToastContainer from '@/components/ui/ToastContainer';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,7 +22,10 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <Provider store={store}>
         <QueryClientProvider client={queryClient}>
-          <AppRouter />
+          <ThemeProvider>
+            <AppRouter />
+            <ToastContainer />
+          </ThemeProvider>
         </QueryClientProvider>
       </Provider>
     </ErrorBoundary>

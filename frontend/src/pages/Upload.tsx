@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Progress } from '@/components/ui/Progress';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { meetingService, type DuplicateMeetingInfo, type UploadDuplicateError } from '@/services';
+import { API_BASE_URL } from '@/services/api.config';
 import { retryWithBackoff, isRetryableError } from '@/utils/retry.utils';
 
 interface FileUploadState {
@@ -99,7 +100,6 @@ const Upload: React.FC = () => {
     setDownloading(true);
     try {
       const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
       const response = await fetch(`${API_BASE_URL}${exportUrl}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error('Download failed');
       const blob = await response.blob();
@@ -201,7 +201,7 @@ const Upload: React.FC = () => {
 
           {duplicateMeeting && <Card className="p-6 border-amber-400/20 bg-amber-500/10"><p className="font-medium text-amber-100">This meeting already exists.</p><p className="mt-1 text-sm text-amber-100/70">Existing meeting: {duplicateMeeting.title}</p><Button className="mt-4" variant="outline" onClick={() => navigate(`/dashboard/meetings/${duplicateMeeting.id}`)}>Open existing meeting</Button></Card>}
 
-          {uploadState.exportUrl && uploadState.meetingId && <Card className="p-6 border-emerald-400/20 bg-emerald-500/10"><div className="flex items-start gap-4"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-400/15 text-emerald-300"><CheckCircle2 className="h-6 w-6" /></div><div className="flex-1"><h3 className="text-lg font-semibold text-white">Meeting processed successfully</h3><p className="mt-2 text-sm leading-7 text-white/60">Your transcript, summary, decisions, and action items are ready.</p><div className="mt-5 flex flex-wrap gap-3"><Button onClick={() => handleExcelDownload(uploadState.exportUrl!, meetingTitle)} isLoading={downloading}>Download tasks</Button><Button variant="outline" onClick={() => navigate(`/dashboard/meetings/${uploadState.meetingId}`)}>Open meeting</Button><Button variant="ghost" onClick={() => navigate('/dashboard')}>Go to dashboard</Button></div></div></div></Card>}
+          {uploadState.exportUrl && uploadState.meetingId && <Card className="p-6 border-cyan-400/20 bg-cyan-500/10"><div className="flex items-start gap-4"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-400/15 text-cyan-300"><CheckCircle2 className="h-6 w-6" /></div><div className="flex-1"><h3 className="text-lg font-semibold text-white">Meeting processed successfully</h3><p className="mt-2 text-sm leading-7 text-white/60">Your transcript, summary, decisions, and action items are ready.</p><div className="mt-5 flex flex-wrap gap-3"><Button onClick={() => handleExcelDownload(uploadState.exportUrl!, meetingTitle)} isLoading={downloading}>Download tasks</Button><Button variant="outline" onClick={() => navigate(`/dashboard/meetings/${uploadState.meetingId}`)}>Open meeting</Button><Button variant="ghost" onClick={() => navigate('/dashboard')}>Go to dashboard</Button></div></div></div></Card>}
         </div>
 
         <div className="space-y-6">

@@ -1,10 +1,12 @@
-﻿import { Router, Response } from 'express';
+import { Router, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import multer from 'multer';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { canViewUserData } from '../middleware/authorize';
 import prisma from '../lib/prisma';
+import { jsonArrayToStringArray, normalizeTranscriptForComparison } from '../lib/prismaUtils';
 import { analyzeTranscriptWithGrok } from '../services/grokMeetingAnalyzer';
 import {
   transcribeWithWhisper,
@@ -12,6 +14,8 @@ import {
   WHISPER_MAX_BYTES,
 } from '../services/whisperTranscriber';
 import { syncMeetingStatusFromActionItems } from '../services/meetingStatus';
+import { apiLimiter, uploadLimiter } from '../lib/rateLimiters';
+import { validate, updateMeetingSchema, createMeetingSchema } from '../lib/validation';
 
 const router = Router();
 
@@ -20,20 +24,6 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: WHISPER_MAX_BYTES },
 });
-
-const jsonArrayToStringArray = (value: Prisma.JsonValue | null | undefined): string[] => {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter((entry): entry is string => typeof entry === 'string');
-};
-
-const normalizeTranscriptForComparison = (text: string): string =>
-  text
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .trim();
 
 // Helper to get the appropriate where clause based on user's role
 const getMeetingsWhereClause = async (req: AuthRequest): Promise<Prisma.MeetingWhereInput> => {
@@ -85,7 +75,7 @@ const getMeetingsWhereClause = async (req: AuthRequest): Promise<Prisma.MeetingW
   }
 };
 
-router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/stats', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const where = await getMeetingsWhereClause(req);
 
@@ -143,7 +133,7 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '10' } = req.query;
     const pageNumber = Math.max(1, parseInt(page as string, 10) || 1);
@@ -177,7 +167,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/:id', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findUnique({
       where: { id: req.params.id }
@@ -199,7 +189,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequest, res: Response) => {
+router.post('/upload', uploadLimiter, authenticate, upload.single('file'), async (req: AuthRequest, res: Response) => {
   try {
     const title = typeof req.body.title === 'string' && req.body.title.trim().length > 0
       ? req.body.title.trim()
@@ -394,7 +384,7 @@ router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequ
   }
 });
 
-router.get('/:id/summary', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/:id/summary', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findUnique({
       where: { id: req.params.id },
@@ -434,7 +424,7 @@ router.get('/:id/summary', authenticate, async (req: AuthRequest, res: Response)
   }
 });
 
-router.get('/:id/transcript', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/:id/transcript', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findUnique({
       where: { id: req.params.id },
@@ -472,7 +462,7 @@ router.get('/:id/transcript', authenticate, async (req: AuthRequest, res: Respon
   }
 });
 
-router.get('/:id/action-items', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/:id/action-items', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findFirst({
       where: { id: req.params.id }
@@ -504,7 +494,7 @@ router.get('/:id/action-items', authenticate, async (req: AuthRequest, res: Resp
   }
 });
 
-router.get('/:id/action-items/export', authenticate, async (req: AuthRequest, res: Response) => {
+router.get('/:id/action-items/export', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findFirst({
       where: { id: req.params.id },
@@ -535,11 +525,13 @@ router.get('/:id/action-items/export', authenticate, async (req: AuthRequest, re
       Tags: jsonArrayToStringArray(item.tags).join(', ')
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Tasks');
 
-    const fileBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+    worksheet.columns = Object.keys(rows[0] ?? {}).map((key) => ({ header: key, key, width: 20 }));
+    worksheet.addRows(rows);
+
+    const fileBuffer = await workbook.xlsx.writeBuffer();
 
     const safeTitle = meeting.title.replace(/[^a-z0-9-_]+/gi, '_').slice(0, 60);
     const filename = `${safeTitle || 'meeting'}_tasks.xlsx`;
@@ -553,16 +545,16 @@ router.get('/:id/action-items/export', authenticate, async (req: AuthRequest, re
   }
 });
 
-router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
+router.post('/', apiLimiter, authenticate, validate(createMeetingSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, duration, participants } = req.body;
+    const { title, description, duration, participants } = req.body as z.infer<typeof createMeetingSchema>;
 
     const meeting = await prisma.meeting.create({
       data: {
         title,
         description,
         duration,
-        participants: Array.isArray(participants) ? participants : [],
+        participants: participants,
         userId: req.userId!,
         status: 'completed',
         processingProgress: 100,
@@ -577,9 +569,9 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+router.patch('/:id', apiLimiter, authenticate, validate(updateMeetingSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, priority, status } = req.body;
+    const { title, description, priority, status } = req.body as z.infer<typeof updateMeetingSchema>;
 
     const meeting = await prisma.meeting.findFirst({
       where: { id: req.params.id }
@@ -615,7 +607,7 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
+router.delete('/:id', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const meeting = await prisma.meeting.findFirst({
       where: { id: req.params.id }

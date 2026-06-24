@@ -5,10 +5,10 @@ test.describe('Authentication Flow', () => {
     await page.goto('/');
     
     // Click login button
-    await page.getByRole('link', { name: /sign in/i }).first().click();
+    await page.getByRole('link', { name: /login/i }).first().click();
     
     await expect(page).toHaveURL('/login');
-    await expect(page.locator('h1')).toContainText('Welcome Back');
+    await expect(page.locator('h2')).toContainText('Sign in');
   });
 
   test('should show validation errors for invalid email', async ({ page }) => {
@@ -58,10 +58,10 @@ test.describe('Authentication Flow', () => {
   test('should navigate to register page', async ({ page }) => {
     await page.goto('/login');
     
-    await page.getByRole('link', { name: /sign up/i }).click();
+    await page.getByRole('link', { name: /create an account/i }).click();
     
     await expect(page).toHaveURL('/register');
-    await expect(page.locator('h1')).toContainText('Create Account');
+    await expect(page.locator('h2')).toContainText('Create your account');
   });
 });
 
@@ -69,29 +69,34 @@ test.describe('Registration Flow', () => {
   test('should display registration form', async ({ page }) => {
     await page.goto('/register');
     
-    await expect(page.getByPlaceholder('John Doe')).toBeVisible();
-    await expect(page.getByPlaceholder('you@example.com')).toBeVisible();
-    await expect(page.getByPlaceholder('••••••••').first()).toBeVisible();
+    await expect(page.getByPlaceholder('Your name')).toBeVisible();
+    await expect(page.getByPlaceholder('you@company.com')).toBeVisible();
+    await expect(page.getByPlaceholder('Minimum 8 characters')).toBeVisible();
   });
 
-  test('should validate name field', async ({ page }) => {
+  test('should require all fields', async ({ page }) => {
     await page.goto('/register');
     
-    // Enter single character name
-    await page.fill('input[placeholder="John Doe"]', 'A');
-    await page.locator('input[placeholder="John Doe"]').blur();
+    // Submit empty form
+    await page.getByRole('button', { name: /create workspace/i }).click();
     
-    await expect(page.locator('text=at least 2 characters')).toBeVisible();
+    // Should show validation error
+    await expect(page.locator('text=All fields are required')).toBeVisible();
   });
 
-  test('should show password strength meter', async ({ page }) => {
+  test('should validate minimum password length', async ({ page }) => {
     await page.goto('/register');
     
-    // Enter weak password
-    await page.fill('input[type="password"]', 'password');
+    // Fill form with short password
+    await page.fill('input[placeholder="Your name"]', 'Test User');
+    await page.fill('input[type="email"]', 'test@example.com');
+    await page.fill('input[type="password"]', '123');
     
-    // Check for strength indicator
-    await expect(page.locator('text=Password Strength')).toBeVisible();
+    // Submit
+    await page.getByRole('button', { name: /create workspace/i }).click();
+    
+    // Check for validation error
+    await expect(page.locator('text=at least 8 characters')).toBeVisible();
   });
 
   test('should validate password confirmation', async ({ page }) => {
@@ -101,23 +106,8 @@ test.describe('Registration Flow', () => {
     const passwordInputs = page.locator('input[type="password"]');
     await passwordInputs.nth(0).fill('Test1234!');
     await passwordInputs.nth(1).fill('Test5678!');
-    await passwordInputs.nth(1).blur();
+    await page.getByRole('button', { name: /create workspace/i }).click();
     
     await expect(page.locator('text=Passwords do not match')).toBeVisible();
-  });
-
-  test('should require terms acceptance', async ({ page }) => {
-    await page.goto('/register');
-    
-    // Fill form without accepting terms
-    await page.fill('input[placeholder="John Doe"]', 'Test User');
-    await page.fill('input[type="email"]', 'test@example.com');
-    await page.locator('input[type="password"]').first().fill('Test1234!');
-    
-    // Try to submit
-    await page.getByRole('button', { name: /create account/i }).click();
-    
-    // Should show error
-    await expect(page.locator('text=accept the Terms')).toBeVisible();
   });
 });

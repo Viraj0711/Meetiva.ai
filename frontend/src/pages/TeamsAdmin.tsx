@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
 import {
@@ -25,6 +27,7 @@ import {
   removeTeamMember as apiRemoveTeamMember,
 } from '@/services/teams.service';
 import { Team, ApiError } from '@/types';
+import { createTeamSchema, inviteMemberSchema, updateMemberProfileSchema, zodResolver } from '@/lib/validation';
 import './TeamsAdmin.css';
 
 interface CreateTeamForm {
@@ -60,6 +63,36 @@ export const TeamsAdmin: React.FC = () => {
   const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
   const [showInviteMemberModal, setShowInviteMemberModal] = useState(false);
   const [showEditMemberModal, setShowEditMemberModal] = useState(false);
+  const {
+    register: registerCreateTeam,
+    handleSubmit: handleCreateTeamSubmit,
+    formState: { errors: createTeamErrors },
+    reset: resetCreateTeamForm,
+  } = useForm<z.infer<typeof createTeamSchema>>({
+    resolver: zodResolver(createTeamSchema),
+    defaultValues: { name: '', description: '' },
+  });
+
+  const {
+    register: registerInviteMember,
+    handleSubmit: handleInviteMemberSubmit,
+    formState: { errors: inviteMemberErrors },
+    reset: resetInviteMemberForm,
+  } = useForm<z.infer<typeof inviteMemberSchema>>({
+    resolver: zodResolver(inviteMemberSchema),
+    defaultValues: { email: '' },
+  });
+
+  const {
+    register: registerEditMember,
+    handleSubmit: handleEditMemberSubmit,
+    formState: { errors: editMemberErrors },
+    reset: resetEditMemberForm,
+  } = useForm<z.infer<typeof updateMemberProfileSchema>>({
+    resolver: zodResolver(updateMemberProfileSchema),
+    defaultValues: { name: '', email: '' },
+  });
+
   const [createTeamForm, setCreateTeamForm] = useState<CreateTeamForm>({
     name: '',
     description: '',
@@ -162,33 +195,14 @@ export const TeamsAdmin: React.FC = () => {
     }
   };
 
-  const formatMessageTime = (isoDate: string) => {
-    const date = new Date(isoDate);
-    return date.toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  
 
-  const handleCreateTeam = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!createTeamForm.name.trim()) {
-      dispatch(addToast({
-        type: 'error',
-        message: 'Team name is required',
-        duration: 3000,
-      }));
-      return;
-    }
-
+  const handleCreateTeam = async (data: z.infer<typeof createTeamSchema>) => {
     try {
       dispatch(setLoading(true));
       const response = await createTeam({
-        name: createTeamForm.name,
-        description: createTeamForm.description || undefined,
+        name: data.name,
+        description: data.description || undefined,
       });
       
       if (!response?.team || !response?.membership) {
@@ -213,6 +227,7 @@ export const TeamsAdmin: React.FC = () => {
         duration: 3000,
       }));
 
+      resetCreateTeamForm();
       setCreateTeamForm({ name: '', description: '' });
       setShowCreateTeamModal(false);
       
@@ -233,9 +248,7 @@ export const TeamsAdmin: React.FC = () => {
     }
   };
 
-  const handleInviteMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleInviteMember = async (data: z.infer<typeof inviteMemberSchema>) => {
     if (!currentTeam) {
       dispatch(addToast({
         type: 'error',
@@ -245,19 +258,10 @@ export const TeamsAdmin: React.FC = () => {
       return;
     }
 
-    if (!inviteMemberForm.email.trim()) {
-      dispatch(addToast({
-        type: 'error',
-        message: 'Email is required',
-        duration: 3000,
-      }));
-      return;
-    }
-
     try {
       dispatch(setLoading(true));
       const response = await inviteTeamMember(currentTeam.id, {
-        email: inviteMemberForm.email,
+        email: data.email,
       });
 
       await loadTeamMembers(currentTeam.id);
@@ -283,6 +287,7 @@ export const TeamsAdmin: React.FC = () => {
         duration: 3000,
       }));
 
+      resetInviteMemberForm();
       setInviteMemberForm({ email: '' });
       setShowInviteMemberModal(false);
     } catch (err) {
@@ -361,6 +366,7 @@ export const TeamsAdmin: React.FC = () => {
   };
 
   const handleOpenEditMember = (memberId: string, currentName: string, currentEmail: string) => {
+    resetEditMemberForm({ name: currentName, email: currentEmail });
     setEditMemberForm({
       memberId,
       name: currentName,
@@ -369,19 +375,14 @@ export const TeamsAdmin: React.FC = () => {
     setShowEditMemberModal(true);
   };
 
-  const handleEditMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentTeam) return;
-
-    if (!editMemberForm.memberId || !editMemberForm.name.trim() || !editMemberForm.email.trim()) {
-      return;
-    }
+  const handleEditMember = async (data: z.infer<typeof updateMemberProfileSchema>) => {
+    if (!currentTeam || !editMemberForm.memberId) return;
 
     try {
       dispatch(setLoading(true));
       await updateTeamMemberProfile(currentTeam.id, editMemberForm.memberId, {
-        name: editMemberForm.name.trim(),
-        email: editMemberForm.email.trim(),
+        name: data.name!,
+        email: data.email!,
       });
       await loadTeamMembers(currentTeam.id);
       setShowEditMemberModal(false);
@@ -693,26 +694,26 @@ export const TeamsAdmin: React.FC = () => {
                             ×
                           </button>
                         </div>
-                        <form onSubmit={handleEditMember}>
+                        <form onSubmit={handleEditMemberSubmit(handleEditMember)}>
                           <div className="form-group">
                             <label htmlFor="edit-member-name">Name *</label>
                             <input
                               id="edit-member-name"
                               type="text"
-                              className="form-input"
-                              value={editMemberForm.name}
-                              onChange={(e) => setEditMemberForm((prev) => ({ ...prev, name: e.target.value }))}
+                              className={`form-input${editMemberErrors.name ? ' form-input-error' : ''}`}
+                              {...registerEditMember('name')}
                             />
+                            {editMemberErrors.name && <span className="form-error">{editMemberErrors.name.message}</span>}
                           </div>
                           <div className="form-group">
                             <label htmlFor="edit-member-email">Email *</label>
                             <input
                               id="edit-member-email"
                               type="email"
-                              className="form-input"
-                              value={editMemberForm.email}
-                              onChange={(e) => setEditMemberForm((prev) => ({ ...prev, email: e.target.value }))}
+                              className={`form-input${editMemberErrors.email ? ' form-input-error' : ''}`}
+                              {...registerEditMember('email')}
                             />
+                            {editMemberErrors.email && <span className="form-error">{editMemberErrors.email.message}</span>}
                           </div>
                           <div className="modal-actions">
                             <button
@@ -760,19 +761,17 @@ export const TeamsAdmin: React.FC = () => {
                 ×
               </button>
             </div>
-            <form onSubmit={handleCreateTeam}>
+            <form onSubmit={handleCreateTeamSubmit(handleCreateTeam)}>
               <div className="form-group">
                 <label htmlFor="team-name">Team Name *</label>
                 <input
                   id="team-name"
                   type="text"
-                  className="form-input"
+                  className={`form-input${createTeamErrors.name ? ' form-input-error' : ''}`}
                   placeholder="e.g., Product Team"
-                  value={createTeamForm.name}
-                  onChange={(e) =>
-                    setCreateTeamForm({ ...createTeamForm, name: e.target.value })
-                  }
+                  {...registerCreateTeam('name')}
                 />
+                {createTeamErrors.name && <span className="form-error">{createTeamErrors.name.message}</span>}
               </div>
               <div className="form-group">
                 <label htmlFor="team-description">Description</label>
@@ -781,13 +780,7 @@ export const TeamsAdmin: React.FC = () => {
                   className="form-textarea"
                   placeholder="Team description (optional)"
                   rows={3}
-                  value={createTeamForm.description}
-                  onChange={(e) =>
-                    setCreateTeamForm({
-                      ...createTeamForm,
-                      description: e.target.value,
-                    })
-                  }
+                  {...registerCreateTeam('description')}
                 />
               </div>
               <div className="modal-actions">
@@ -820,19 +813,17 @@ export const TeamsAdmin: React.FC = () => {
                 ×
               </button>
             </div>
-            <form onSubmit={handleInviteMember}>
+            <form onSubmit={handleInviteMemberSubmit(handleInviteMember)}>
               <div className="form-group">
                 <label htmlFor="member-email">Email *</label>
                 <input
                   id="member-email"
                   type="email"
-                  className="form-input"
+                  className={`form-input${inviteMemberErrors.email ? ' form-input-error' : ''}`}
                   placeholder="member@example.com"
-                  value={inviteMemberForm.email}
-                  onChange={(e) =>
-                    setInviteMemberForm({ ...inviteMemberForm, email: e.target.value })
-                  }
+                  {...registerInviteMember('email')}
                 />
+                {inviteMemberErrors.email && <span className="form-error">{inviteMemberErrors.email.message}</span>}
               </div>
               <div className="form-info">
                 <p>

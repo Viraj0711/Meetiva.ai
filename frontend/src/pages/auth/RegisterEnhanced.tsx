@@ -2,35 +2,43 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Lock, Mail, ShieldCheck, Sparkles, User } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAppDispatch } from '@/store/hooks';
 import { registerAsync } from '@/store/slices/authSlice';
+import { registerSchema, zodResolver } from '@/lib/validation';
+import { z } from 'zod';
+
+const registerFormSchema = registerSchema.extend({
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+}).refine(data => data.password === data.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+});
+
+type RegisterFormData = z.infer<typeof registerFormSchema>;
 
 const RegisterEnhanced: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !email.trim() || !password.trim()) return setError('All fields are required.');
-    if (password.length < 8) return setError('Password must be at least 8 characters.');
-    if (password !== confirmPassword) return setError('Passwords do not match.');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerFormSchema),
+    defaultValues: { name: '', email: '', password: '', confirmPassword: '' },
+  });
 
+  const onSubmit = async (data: RegisterFormData) => {
     try {
-      setLoading(true);
-      await dispatch(registerAsync({ name: name.trim(), email: email.trim(), password })).unwrap();
+      await dispatch(registerAsync({ name: data.name, email: data.email, password: data.password })).unwrap();
       navigate('/dashboard');
     } catch (err) {
-      setError((err as string) || 'Registration failed.');
-    } finally {
-      setLoading(false);
+      setServerError((err as string) || 'Registration failed.');
     }
   };
 
@@ -88,14 +96,14 @@ const RegisterEnhanced: React.FC = () => {
               <p className="text-sm text-white/55">Start the premium meeting workspace.</p>
             </div>
 
-            {error && <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
+            {serverError && <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{serverError}</div>}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-white/75">Full name</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-                  <Input value={name} onChange={(e) => setName(e.target.value)} className="pl-11" placeholder="Your name" />
+                  <Input id="reg-name" error={errors.name?.message} className="pl-11" placeholder="Your name" {...register('name')} />
                 </div>
               </div>
 
@@ -103,7 +111,7 @@ const RegisterEnhanced: React.FC = () => {
                 <label className="text-sm font-medium text-white/75">Email address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-11" placeholder="you@company.com" />
+                  <Input type="email" id="reg-email" error={errors.email?.message} className="pl-11" placeholder="you@company.com" {...register('email')} />
                 </div>
               </div>
 
@@ -111,7 +119,7 @@ const RegisterEnhanced: React.FC = () => {
                 <label className="text-sm font-medium text-white/75">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-                  <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-11" placeholder="Minimum 8 characters" />
+                  <Input type="password" id="reg-password" error={errors.password?.message} className="pl-11" placeholder="Minimum 8 characters" {...register('password')} />
                 </div>
               </div>
 
@@ -119,13 +127,13 @@ const RegisterEnhanced: React.FC = () => {
                 <label className="text-sm font-medium text-white/75">Confirm password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-                  <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="pl-11" placeholder="Repeat password" />
+                  <Input type="password" id="reg-confirm" error={errors.confirmPassword?.message} className="pl-11" placeholder="Repeat password" {...register('confirmPassword')} />
                 </div>
               </div>
 
-              <Button type="submit" size="lg" className="w-full" isLoading={loading}>
-                {loading ? 'Creating workspace' : 'Create workspace'}
-                {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+              <Button type="submit" size="lg" className="w-full" isLoading={isSubmitting}>
+                {isSubmitting ? 'Creating workspace' : 'Create workspace'}
+                {!isSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
             </form>
 

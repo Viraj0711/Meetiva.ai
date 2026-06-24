@@ -1,9 +1,10 @@
 import { CalendarConnectionStatus, CalendarEvent, CreateCalendarEventRequest } from '@/types';
 import { apiClient } from './api.client';
+import { API_BASE_URL } from './api.config';
 
 export const calendarService = {
   getGoogleConnectUrl: (forceReconnect = false): string => {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+    const apiBase = API_BASE_URL;
     const token = localStorage.getItem('token');
 
     if (!token) {

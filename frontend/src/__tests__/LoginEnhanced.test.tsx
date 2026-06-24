@@ -3,23 +3,15 @@ import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import LoginEnhanced from '../pages/auth/LoginEnhanced';
-import authReducer from '../features/auth/authSlice';
-import meetingsReducer from '../features/meetings/meetingsSlice';
-import actionItemsReducer from '../features/actionItems/actionItemsSlice';
+import authReducer from '@/store/slices/authSlice';
+import meetingReducer from '@/store/slices/meetingSlice';
 
-// Create a test store with actual reducers
+// Create a test store matching the real app's store shape
 const createTestStore = () => configureStore({
   reducer: {
     auth: authReducer,
-    meetings: meetingsReducer,
-    actionItems: actionItemsReducer,
+    meetings: meetingReducer,
   },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: ['meetings/setUploadProgress'],
-      },
-    }),
 });
 
 // Mock useNavigate
@@ -45,7 +37,7 @@ describe('LoginEnhanced Component', () => {
     );
 
     // Just verify the component mounts without error
-    expect(screen.queryByRole('main') || screen.queryByRole('form') || screen.queryByText(/welcome|login|sign in/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument();
   });
 
   it('accepts user input', () => {
@@ -64,10 +56,13 @@ describe('LoginEnhanced Component', () => {
   });
 
   it('shows remember me checkbox', () => {
+    const store = createTestStore();
     render(
-      <BrowserRouter>
-        <LoginEnhanced />
-      </BrowserRouter>
+      <Provider store={store}>
+        <BrowserRouter>
+          <LoginEnhanced />
+        </BrowserRouter>
+      </Provider>
     );
 
     const checkbox = screen.getByLabelText('Remember me');
