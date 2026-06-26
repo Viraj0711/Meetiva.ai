@@ -68,17 +68,18 @@ async function run(): Promise<void> {
     }));
     worksheet.addRows(rows);
 
-    const buffer = await workbook.xlsx.writeBuffer();
+    const buf = await workbook.xlsx.writeBuffer();
+    const raw = buf as unknown as Uint8Array;
 
-    assert(buffer.length > 0, 'Buffer is not empty');
+    assert(raw.length > 0, 'Buffer is not empty');
     assert(
-      buffer[0] === 0x50 && buffer[1] === 0x4b,
+      raw[0] === 0x50 && raw[1] === 0x4b,
       'Buffer starts with PK ZIP header (valid .xlsx)'
     );
 
     // Read back and verify contents
     const readWorkbook = new ExcelJS.Workbook();
-    await readWorkbook.xlsx.load(buffer);
+    await readWorkbook.xlsx.load(buf);
     const readSheet = readWorkbook.getWorksheet('Tasks');
 
     assert(readSheet !== undefined, 'Worksheet "Tasks" exists');
@@ -128,16 +129,17 @@ async function run(): Promise<void> {
     }));
     worksheet.addRows(rows);
 
-    const buffer = (await workbook.xlsx.writeBuffer()) as Buffer;
+    const buf = await workbook.xlsx.writeBuffer();
+    const raw = buf as unknown as Uint8Array;
 
-    assert(buffer.length > 0, 'Buffer is not empty (empty worksheet still valid)');
+    assert(raw.length > 0, 'Buffer is not empty (empty worksheet still valid)');
     assert(
-      buffer[0] === 0x50 && buffer[1] === 0x4b,
+      raw[0] === 0x50 && raw[1] === 0x4b,
       'Buffer starts with PK ZIP header'
     );
 
     const readWorkbook = new ExcelJS.Workbook();
-    await readWorkbook.xlsx.load(buffer);
+    await readWorkbook.xlsx.load(buf);
     const readSheet = readWorkbook.getWorksheet('Tasks');
 
     assert(readSheet !== undefined, 'Worksheet "Tasks" exists');

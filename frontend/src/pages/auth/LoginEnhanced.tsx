@@ -5,8 +5,7 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles }
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useAppDispatch } from '@/store/hooks';
-import { loginAsync } from '@/store/slices/authSlice';
+import { useLogin } from '@/hooks/useAuth';
 import { loginSchema, zodResolver } from '@/lib/validation';
 import type { z } from 'zod';
 
@@ -14,7 +13,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
+  const loginMutation = useLogin();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
 
@@ -30,7 +29,7 @@ const LoginPage: React.FC = () => {
   const onSubmit = async (data: LoginFormData) => {
     setServerError('');
     try {
-      await dispatch(loginAsync(data)).unwrap();
+      await loginMutation.mutateAsync(data);
       navigate('/dashboard');
     } catch (error: unknown) {
       const err = error as { message?: string };

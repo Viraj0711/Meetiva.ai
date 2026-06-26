@@ -122,10 +122,11 @@ const Workspace: React.FC = () => {
     }
   }, [googleConnectionQueryFlag]);
 
-  const handleConnectGoogle = (forceReconnect = false) => {
+  const handleConnectGoogle = async (forceReconnect = false) => {
     try {
       setIsConnecting(true);
-      window.location.href = calendarService.getGoogleConnectUrl(forceReconnect);
+      const authUrl = await calendarService.getGoogleConnectUrl(forceReconnect);
+      window.location.href = authUrl;
     } catch (error: any) {
       setIsConnecting(false);
       dispatch(addToast({ type: 'error', message: error.message || 'Unable to start OAuth flow.' }));

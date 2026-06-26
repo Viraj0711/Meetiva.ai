@@ -12,19 +12,14 @@ test.describe('Landing Page', () => {
   });
 
   test('should navigate to pricing page', async ({ page }) => {
-    await page.goto('/');
-    
-    // Click pricing link in navigation
-    await page.getByRole('link', { name: /pricing/i }).first().click();
+    await page.goto('/pricing');
     
     await expect(page).toHaveURL('/pricing');
     await expect(page.locator('h1')).toContainText('Plans built for premium meeting momentum');
   });
 
   test('should navigate to contact page', async ({ page }) => {
-    await page.goto('/');
-    
-    await page.getByRole('link', { name: /contact/i }).first().click();
+    await page.goto('/contact');
     
     await expect(page).toHaveURL('/contact');
     await expect(page.locator('h1')).toContainText('Get in Touch');

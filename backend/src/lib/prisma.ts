@@ -13,8 +13,11 @@ const buildRuntimeDatabaseUrl = (): string => {
 		url.searchParams.set('pgbouncer', 'true');
 	}
 
+	// Increased from 1 to 20 for concurrent Express server connections.
+	// The previous value (1) was suitable for serverless but serialized
+	// all DB operations on a persistent server handling many requests.
 	if (!url.searchParams.has('connection_limit')) {
-		url.searchParams.set('connection_limit', '1');
+		url.searchParams.set('connection_limit', '20');
 	}
 
 	return url.toString();

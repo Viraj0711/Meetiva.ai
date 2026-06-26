@@ -136,7 +136,9 @@ model ActionItem {
   notifications Notification[]
 
   @@index([userId, status])
+  @@index([userId, createdAt])
   @@index([meetingId])
+  @@index([status, dueDate, reminderSentAt])
   @@map("action_items")
 }
 

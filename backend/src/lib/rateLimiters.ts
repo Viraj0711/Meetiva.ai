@@ -5,8 +5,12 @@ import rateLimit from 'express-rate-limit';
  *
  * Each limiter targets a specific class of endpoint so that a burst on one
  * part of the API — e.g. a flurry of login attempts — doesn't exhaust the
- * global budget for unrelated operations like fetching meetings or posting
- * chat messages.
+ * budget for unrelated operations.
+ *
+ * Limiters (3):
+ *   authLimiter  —  10 / 15 min  — sensitive auth endpoints
+ *   apiLimiter   —  60 /  1 min  — general authenticated CRUD
+ *   uploadLimiter — 10 /  1 hr   — meeting uploads + AI proxy (cost protection)
  */
 
 /** Strict — sensitive auth endpoints (login, register, password reset). */
@@ -18,24 +22,7 @@ export const authLimiter = rateLimit({
   message: { message: 'Too many attempts. Please try again after 15 minutes.' },
 });
 
-/** Moderate — authenticated profile / refresh endpoints. */
-export const authedLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-/** Moderate — meeting uploads (large payloads, expensive Grok analysis). */
-export const uploadLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many uploads. Please slow down.' },
-});
-
-/** General — read-mostly CRUD (meetings, action items, teams, workspace). */
+/** General — read-mostly CRUD (meetings, action items, teams, workspace, profile). */
 export const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 60,
@@ -43,11 +30,14 @@ export const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-/** Strict — AI proxy (cost protection). */
-export const grokLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 20,
+/**
+ * Cost protection — meeting uploads + AI proxy (both hit external APIs).
+ * 10 requests per hour per IP keeps runaway scripts in check.
+ */
+export const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: 'Too many AI requests. Please slow down.' },
+  message: { message: 'Too many uploads or AI requests. Please slow down.' },
 });

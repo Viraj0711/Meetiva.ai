@@ -26,28 +26,31 @@ const createInAppReminderNotifications = async () => {
     },
   });
 
-  for (const item of dueSoonItems) {
-    const dueText = item.dueDate ? item.dueDate.toISOString() : 'soon';
+  if (dueSoonItems.length === 0) {
+    return;
+  }
 
-    await prisma.$transaction([
-      prisma.notification.create({
-        data: {
-          userId: item.userId,
-          actionItemId: item.id,
-          type: 'DEADLINE_REMINDER',
-          channel: 'in_app',
-          title: 'Deadline approaching in 24 hours',
-          message: `${item.title} from meeting "${item.meeting.title}" is due by ${dueText}.`,
-        },
-      }),
-      prisma.actionItem.update({
-        where: { id: item.id },
-        data: { reminderSentAt: now },
-      }),
-    ]);
+  // Batch all notifications and updates into single operations.
+  await prisma.$transaction([
+    prisma.notification.createMany({
+      data: dueSoonItems.map((item) => ({
+        userId: item.userId,
+        actionItemId: item.id,
+        type: 'DEADLINE_REMINDER',
+        channel: 'in_app',
+        title: 'Deadline approaching in 24 hours',
+        message: `${item.title} from meeting "${item.meeting.title}" is due by ${item.dueDate ? item.dueDate.toISOString() : 'soon'}.`,
+      })),
+    }),
+    prisma.actionItem.updateMany({
+      where: { id: { in: dueSoonItems.map((item) => item.id) } },
+      data: { reminderSentAt: now },
+    }),
+  ]);
 
-    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
-      // Placeholder hook for SMTP transport integration if enabled.
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD) {
+    // Placeholder hook for SMTP transport integration if enabled.
+    for (const item of dueSoonItems) {
       console.log(`Deadline reminder queued for email to ${item.user.email}`);
     }
   }

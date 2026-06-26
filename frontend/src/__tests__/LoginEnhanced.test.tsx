@@ -2,6 +2,7 @@
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LoginEnhanced from '../pages/auth/LoginEnhanced';
 import authReducer from '@/store/slices/authSlice';
 import meetingReducer from '@/store/slices/meetingSlice';
@@ -13,6 +14,20 @@ const createTestStore = () => configureStore({
     meetings: meetingReducer,
   },
 });
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Provider store={createTestStore()}>
+        <BrowserRouter>{children}</BrowserRouter>
+      </Provider>
+    </QueryClientProvider>
+  );
+}
 
 // Mock useNavigate
 const mockNavigate = jest.fn();
@@ -27,13 +42,10 @@ describe('LoginEnhanced Component', () => {
   });
 
   it('renders without crashing', () => {
-    const store = createTestStore();
     render(
-      <Provider store={store}>
-        <BrowserRouter>
-          <LoginEnhanced />
-        </BrowserRouter>
-      </Provider>
+      <TestWrapper>
+        <LoginEnhanced />
+      </TestWrapper>
     );
 
     // Just verify the component mounts without error
@@ -41,13 +53,10 @@ describe('LoginEnhanced Component', () => {
   });
 
   it('accepts user input', () => {
-    const store = createTestStore();
     const { container } = render(
-      <Provider store={store}>
-        <BrowserRouter>
-          <LoginEnhanced />
-        </BrowserRouter>
-      </Provider>
+      <TestWrapper>
+        <LoginEnhanced />
+      </TestWrapper>
     );
 
     // Verify the component has input fields
@@ -56,13 +65,10 @@ describe('LoginEnhanced Component', () => {
   });
 
   it('shows remember me checkbox', () => {
-    const store = createTestStore();
     render(
-      <Provider store={store}>
-        <BrowserRouter>
-          <LoginEnhanced />
-        </BrowserRouter>
-      </Provider>
+      <TestWrapper>
+        <LoginEnhanced />
+      </TestWrapper>
     );
 
     const checkbox = screen.getByLabelText('Remember me');

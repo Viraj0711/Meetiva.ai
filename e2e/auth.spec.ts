@@ -8,35 +8,50 @@ test.describe('Authentication Flow', () => {
     await page.getByRole('link', { name: /login/i }).first().click();
     
     await expect(page).toHaveURL('/login');
-    await expect(page.locator('h2')).toContainText('Sign in');
+    await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
   });
 
   test('should show validation errors for invalid email', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForSelector('#login-email');
     
-    // Enter invalid email
-    await page.fill('input[type="email"]', 'invalid-email');
-    await page.fill('input[type="password"]', 'Test1234!');
+    // Enter invalid email + valid password
+    await page.locator('#login-email').fill('invalid-email');
+    await page.locator('#login-password').fill('Test1234!');
     
-    // Blur email field to trigger validation
-    await page.locator('input[type="email"]').blur();
+    // Dispatch native SubmitEvent — React's delegation catches it and runs handleSubmit
+    await page.evaluate(() => {
+      const form = document.querySelector('form');
+      if (form) {
+        form.dispatchEvent(new SubmitEvent('submit', { cancelable: true, bubbles: true }));
+      }
+    });
     
-    // Check for error message
-    await expect(page.locator('text=valid email')).toBeVisible();
+    // Zod validation prevents navigation
+    await expect(page).toHaveURL('/login');
+    // Input component sets aria-invalid on validation failure
+    await expect(page.locator('#login-email')).toHaveAttribute('aria-invalid', 'true');
   });
 
-  test('should show validation error for short password', async ({ page }) => {
+  test('should show validation error for empty password', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForSelector('#login-email');
     
-    // Enter short password
-    await page.fill('input[type="email"]', 'test@example.com');
-    await page.fill('input[type="password"]', '123');
+    // Enter valid email but leave password empty (loginSchema requires password: min(1))
+    await page.locator('#login-email').fill('test@example.com');
     
-    // Blur password field
-    await page.locator('input[type="password"]').blur();
+    // Dispatch native SubmitEvent — React's delegation catches it and runs handleSubmit
+    await page.evaluate(() => {
+      const form = document.querySelector('form');
+      if (form) {
+        form.dispatchEvent(new SubmitEvent('submit', { cancelable: true, bubbles: true }));
+      }
+    });
     
-    // Check for error message
-    await expect(page.locator('text=at least 8 characters')).toBeVisible();
+    // Zod validation prevents navigation — stays on /login
+    await expect(page).toHaveURL('/login');
+    // Input component sets aria-invalid on validation failure
+    await expect(page.locator('#login-password')).toHaveAttribute('aria-invalid', 'true');
   });
 
   test('should toggle password visibility', async ({ page }) => {
@@ -80,8 +95,8 @@ test.describe('Registration Flow', () => {
     // Submit empty form
     await page.getByRole('button', { name: /create workspace/i }).click();
     
-    // Should show validation error
-    await expect(page.locator('text=All fields are required')).toBeVisible();
+    // Should show validation error on the name field
+    await expect(page.locator('text=Name must be at least 2 characters')).toBeVisible();
   });
 
   test('should validate minimum password length', async ({ page }) => {

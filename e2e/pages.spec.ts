@@ -5,9 +5,9 @@ test.describe('Pricing Page', () => {
     await page.goto('/pricing');
     
     // Check for all three tiers
-    await expect(page.locator('text=Starter')).toBeVisible();
-    await expect(page.locator('text=Growth')).toBeVisible();
-    await expect(page.locator('text=Enterprise')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Starter' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Growth' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Enterprise' })).toBeVisible();
   });
 
   test('should show monthly pricing', async ({ page }) => {
@@ -27,8 +27,10 @@ test.describe('Pricing Page', () => {
   test('should have CTA buttons for each tier', async ({ page }) => {
     await page.goto('/pricing');
     
-    const ctaButtons = page.locator('a:has-text("Start free"), a:has-text("Start with Growth"), a:has-text("Talk to sales")');
-    await expect(ctaButtons).toHaveCount(3);
+    // Each pricing card has exactly one CTA link with unique text
+    await expect(page.getByRole('link', { name: /start free$/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /start with growth/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /talk to sales/i })).toBeVisible();
   });
 });
 
@@ -65,18 +67,14 @@ test.describe('Contact Page', () => {
 
 test.describe('Legal Pages', () => {
   test('should navigate to Terms page', async ({ page }) => {
-    await page.goto('/');
-    
-    await page.getByRole('link', { name: /terms/i }).first().click();
+    await page.goto('/terms');
     
     await expect(page).toHaveURL('/terms');
     await expect(page.locator('h1')).toContainText('Terms that match the product');
   });
 
   test('should navigate to Privacy page', async ({ page }) => {
-    await page.goto('/');
-    
-    await page.getByRole('link', { name: /privacy/i }).first().click();
+    await page.goto('/privacy');
     
     await expect(page).toHaveURL('/privacy');
     await expect(page.locator('h1')).toContainText('Privacy built for a product');

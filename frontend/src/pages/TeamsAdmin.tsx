@@ -1,49 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState, AppDispatch } from '@/store';
-import {
-  setTeams,
-  setCurrentTeam,
-  setTeamMembers,
-  addTeam,
-  removeTeam,
-  removeTeamMember,
-  setLoading,
-  setError,
-} from '@/store/slices/teamsSlice';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { useAppDispatch } from '@/store/hooks';
 import { addToast } from '@/store/slices/uiSlice';
 import {
-  createTeam,
-  getTeams,
-  getTeam,
-  getTeamMembers,
-  inviteTeamMember,
-  deleteTeam as apiDeleteTeam,
-  updateTeamMemberProfile,
-  resetTeamMemberCredentials,
-  updateTeamMember as apiUpdateTeamMember,
-  removeTeamMember as apiRemoveTeamMember,
-} from '@/services/teams.service';
-import { Team, ApiError } from '@/types';
+  useTeams,
+  useTeamMembers,
+  useCreateTeam,
+  useInviteTeamMember,
+  useDeleteTeam,
+  useUpdateTeamMemberProfile,
+  useResetTeamMemberCredentials,
+  useUpdateTeamMemberRole,
+  useRemoveTeamMember,
+} from '@/hooks/useTeams';
+
 import { createTeamSchema, inviteMemberSchema, updateMemberProfileSchema, zodResolver } from '@/lib/validation';
 import './TeamsAdmin.css';
-
-interface CreateTeamForm {
-  name: string;
-  description: string;
-}
-
-interface InviteMemberForm {
-  email: string;
-}
-
-interface EditMemberForm {
-  memberId: string;
-  name: string;
-  email: string;
-}
 
 interface IssuedCredentials {
   email: string;
@@ -53,16 +28,14 @@ interface IssuedCredentials {
 }
 
 export const TeamsAdmin: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useAppDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { teams, currentTeam, teamMembers, isLoading, error } = useSelector(
-    (state: RootState) => state.teams
-  );
-  const [fetchedTeams, setFetchedTeams] = useState<Team[]>([]);
 
+  const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
   const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
   const [showInviteMemberModal, setShowInviteMemberModal] = useState(false);
   const [showEditMemberModal, setShowEditMemberModal] = useState(false);
+
   const {
     register: registerCreateTeam,
     handleSubmit: handleCreateTeamSubmit,
@@ -93,327 +66,112 @@ export const TeamsAdmin: React.FC = () => {
     defaultValues: { name: '', email: '' },
   });
 
-  const [createTeamForm, setCreateTeamForm] = useState<CreateTeamForm>({
-    name: '',
-    description: '',
-  });
-  const [inviteMemberForm, setInviteMemberForm] = useState<InviteMemberForm>({
-    email: '',
-  });
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [newMemberRole, setNewMemberRole] = useState<'LEAD' | 'MEMBER'>('MEMBER');
-  const [editMemberForm, setEditMemberForm] = useState<EditMemberForm>({
-    memberId: '',
-    name: '',
-    email: '',
-  });
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [issuedCredentials, setIssuedCredentials] = useState<IssuedCredentials | null>(null);
 
-  const loadTeams = React.useCallback(async () => {
-    try {
-      dispatch(setLoading(true));
-      const response = await getTeams();
-      const nextTeams = response?.teams ?? [];
-      setFetchedTeams(nextTeams);
-      dispatch(setTeams(nextTeams));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to load teams';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
-  }, [dispatch]);
+  // ── React Query hooks ──────────────────────────────────────────────────
+  const { data: teams = [], isLoading: teamsLoading, error: teamsError } = useTeams();
+  const { data: teamMembers = [], isLoading: membersLoading, error: membersError } = useTeamMembers(currentTeamId ?? undefined);
+  const deleteTeamMutation = useDeleteTeam();
+  const createTeamMutation = useCreateTeam();
+  const inviteMemberMutation = useInviteTeamMember();
+  const updateRoleMutation = useUpdateTeamMemberRole();
+  const updateProfileMutation = useUpdateTeamMemberProfile();
+  const removeMemberMutation = useRemoveTeamMember();
+  const resetCredentialsMutation = useResetTeamMemberCredentials();
 
-  // Load teams on component mount
-  useEffect(() => {
-    loadTeams();
-  }, [loadTeams]);
-
-  const loadTeamMembers = React.useCallback(async (teamId: string) => {
-    try {
-      dispatch(setLoading(true));
-      const [teamResult, membersResult] = await Promise.allSettled([
-        getTeam(teamId),
-        getTeamMembers(teamId),
-      ]);
-
-      if (teamResult.status === 'rejected') {
-        throw teamResult.reason;
-      }
-
-      if (membersResult.status === 'rejected') {
-        throw membersResult.reason;
-      }
-
-      dispatch(setCurrentTeam(teamResult.value));
-      dispatch(setTeamMembers(membersResult.value?.members ?? []));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to load team details';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
-  }, [dispatch]);
+  const currentTeam = teams.find(t => t.id === currentTeamId) || null;
+  const isLoading = teamsLoading || membersLoading;
+  const error = teamsError || membersError;
 
   const handleDeleteTeam = async () => {
     if (!currentTeam) return;
-
-    if (!window.confirm(`Delete team "${currentTeam.name}"? This cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      dispatch(setLoading(true));
-      await apiDeleteTeam(currentTeam.id);
-      dispatch(removeTeam(currentTeam.id));
-      setFetchedTeams((prev) => prev.filter((team) => team.id !== currentTeam.id));
-      dispatch(addToast({
-        type: 'success',
-        message: 'Team deleted successfully',
-        duration: 3000,
-      }));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to delete team';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
+    if (!window.confirm(`Delete team "${currentTeam.name}"? This cannot be undone.`)) return;
+    deleteTeamMutation.mutate(currentTeam.id);
+    setCurrentTeamId(null);
   };
 
-  
-
   const handleCreateTeam = async (data: z.infer<typeof createTeamSchema>) => {
-    try {
-      dispatch(setLoading(true));
-      const response = await createTeam({
-        name: data.name,
-        description: data.description || undefined,
-      });
-      
-      if (!response?.team || !response?.membership) {
-        throw new Error('Invalid response from server: missing team or membership data');
-      }
-      
-      const newTeam: Team = {
-        id: response.team.id,
-        name: response.team.name,
-        description: response.team.description,
-        role: 'LEAD',
-        createdAt: response.team.createdAt,
-        updatedAt: response.team.updatedAt,
-        joinedAt: response.membership.acceptedAt,
-      };
-      
-      dispatch(addTeam(newTeam));
-      setFetchedTeams((prev) => [...prev, newTeam]);
-      dispatch(addToast({
-        type: 'success',
-        message: `Team "${createTeamForm.name}" created successfully!`,
-        duration: 3000,
-      }));
-
-      resetCreateTeamForm();
-      setCreateTeamForm({ name: '', description: '' });
-      setShowCreateTeamModal(false);
-      
-      // Load the new team's details
-      if (response?.team?.id) {
-        await loadTeamMembers(response.team.id);
-      }
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to create team';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
+    await createTeamMutation.mutateAsync({
+      name: data.name,
+      description: data.description || undefined,
+    });
+    resetCreateTeamForm();
+    setShowCreateTeamModal(false);
   };
 
   const handleInviteMember = async (data: z.infer<typeof inviteMemberSchema>) => {
-    if (!currentTeam) {
-      dispatch(addToast({
-        type: 'error',
-        message: 'No team selected',
-        duration: 3000,
-      }));
+    if (!currentTeamId) {
+      dispatch(addToast({ type: 'error', message: 'No team selected', duration: 3000 }));
       return;
     }
 
     try {
-      dispatch(setLoading(true));
-      const response = await inviteTeamMember(currentTeam.id, {
+      const response = await inviteMemberMutation.mutateAsync({
+        teamId: currentTeamId,
         email: data.email,
       });
 
-      await loadTeamMembers(currentTeam.id);
-
       if (response.temporaryCredentials) {
-        const memberName = response.member?.email || inviteMemberForm.email;
         setIssuedCredentials({
           email: response.temporaryCredentials.email,
           temporaryPassword: response.temporaryCredentials.temporaryPassword,
-          memberName,
+          memberName: response.member?.email || data.email,
           issuedAt: new Date().toISOString(),
         });
-        dispatch(addToast({
-          type: 'success',
-          message: `New credentials: ${response.temporaryCredentials.email} / ${response.temporaryCredentials.temporaryPassword}`,
-          duration: 7000,
-        }));
       }
-      
-      dispatch(addToast({
-        type: 'success',
-        message: response.message,
-        duration: 3000,
-      }));
 
       resetInviteMemberForm();
-      setInviteMemberForm({ email: '' });
       setShowInviteMemberModal(false);
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to send invitation';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
+    } catch {
+      // Toast is handled by the mutation
     }
   };
 
   const handleUpdateMemberRole = async (memberId: string) => {
-    if (!currentTeam) return;
-
-    try {
-      dispatch(setLoading(true));
-      await apiUpdateTeamMember(currentTeam.id, memberId, {
-        role: newMemberRole,
-      });
-
-      // Reload team members
-      await loadTeamMembers(currentTeam.id);
-
-      dispatch(addToast({
-        type: 'success',
-        message: `Member role updated to ${newMemberRole}`,
-        duration: 3000,
-      }));
-
-      setSelectedMemberId(null);
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to update member role';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
+    if (!currentTeamId) return;
+    await updateRoleMutation.mutateAsync({
+      teamId: currentTeamId,
+      userId: memberId,
+      role: newMemberRole,
+    });
+    setSelectedMemberId(null);
   };
 
   const handleRemoveMember = async (memberId: string) => {
-    if (!currentTeam) return;
-
-    if (!window.confirm('Are you sure you want to remove this member?')) {
-      return;
-    }
-
-    try {
-      dispatch(setLoading(true));
-      await apiRemoveTeamMember(currentTeam.id, memberId);
-
-      dispatch(removeTeamMember(memberId));
-      dispatch(addToast({
-        type: 'success',
-        message: 'Member removed from team',
-        duration: 3000,
-      }));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to remove member';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
+    if (!currentTeamId) return;
+    if (!window.confirm('Are you sure you want to remove this member?')) return;
+    await removeMemberMutation.mutateAsync({ teamId: currentTeamId, userId: memberId });
   };
 
   const handleOpenEditMember = (memberId: string, currentName: string, currentEmail: string) => {
     resetEditMemberForm({ name: currentName, email: currentEmail });
-    setEditMemberForm({
-      memberId,
-      name: currentName,
-      email: currentEmail,
-    });
+    setEditingMemberId(memberId);
     setShowEditMemberModal(true);
   };
 
   const handleEditMember = async (data: z.infer<typeof updateMemberProfileSchema>) => {
-    if (!currentTeam || !editMemberForm.memberId) return;
-
-    try {
-      dispatch(setLoading(true));
-      await updateTeamMemberProfile(currentTeam.id, editMemberForm.memberId, {
-        name: data.name!,
-        email: data.email!,
-      });
-      await loadTeamMembers(currentTeam.id);
-      setShowEditMemberModal(false);
-      dispatch(addToast({
-        type: 'success',
-        message: 'Member profile updated',
-        duration: 3000,
-      }));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to update member details';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
+    if (!currentTeamId || !editingMemberId) return;
+    await updateProfileMutation.mutateAsync({
+      teamId: currentTeamId,
+      userId: editingMemberId,
+      name: data.name!,
+      email: data.email!,
+    });
+    setShowEditMemberModal(false);
   };
 
   const handleResetCredentials = async (memberId: string) => {
-    if (!currentTeam) return;
-
-    if (!window.confirm('Reset this member credentials and generate a new temporary password?')) {
-      return;
-    }
+    if (!currentTeamId) return;
+    if (!window.confirm('Reset this member credentials and generate a new temporary password?')) return;
 
     try {
-      dispatch(setLoading(true));
-      const response = await resetTeamMemberCredentials(currentTeam.id, memberId);
+      const response = await resetCredentialsMutation.mutateAsync({
+        teamId: currentTeamId,
+        userId: memberId,
+      });
       const member = teamMembers.find((item) => item.userId === memberId);
       setIssuedCredentials({
         email: response.credentials.email,
@@ -421,21 +179,8 @@ export const TeamsAdmin: React.FC = () => {
         memberName: member?.name || response.credentials.email,
         issuedAt: new Date().toISOString(),
       });
-      dispatch(addToast({
-        type: 'success',
-        message: `Credentials reset: ${response.credentials.email} / ${response.credentials.temporaryPassword}`,
-        duration: 8000,
-      }));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to reset member credentials';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
+    } catch {
+      // Toast handled by mutation
     }
   };
 
@@ -459,7 +204,7 @@ export const TeamsAdmin: React.FC = () => {
     }
   };
 
-  const visibleTeams = fetchedTeams.length > 0 ? fetchedTeams : teams;
+  const visibleTeams = teams;
   const currentTeamRole = currentTeam?.role;
   const canCreateTeam =
     visibleTeams.length === 0 ||
@@ -491,7 +236,7 @@ export const TeamsAdmin: React.FC = () => {
 
       {error && (
         <div className="alert alert-error">
-          {error}
+          {(error instanceof Error ? error.message : String(error)) || 'An error occurred'}
         </div>
       )}
 
@@ -533,7 +278,7 @@ export const TeamsAdmin: React.FC = () => {
                   className={`team-card ${
                     currentTeam?.id === team.id ? 'active' : ''
                   }`}
-                  onClick={() => loadTeamMembers(team.id)}
+                  onClick={() => setCurrentTeamId(team.id)}
                 >
                   <div className="team-card-header">
                     <h3>{team.name}</h3>

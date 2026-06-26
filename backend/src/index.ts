@@ -2,6 +2,7 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth';
 import aiRoutes from './routes/ai';
@@ -15,6 +16,7 @@ import rateLimit from 'express-rate-limit';
 import { validateBackendEnv } from './lib/env';
 import { startDeadlineNotifier } from './jobs/deadlineNotifier';
 import { requestLogger } from './lib/requestLogger';
+import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
 validateBackendEnv();
@@ -26,12 +28,15 @@ const PORT = parseInt(process.env.PORT || '8000', 10);
 const API_PREFIX = '/api/v1';
 const DEFAULT_JSON_BODY_LIMIT = '1mb'; // Express default is 100kb
 
-const frontendLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs for wildcard frontend route
+// SPA catch-all: 100 req / 15 min per IP
+const spaRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+app.use(helmet());
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -80,14 +85,12 @@ app.use('/calendar', calendarRoutes);
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendPath));
 
-app.get('*', frontendLimiter, (req, res) => {
+app.get('*', spaRateLimit, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err);
-  res.status(500).json({ message: 'Internal server error' });
-});
+// Global error handler — catches errors from asyncHandler wrappers in routes
+app.use(errorHandler);
 
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);

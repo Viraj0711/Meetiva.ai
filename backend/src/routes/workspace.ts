@@ -2,12 +2,12 @@ import { Router, Response } from 'express';
 import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { apiLimiter } from '../lib/rateLimiters';
+import { asyncHandler } from '../lib/errors';
 
 const router = Router();
 
-router.get('/overview', apiLimiter, authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const memberships = await prisma.teamMember.findMany({
+router.get('/overview', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const memberships = await prisma.teamMember.findMany({
       where: { userId: req.userId! },
       select: { teamId: true },
     });
@@ -109,10 +109,6 @@ router.get('/overview', apiLimiter, authenticate, async (req: AuthRequest, res: 
         })),
       },
     });
-  } catch (error) {
-    console.error('Workspace overview failed:', error);
-    return res.status(500).json({ message: 'Failed to load workspace overview' });
-  }
-});
+}));
 
 export default router;

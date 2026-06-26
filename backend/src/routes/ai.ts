@@ -1,8 +1,9 @@
 import { Router, Response } from 'express';
 import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { grokLimiter } from '../lib/rateLimiters';
+import { uploadLimiter } from '../lib/rateLimiters';
 import { validate } from '../lib/validation';
+import { asyncHandler } from '../lib/errors';
 
 type GrokRole = 'system' | 'user' | 'assistant';
 
@@ -34,9 +35,8 @@ const grokChatSchema = z.object({
 
 const router = Router();
 
-router.post('/grok', grokLimiter, authenticate, validate(grokChatSchema), async (req: AuthRequest, res: Response) => {
-  try {
-    const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
+router.post('/grok', uploadLimiter, authenticate, validate(grokChatSchema), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
     const baseUrl = process.env.XAI_BASE_URL || 'https://api.x.ai/v1';
     const defaultModel = process.env.GROK_MODEL || 'grok-2-latest';
 
@@ -85,10 +85,7 @@ router.post('/grok', grokLimiter, authenticate, validate(grokChatSchema), async 
       text,
       raw: result
     });
-  } catch (error) {
-    console.error('Grok API proxy error:', error);
-    res.status(500).json({ message: 'Failed to call Grok API' });
   }
-});
+));
 
 export default router;

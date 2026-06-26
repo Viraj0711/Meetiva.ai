@@ -1,19 +1,11 @@
 import { CalendarConnectionStatus, CalendarEvent, CreateCalendarEventRequest } from '@/types';
 import { apiClient } from './api.client';
-import { API_BASE_URL } from './api.config';
 
 export const calendarService = {
-  getGoogleConnectUrl: (forceReconnect = false): string => {
-    const apiBase = API_BASE_URL;
-    const token = localStorage.getItem('token');
-
-    if (!token) {
-      throw new Error('Authentication required. Please sign in first.');
-    }
-
-    const rootBase = apiBase.replace(/\/api\/v1\/?$/, '');
-    const forceQuery = forceReconnect ? '&force=1' : '';
-    return `${rootBase}/auth/google?token=${encodeURIComponent(token)}${forceQuery}`;
+  getGoogleConnectUrl: async (forceReconnect = false): Promise<string> => {
+    const params = forceReconnect ? '?force=1' : '';
+    const response = await apiClient.post<{ authUrl: string }>(`/auth/google/init${params}`);
+    return response.data.authUrl;
   },
 
   getConnectionStatus: async (): Promise<CalendarConnectionStatus> => {

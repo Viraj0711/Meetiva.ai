@@ -90,96 +90,10 @@ async function run(): Promise<void> {
     );
   }
 
-  // ── Test 2: Authed limiter (no custom message, default JSON) ──────────────
+  // ── Test 2: API limiter (no custom message, 60/min) ───────────────────────
 
   {
-    process.stdout.write('\nTest 2: authedLimiter — default message on 429\n');
-
-    const app = createApp(
-      rateLimit({
-        windowMs: 60_000,
-        max: 2,
-        standardHeaders: true,
-        legacyHeaders: false,
-      }),
-    );
-
-    for (let i = 0; i < 2; i++) {
-      const res = await request(app).get('/test');
-      assert(res.status === 200, `Request ${i + 1} → 200`);
-    }
-
-    const blocked = await request(app).get('/test');
-    assert(blocked.status === 429, '3rd request → 429');
-    // Default rate-limit response is a plain-text string
-    assert(
-      typeof blocked.text === 'string' && blocked.text.length > 0,
-      '429 response body is a non-empty string',
-    );
-  }
-
-  // ── Test 3: Upload limiter (custom message) ───────────────────────────────
-
-  {
-    process.stdout.write('\nTest 3: uploadLimiter — custom message, 10/hr limit\n');
-
-    const app = createApp(
-      rateLimit({
-        windowMs: 60_000,
-        max: 1, // 1 allowed per minute in test mode
-        standardHeaders: true,
-        legacyHeaders: false,
-        message: { message: 'Too many uploads. Please slow down.' },
-      }),
-    );
-
-    const ok = await request(app).get('/test');
-    assert(ok.status === 200, 'First request → 200');
-
-    const blocked = await request(app).get('/test');
-    assert(blocked.status === 429, 'Second request → 429');
-    assert(
-      blocked.body.message === 'Too many uploads. Please slow down.',
-      '429 carries upload-specific message',
-    );
-    assert(
-      Number(blocked.headers['ratelimit-remaining']) >= 0,
-      'ratelimit-remaining is a non-negative number',
-    );
-  }
-
-  // ── Test 4: Grok limiter (custom message, 20/min) ─────────────────────────
-
-  {
-    process.stdout.write('\nTest 4: grokLimiter — custom message, 20/min\n');
-
-    const app = createApp(
-      rateLimit({
-        windowMs: 60_000,
-        max: 2,
-        standardHeaders: true,
-        legacyHeaders: false,
-        message: { message: 'Too many AI requests. Please slow down.' },
-      }),
-    );
-
-    for (let i = 0; i < 2; i++) {
-      const res = await request(app).get('/test');
-      assert(res.status === 200, `Request ${i + 1} → 200`);
-    }
-
-    const blocked = await request(app).get('/test');
-    assert(blocked.status === 429, '3rd request → 429');
-    assert(
-      blocked.body.message === 'Too many AI requests. Please slow down.',
-      '429 carries AI-specific message',
-    );
-  }
-
-  // ── Test 5: API limiter (60/min, no custom message) ──────────────────────
-
-  {
-    process.stdout.write('\nTest 5: apiLimiter — 60/min, no custom message\n');
+    process.stdout.write('\nTest 2: apiLimiter — default message on 429\n');
 
     const app = createApp(
       rateLimit({
@@ -197,12 +111,46 @@ async function run(): Promise<void> {
 
     const blocked = await request(app).get('/test');
     assert(blocked.status === 429, '4th request → 429');
+    assert(
+      typeof blocked.text === 'string' && blocked.text.length > 0,
+      '429 response body is a non-empty string',
+    );
   }
 
-  // ── Test 6: Headers present on every response ────────────────────────────
+  // ── Test 3: Upload limiter (custom message, 10/hr) ────────────────────────
 
   {
-    process.stdout.write('\nTest 6: Rate-limit headers on successful responses\n');
+    process.stdout.write('\nTest 3: uploadLimiter — custom message, 10/hr limit\n');
+
+    const app = createApp(
+      rateLimit({
+        windowMs: 60_000,
+        max: 1,
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { message: 'Too many uploads or AI requests. Please slow down.' },
+      }),
+    );
+
+    const ok = await request(app).get('/test');
+    assert(ok.status === 200, 'First request → 200');
+
+    const blocked = await request(app).get('/test');
+    assert(blocked.status === 429, 'Second request → 429');
+    assert(
+      blocked.body.message === 'Too many uploads or AI requests. Please slow down.',
+      '429 carries upload-specific message',
+    );
+    assert(
+      Number(blocked.headers['ratelimit-remaining']) >= 0,
+      'ratelimit-remaining is a non-negative number',
+    );
+  }
+
+  // ── Test 4: Headers present on every response ────────────────────────────
+
+  {
+    process.stdout.write('\nTest 4: Rate-limit headers on successful responses\n');
 
     const app = createApp(
       rateLimit({
@@ -237,10 +185,10 @@ async function run(): Promise<void> {
     );
   }
 
-  // ── Test 7: Counters are per-IP ──────────────────────────────────────────
+  // ── Test 5: Counters are per-IP ──────────────────────────────────────────
 
   {
-    process.stdout.write('\nTest 7: Rate limits are per-IP\n');
+    process.stdout.write('\nTest 5: Rate limits are per-IP\n');
 
     const app = createApp(
       rateLimit({
@@ -264,10 +212,10 @@ async function run(): Promise<void> {
     assert(blocked.status === 429, '3rd request from same IP → 429');
   }
 
-  // ── Test 8: Non-rate-limited routes pass through ─────────────────────────
+  // ── Test 6: Non-rate-limited routes pass through ─────────────────────────
 
   {
-    process.stdout.write('\nTest 8: Routes without rate limiter are unaffected\n');
+    process.stdout.write('\nTest 6: Routes without rate limiter are unaffected\n');
 
     const app = express();
     app.get('/free', (_req, res) => res.json({ ok: true }));

@@ -5,8 +5,7 @@ import { ArrowLeft, ArrowRight, Lock, Mail, ShieldCheck, Sparkles, User } from '
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useAppDispatch } from '@/store/hooks';
-import { registerAsync } from '@/store/slices/authSlice';
+import { useRegister } from '@/hooks/useAuth';
 import { registerSchema, zodResolver } from '@/lib/validation';
 import { z } from 'zod';
 
@@ -20,7 +19,7 @@ const registerFormSchema = registerSchema.extend({
 type RegisterFormData = z.infer<typeof registerFormSchema>;
 
 const RegisterEnhanced: React.FC = () => {
-  const dispatch = useAppDispatch();
+  const registerMutation = useRegister();
   const navigate = useNavigate();
   const [serverError, setServerError] = useState('');
 
@@ -35,10 +34,10 @@ const RegisterEnhanced: React.FC = () => {
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
-      await dispatch(registerAsync({ name: data.name, email: data.email, password: data.password })).unwrap();
+      await registerMutation.mutateAsync({ name: data.name, email: data.email, password: data.password });
       navigate('/dashboard');
     } catch (err) {
-      setServerError((err as string) || 'Registration failed.');
+      setServerError((err as { message?: string })?.message || 'Registration failed.');
     }
   };
 
