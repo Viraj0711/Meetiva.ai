@@ -132,7 +132,7 @@ const LoginPage: React.FC = () => {
                   <input type="checkbox" className="rounded border-white/20 bg-white/5 text-cyan-400 focus:ring-cyan-400" />
                   Remember me
                 </label>
-                <Link to="/" className="text-cyan-300 transition hover:text-white">Forgot password?</Link>
+                <Link to="/reset-password" className="text-cyan-300 transition hover:text-white">Forgot password?</Link>
               </div>
 
               <Button type="submit" size="lg" className="w-full" isLoading={isSubmitting}>

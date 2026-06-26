@@ -81,3 +81,11 @@ export const startDeadlineNotifier = async () => {
 
   console.log('✅ Deadline notifier started (hourly cadence)');
 };
+
+export const stopDeadlineNotifier = () => {
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+    console.log('Deadline notifier stopped.');
+  }
+};

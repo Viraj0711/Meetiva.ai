@@ -10,6 +10,18 @@ env:
   NODE_VERSION: "20"
 
 jobs:
+  security-scan:
+    name: Security — Secret scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   frontend:
     name: Frontend — typecheck & test
     runs-on: ubuntu-latest

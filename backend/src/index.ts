@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -14,9 +14,11 @@ import notificationsRoutes from './routes/notifications';
 import workspaceRoutes from './routes/workspace';
 import rateLimit from 'express-rate-limit';
 import { validateBackendEnv } from './lib/env';
-import { startDeadlineNotifier } from './jobs/deadlineNotifier';
+import { startDeadlineNotifier, stopDeadlineNotifier } from './jobs/deadlineNotifier';
 import { requestLogger } from './lib/requestLogger';
 import { errorHandler } from './middleware/errorHandler';
+import prisma from './lib/prisma';
+import { disconnectRedis } from './lib/redis';
 
 dotenv.config();
 validateBackendEnv();
@@ -41,18 +43,17 @@ app.use(helmet());
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    
+
     const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || [];
     const isLocalhost = origin.match(/^http:\/\/(localhost|127\.0\.0\.1|\[::1\]|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/);
-    
+
     if (allowedOrigins.length > 0 && allowedOrigins.includes(origin)) {
       return callback(null, true);
     } else if (isLocalhost) {
       return callback(null, true);
-    } else if (process.env.NODE_ENV === 'production' && allowedOrigins.length > 0) {
-      return callback(new Error('Not allowed by CORS'));
     } else {
-      return callback(null, true);
+      // Deny unknown origins by default (previously allowed all in development).
+      return callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true
@@ -92,7 +93,7 @@ app.get('*', spaRateLimit, (req, res) => {
 // Global error handler — catches errors from asyncHandler wrappers in routes
 app.use(errorHandler);
 
-app.listen(PORT, '0.0.0.0', async () => {
+const server = app.listen(PORT, '0.0.0.0', async () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
   console.log(`🌐 Network access: http://0.0.0.0:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);
@@ -100,3 +101,35 @@ app.listen(PORT, '0.0.0.0', async () => {
   // Start background job: hourly deadline reminder sweep
   startDeadlineNotifier();
 });
+
+// ── Graceful shutdown ───────────────────────────────────────────────────────
+// Close the HTTP server and disconnect Prisma on termination signals.
+// This prevents connection pool leaks and allows in-flight requests to finish.
+const gracefulShutdown = async (signal: string) => {
+  console.log(`\n${signal} received — shutting down gracefully...`);
+
+  // Stop background jobs so the event loop can drain.
+  stopDeadlineNotifier();
+
+  server.close(async (err) => {
+    if (err) {
+      console.error('Error closing server:', err);
+      process.exit(1);
+    }
+    await Promise.all([
+      prisma.$disconnect(),
+      disconnectRedis(),
+    ]);
+    console.log('Connections closed. Goodbye.');
+    process.exit(0);
+  });
+
+  // Force shutdown after 10 seconds if graceful shutdown hangs
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000).unref();
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

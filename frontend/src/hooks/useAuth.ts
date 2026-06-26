@@ -88,3 +88,23 @@ export const useRequestPasswordReset = () => {
     },
   });
 };
+
+/**
+ * Hook to reset password with a token
+ */
+export const useResetPassword = () => {
+  const dispatch = useAppDispatch();
+
+  return useMutation({
+    mutationFn: ({ token, password }: { token: string; password: string }) =>
+      authService.resetPassword(token, password),
+    onSuccess: () => {
+      dispatch(
+        addToast({ type: 'success', message: 'Password updated successfully.' })
+      );
+    },
+    onError: (error: Error) => {
+      dispatch(addToast({ type: 'error', message: error.message }));
+    },
+  });
+};

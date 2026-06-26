@@ -8,6 +8,7 @@ const Landing = React.lazy(() => import('@/pages/LandingNew'));
 const Home = React.lazy(() => import('@/pages/home/RoleHome'));
 const Login = React.lazy(() => import('@/pages/auth/LoginEnhanced'));
 const Register = React.lazy(() => import('@/pages/auth/RegisterEnhanced'));
+const ResetPassword = React.lazy(() => import('@/pages/auth/ResetPassword'));
 const Meetings = React.lazy(() => import('@/pages/Meetings'));
 const MeetingDetail = React.lazy(() => import('@/pages/MeetingDetail'));
 const Upload = React.lazy(() => import('@/pages/Upload'));
@@ -57,6 +58,14 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={<LoadingSpinner />}>
         <Register />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/reset-password',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ResetPassword />
       </Suspense>
     ),
   },

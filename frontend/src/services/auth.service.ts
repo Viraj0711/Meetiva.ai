@@ -52,7 +52,10 @@ export const authService = {
    * Refresh access token
    */
   refreshToken: async (): Promise<{ token: string }> => {
-    const response = await axios.post<{ token: string }>(`${API_BASE_URL}/auth/refresh`);
+    const token = localStorage.getItem('token');
+    const response = await axios.post<{ token: string }>(`${API_BASE_URL}/auth/refresh`, null, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     return response.data;
   },
 

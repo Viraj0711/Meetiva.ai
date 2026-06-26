@@ -552,6 +552,11 @@ router.post(
         invitedAt: teamMember.invitedAt?.toISOString(),
         joinedAt: teamMember.acceptedAt?.toISOString(),
       },
+      // SECURITY: Temporary password is returned here because there is no
+      // email delivery system configured for new-member notifications.
+      // In production, the password should be sent via email instead of
+      // being exposed in the API response body where it could be logged
+      // or intercepted by intermediaries.
       temporaryCredentials: temporaryPassword
         ? {
             email: normalizedEmail,
@@ -857,6 +862,8 @@ router.post(
       },
     });
 
+    // SECURITY: Same password-in-response concern as the invite endpoint.
+    // In production, communicate the new password out-of-band (email/SMS).
     res.json({
       credentials: {
         email: updatedUser.email,

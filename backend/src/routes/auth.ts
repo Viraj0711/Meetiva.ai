@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 import z from 'zod';
 import prisma from '../lib/prisma';
 import { TeamInfo } from '../middleware/auth';
@@ -21,6 +22,7 @@ import {
   updateProfileSchema,
 } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
+import { setResetToken, getResetToken, deleteResetToken } from '../lib/redis';
 
 const router = Router();
 
@@ -47,7 +49,7 @@ const createToken = async (userId: string, email: string): Promise<string> => {
   return jwt.sign(
     { userId, email, teams },
     process.env.JWT_SECRET!,
-    { expiresIn: '7d' }
+    { expiresIn: '24h' }
   );
 };
 
@@ -223,9 +225,43 @@ router.post('/refresh', apiLimiter, authenticate, asyncHandler(async (req: AuthR
 }));
 
 // ── Password reset request ─────────────────────────────────────────────────
-// In-memory store for reset tokens (survives until server restart).
-// For production, persist these tokens in the database.
-const passwordResetTokens = new Map<string, { userId: string; expiresAt: Date }>();
+// Reset tokens are stored in Redis (with a 1-hour TTL), falling back to an
+// in-memory Map when Redis is not available. This enables multi-process
+// deployments where any server instance can confirm a token regardless of
+// which instance issued it.
+
+// ── SMTP email helper for password reset ────────────────────────────────────
+const sendPasswordResetEmail = async (email: string, token: string): Promise<void> => {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPassword = process.env.SMTP_PASSWORD;
+  const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
+  const frontendUrl = process.env.FRONTEND_APP_URL || 'http://localhost:5173';
+  const resetLink = `${frontendUrl}/reset-password?token=${token}`;
+
+  if (smtpHost && smtpUser && smtpPassword) {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: process.env.SMTP_PORT === '465',
+      auth: {
+        user: smtpUser,
+        pass: smtpPassword,
+      },
+    });
+
+    await transporter.sendMail({
+      from: emailFrom,
+      to: email,
+      subject: 'Reset your Meetiva.ai password',
+      text: `You requested a password reset. Click this link to reset your password: ${resetLink}\n\nThis link expires in 1 hour.`,
+      html: `<p>You requested a password reset.</p><p>Click <a href="${resetLink}">here</a> to reset your password.</p><p>This link expires in 1 hour.</p>`,
+    });
+  } else {
+    // Dev fallback — log the token so developers can test the reset flow
+    console.log(`[DEV] Password reset token for ${email}: ${token}`);
+  }
+};
 
 router.post('/password-reset',
   authLimiter,
@@ -240,12 +276,10 @@ router.post('/password-reset',
     }
 
     const token = crypto.randomBytes(32).toString('hex');
-    passwordResetTokens.set(token, {
-      userId: user.id,
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
-    });
+    await setResetToken(token, user.id);
 
-    // In production, send this token via email (SMTP integration)
+    // Send the reset token via email (or log in dev if SMTP not configured)
+    await sendPasswordResetEmail(email, token);
 
     return res.json({ message: 'If the email is registered, a reset link has been sent.' });
   })
@@ -257,20 +291,19 @@ router.post('/password-reset/confirm',
   validate(passwordResetConfirmSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { token, password } = req.body as z.infer<typeof passwordResetConfirmSchema>;
-    const stored = passwordResetTokens.get(token);
+    const userId = await getResetToken(token);
 
-    if (!stored || stored.expiresAt < new Date()) {
-      passwordResetTokens.delete(token);
+    if (!userId) {
       return res.status(400).json({ message: 'Invalid or expired reset token' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     await prisma.user.update({
-      where: { id: stored.userId },
+      where: { id: userId },
       data: { hashedPassword },
     });
 
-    passwordResetTokens.delete(token);
+    await deleteResetToken(token);
 
     return res.json({ message: 'Password updated successfully' });
   })

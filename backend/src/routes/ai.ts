@@ -81,6 +81,23 @@ router.post('/grok', uploadLimiter, authenticate, validate(grokChatSchema), asyn
 
     const text = result?.choices?.[0]?.message?.content ?? '';
 
+    // Validate Grok response structure before returning to client.
+    // This catches unexpected API changes early and prevents passing
+    // malformed data downstream.
+    const grokResponseSchema = z.object({
+      choices: z.array(z.object({
+        message: z.object({
+          content: z.string(),
+        }).optional(),
+      })).optional(),
+    });
+    const validation = grokResponseSchema.safeParse(result);
+    if (!validation.success) {
+      return res.status(502).json({
+        message: 'Received an unexpected response format from the AI provider',
+      });
+    }
+
     res.json({
       text,
       raw: result
