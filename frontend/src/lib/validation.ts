@@ -11,7 +11,6 @@ export {
   passwordField,
   optionalDescription,
   iso8601Field,
-  paginationFields,
 
   // Auth
   registerSchema,
@@ -43,6 +42,17 @@ export {
 
   // Notifications
   notificationQuerySchema,
-} from '@shared/validation';
+} from '@shared/schemas';
 
-export { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver as _zodResolver } from '@hookform/resolvers/zod';
+
+/**
+ * Wraps @hookform/resolvers zodResolver with relaxed generics to work around
+ * Zod v3.23+ / @hookform/resolvers type incompatibility (ZodObject no longer
+ * satisfies ZodType<any,any,any> as a generic constraint).
+ * Runtime behaviour is identical.
+ */
+export const zodResolver = _zodResolver as unknown as (
+  schema: any,
+  resolverOptions?: any,
+) => any;

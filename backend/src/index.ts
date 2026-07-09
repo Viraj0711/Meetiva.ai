@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import helmet from 'helmet';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth';
 import aiRoutes from './routes/ai';
@@ -15,9 +16,10 @@ import workspaceRoutes from './routes/workspace';
 import rateLimit from 'express-rate-limit';
 import { validateBackendEnv } from './lib/env';
 import { startDeadlineNotifier, stopDeadlineNotifier } from './jobs/deadlineNotifier';
+import { startRefreshTokenCleanup, stopRefreshTokenCleanup } from './jobs/refreshTokenCleanup';
 import { requestLogger } from './lib/requestLogger';
 import { errorHandler } from './middleware/errorHandler';
-import prisma from './lib/prisma';
+import { connectMongoose, disconnectMongoose } from './lib/mongoose';
 import { disconnectRedis } from './lib/redis';
 
 dotenv.config();
@@ -25,6 +27,9 @@ validateBackendEnv();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8000', 10);
+
+// Trust the first reverse proxy (required for rate limiters to see real client IP)
+app.set('trust proxy', 1);
 
 // ── API configuration constants ────────────────────────────────────────────
 const API_PREFIX = '/api/v1';
@@ -38,7 +43,25 @@ const spaRateLimit = rateLimit({
   legacyHeaders: false,
 });
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+    },
+  },
+  crossOriginEmbedderPolicy: false, // allows loading third-party resources like images
+}));
+
+app.use(compression());
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -98,8 +121,10 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🌐 Network access: http://0.0.0.0:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);
 
-  // Start background job: hourly deadline reminder sweep
+  // Connect to MongoDB and start background jobs
+  await connectMongoose();
   startDeadlineNotifier();
+  startRefreshTokenCleanup();
 });
 
 // ── Graceful shutdown ───────────────────────────────────────────────────────
@@ -110,6 +135,7 @@ const gracefulShutdown = async (signal: string) => {
 
   // Stop background jobs so the event loop can drain.
   stopDeadlineNotifier();
+  stopRefreshTokenCleanup();
 
   server.close(async (err) => {
     if (err) {
@@ -117,7 +143,7 @@ const gracefulShutdown = async (signal: string) => {
       process.exit(1);
     }
     await Promise.all([
-      prisma.$disconnect(),
+      disconnectMongoose(),
       disconnectRedis(),
     ]);
     console.log('Connections closed. Goodbye.');

@@ -65,16 +65,11 @@ const statusLabel = (statusCode: number): string => {
 export const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
   const start = Date.now();
 
-  // Capture the original `end` to hook into response completion
-  const originalEnd = res.end.bind(res);
-
-  // Override res.end — cast through `any` to bypass strict Node.js overloaded type
-  res.end = function (this: Response, ...args: any[]): any {
+  res.on('finish', () => {
     const durationMs = Date.now() - start;
     const rateLimitHeaders = getRateLimitHeaders(res);
     const userId = (req as any).userId ?? '-';
 
-    // Build a compact log line
     const parts: string[] = [
       new Date().toISOString(),
       `[${statusLabel(res.statusCode)}]`,
@@ -85,7 +80,6 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
       `uid=${userId}`,
     ];
 
-    // Append rate-limit info when present (helps debug throttling)
     if (rateLimitHeaders['ratelimit-remaining']) {
       parts.push(
         `rl=${rateLimitHeaders['ratelimit-remaining']}/${rateLimitHeaders['ratelimit-limit'] ?? '?'}`,
@@ -95,7 +89,6 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
       parts.push(`retry-after=${rateLimitHeaders['retry-after']}s`);
     }
 
-    // Log at different levels depending on status
     if (res.statusCode >= 500) {
       console.error(parts.join('  '));
     } else if (res.statusCode >= 400) {
@@ -103,10 +96,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
     } else {
       console.log(parts.join('  '));
     }
-
-    // Call original end
-    return originalEnd(...args);
-  } as typeof res.end;
+  });
 
   next();
 };

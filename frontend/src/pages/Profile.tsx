@@ -9,7 +9,7 @@ import { authService, integrationService } from '@/services';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store';
-import { setUser } from '@/store/slices/authSlice';
+import { loginSuccess } from '@/store/slices/authSlice';
 import { updateProfileSchema, zodResolver } from '@/lib/validation';
 import type { z } from 'zod';
 import {
@@ -168,10 +168,8 @@ const Profile: React.FC = () => {
         email: data.email || user?.email || '',
       });
 
-      if (response?.token) {
-        localStorage.setItem('token', response.token);
-      }
-      dispatch(setUser(response.user));
+      // response.token is automatically stored in-memory by authService.updateProfile
+      dispatch(loginSuccess({ user: response.user, token: response.token }));
       setProfileMessage('Profile updated successfully.');
     } catch (err: any) {
       setProfileMessage(err?.response?.data?.message || 'Failed to save profile changes.');

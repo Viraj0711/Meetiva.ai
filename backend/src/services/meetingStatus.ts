@@ -1,18 +1,17 @@
-import prisma from '../lib/prisma';
+import Meeting from '../models/Meeting';
+import ActionItem from '../models/ActionItem';
+import { Types } from 'mongoose';
 
 export const syncMeetingStatusFromActionItems = async (meetingId: string): Promise<void> => {
   const [meeting, totalActionItems, incompleteActionItems] = await Promise.all([
-    prisma.meeting.findUnique({
-      where: { id: meetingId },
-      select: { id: true, completedAt: true }
+    Meeting.findById(meetingId)
+      .select('completedAt')
+      .lean(),
+    ActionItem.countDocuments({ meetingId: new Types.ObjectId(meetingId) }),
+    ActionItem.countDocuments({
+      meetingId: new Types.ObjectId(meetingId),
+      status: { $ne: 'completed' },
     }),
-    prisma.actionItem.count({ where: { meetingId } }),
-    prisma.actionItem.count({
-      where: {
-        meetingId,
-        status: { not: 'completed' }
-      }
-    })
   ]);
 
   if (!meeting) {
@@ -21,11 +20,10 @@ export const syncMeetingStatusFromActionItems = async (meetingId: string): Promi
 
   const shouldBeCompleted = totalActionItems > 0 && incompleteActionItems === 0;
 
-  await prisma.meeting.update({
-    where: { id: meetingId },
-    data: {
+  await Meeting.findByIdAndUpdate(meetingId, {
+    $set: {
       status: shouldBeCompleted ? 'completed' : 'pending',
-      completedAt: shouldBeCompleted ? meeting.completedAt ?? new Date() : null
-    }
+      completedAt: shouldBeCompleted ? (meeting.completedAt ?? new Date()) : null,
+    },
   });
 };

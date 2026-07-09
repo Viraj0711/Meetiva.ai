@@ -1,11 +1,20 @@
 import { Router, Response } from 'express';
-import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { apiLimiter } from '../lib/rateLimiters';
 import { validate, notificationQuerySchema } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
+import Notification from '../models/Notification';
+import { Types } from 'mongoose';
 
 const router = Router();
+
+// Validate all :id route params as MongoDB ObjectId
+router.param('id', (req, res, next, value) => {
+  if (!Types.ObjectId.isValid(value)) {
+    return res.status(400).json({ message: 'Invalid id: must be a valid ObjectId' });
+  }
+  next();
+});
 
 router.get(
   '/',
@@ -17,32 +26,25 @@ router.get(
     const skip = (page - 1) * limit;
 
     const [notifications, total] = await Promise.all([
-      prisma.notification.findMany({
-        where: { userId: req.userId! },
-        select: {
-          id: true,
-          userId: true,
-          actionItemId: true,
-          type: true,
-          title: true,
-          message: true,
-          channel: true,
-          isRead: true,
-          readAt: true,
-          createdAt: true,
-          actionItem: {
-            select: { id: true, title: true, dueDate: true, status: true },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.notification.count({ where: { userId: req.userId! } }),
+      Notification.find({ userId: new Types.ObjectId(req.userId!) })
+        .populate('actionItemId', 'title dueDate status')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Notification.countDocuments({ userId: new Types.ObjectId(req.userId!) }),
     ]);
 
+    const data = notifications.map((n: any) => ({
+      ...n,
+      id: n._id.toString(),
+      userId: n.userId.toString(),
+      actionItemId: n.actionItemId?._id?.toString() || n.actionItemId?.toString() || null,
+      actionItem: n.actionItemId || undefined,
+    }));
+
     return res.json({
-      data: notifications,
+      data,
       pagination: {
         total,
         page,
@@ -54,21 +56,24 @@ router.get(
 );
 
 router.patch('/:id/read', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const target = await prisma.notification.findFirst({
-    where: { id: req.params.id, userId: req.userId! },
-    select: { id: true },
-  });
+  const target = await Notification.findOne({
+    _id: new Types.ObjectId(req.params.id),
+    userId: new Types.ObjectId(req.userId!),
+  })
+    .select('_id')
+    .lean();
 
   if (!target) {
     return res.status(404).json({ message: 'Notification not found' });
   }
 
-  const updated = await prisma.notification.update({
-    where: { id: target.id },
-    data: { isRead: true, readAt: new Date() },
-  });
+  const updated = await Notification.findByIdAndUpdate(
+    target._id,
+    { $set: { isRead: true, readAt: new Date() } },
+    { returnDocument: 'after' }
+  ).lean();
 
-  return res.json({ data: updated, message: 'Notification marked as read' });
+  return res.json({ data: updated ? { ...updated, id: updated._id.toString() } : null, message: 'Notification marked as read' });
 }));
 
 export default router;

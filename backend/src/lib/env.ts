@@ -1,4 +1,4 @@
-const REQUIRED_ENV_KEYS = ['DATABASE_URL', 'DIRECT_URL', 'JWT_SECRET'] as const;
+const REQUIRED_ENV_KEYS = ['MONGODB_URI', 'JWT_SECRET'] as const;
 
 const missingKeys = (keys: readonly string[]): string[] =>
   keys.filter((key) => !process.env[key] || process.env[key]?.trim() === '');

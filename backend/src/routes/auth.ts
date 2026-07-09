@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import z from 'zod';
-import prisma from '../lib/prisma';
 import { TeamInfo } from '../middleware/auth';
 import {
   getGoogleOAuthClient,
@@ -23,83 +22,206 @@ import {
 } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
 import { setResetToken, getResetToken, deleteResetToken } from '../lib/redis';
+import User from '../models/User';
+import TeamMember from '../models/TeamMember';
+import RefreshToken from '../models/RefreshToken';
+import GoogleCalendarAuth from '../models/GoogleCalendarAuth';
 
 const router = Router();
 
 const OAUTH_STATE_COOKIE = 'google_oauth_state';
 const OAUTH_UID_COOKIE = 'google_oauth_uid';
+const REFRESH_COOKIE = 'refresh_token';
+
+const ACCESS_TOKEN_EXPIRY = '15m';
+const REFRESH_TOKEN_DAYS = 7;
+const REFRESH_TOKEN_MAX_AGE = REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000; // 7 days in ms
+const MAX_REFRESH_TOKENS_PER_USER = 5; // Multi-tab: keep up to N valid tokens per user
 
 // Helper function to get user's teams
 const getUserTeams = async (userId: string): Promise<TeamInfo[]> => {
-  const teamMembers = await prisma.teamMember.findMany({
-    where: { userId },
-    select: { teamId: true, role: true }
-  });
+  const teamMembers = await TeamMember.find({ userId: userId as any })
+    .select('teamId role')
+    .lean();
 
   return teamMembers.map(tm => ({
-    teamId: tm.teamId,
+    teamId: tm.teamId.toString(),
     role: tm.role as TeamInfo['role']
   }));
 };
 
-// Helper function to create JWT token with team info
-const createToken = async (userId: string, email: string): Promise<string> => {
+/**
+ * Create a short-lived access token (JWT).
+ * This is returned in the response body and stored in-memory on the frontend.
+ * It is NOT persisted to localStorage.
+ */
+const createAccessToken = async (userId: string, email: string): Promise<string> => {
   const teams = await getUserTeams(userId);
 
   return jwt.sign(
     { userId, email, teams },
     process.env.JWT_SECRET!,
-    { expiresIn: '24h' }
+    { expiresIn: ACCESS_TOKEN_EXPIRY }
   );
 };
 
-// Member self-registration is disabled in invite-only mode.
-router.post('/register',
-  authLimiter,
-  validate(registerSchema),
-  async (_req: Request, res: Response) => {
-    return res.status(403).json({
-      message: 'This workspace is invite-only. Ask your team leader for credentials.'
+/**
+ * Create a refresh token, store it in the database, and set it as an httpOnly
+ * cookie. The cookie is NOT accessible via JavaScript — it mitigates token
+ * theft from XSS and browser-inspect attacks.
+ *
+ * The refresh token is hashed (SHA-256) before storage for defense in depth.
+ */
+const hashToken = (token: string): string =>
+  crypto.createHash('sha256').update(token).digest('hex');
+
+const createAndSetRefreshToken = async (
+  res: Response,
+  userId: string
+): Promise<void> => {
+  // Generate a cryptographically random token
+  const rawToken = crypto.randomBytes(40).toString('hex');
+  const tokenHash = hashToken(rawToken);
+
+  // Multi-tab safe: keep up to MAX_REFRESH_TOKENS_PER_USER tokens per user.
+  // If at the limit, delete only the oldest token to make room.
+  // This prevents a refresh on one tab from invalidating other open tabs.
+  const tokenCount = await RefreshToken.countDocuments({ userId: userId as any });
+  if (tokenCount >= MAX_REFRESH_TOKENS_PER_USER) {
+    const oldestTokens = await RefreshToken.find({ userId: userId as any })
+      .sort({ createdAt: 1 })
+      .limit(tokenCount - MAX_REFRESH_TOKENS_PER_USER + 1)
+      .select('_id')
+      .lean();
+    await RefreshToken.deleteMany({
+      _id: { $in: oldestTokens.map((t) => t._id) },
     });
   }
-);
 
-// Team leaders can create their own account.
-router.post('/register-leader',
+  // Store the hashed token in the database
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_MAX_AGE);
+  await RefreshToken.create({
+    userId: userId as any,
+    tokenHash,
+    expiresAt,
+  });
+
+  // Set the raw token as an httpOnly cookie
+  res.cookie(REFRESH_COOKIE, rawToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: REFRESH_TOKEN_MAX_AGE,
+  });
+};
+
+/**
+ * Verify a refresh token from the cookie, look it up in the database,
+ * and if valid, rotate it (delete old, create new).
+ * Returns the userId on success, null on failure.
+ */
+const validateAndRotateRefreshToken = async (
+  req: Request,
+  res: Response
+): Promise<string | null> => {
+  const rawToken = req.cookies?.[REFRESH_COOKIE] as string | undefined;
+  if (!rawToken) return null;
+
+  const tokenHash = hashToken(rawToken);
+
+  const stored = await RefreshToken.findOne({ tokenHash })
+    .select('userId expiresAt')
+    .lean();
+
+  if (!stored || stored.expiresAt < new Date()) {
+    if (stored) {
+      // Expired token — clean it up
+      await RefreshToken.deleteOne({ tokenHash });
+    }
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    return null;
+  }
+
+  // ── Token rotation ─────────────────────────────────────────────────────
+  // Delete the old token and issue a new one. This ensures that if a refresh
+  // token is stolen, using it invalidates the old one.
+  await RefreshToken.deleteOne({ tokenHash });
+  await createAndSetRefreshToken(res, stored.userId.toString());
+
+  return stored.userId.toString();
+};
+
+/**
+ * Send auth response: access token in body + refresh token cookie + user data.
+ */
+const sendAuthResponse = async (
+  res: Response,
+  user: { _id: any; email: string; name: string; createdAt: Date; updatedAt: Date },
+  statusCode = 200
+): Promise<void> => {
+  const userId = user._id.toString();
+  const accessToken = await createAccessToken(userId, user.email);
+  await createAndSetRefreshToken(res, userId);
+
+  res.status(statusCode).json({
+    token: accessToken,
+    user: {
+      id: userId,
+      email: user.email,
+      name: user.name,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+    },
+  });
+};
+
+// ── Auth routes ────────────────────────────────────────────────────────────
+
+// ── Open registration ──────────────────────────────────────────────────────
+// Any user can create an account with a FREE tier (5 meetings/month).
+// Team-creation and team-joining require a subscription upgrade.
+router.post('/register',
   authLimiter,
   validate(registerSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { email, name, password } = req.body as z.infer<typeof registerSchema>;
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await User.findOne({ email }).lean();
     if (existing) {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name,
-        hashedPassword,
-      },
-    });
+    const user = await User.create({ email, name, hashedPassword });
 
-    const token = await createToken(user.id, user.email);
-
-    res.status(201).json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        createdAt: user.createdAt.toISOString(),
-        updatedAt: user.updatedAt.toISOString(),
-      },
-    });
+    await sendAuthResponse(res, user, 201);
   })
 );
+
+// ── Get subscription info ──────────────────────────────────────────────────
+router.get('/subscription', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const user = await User.findById(req.userId!)
+    .select('subscriptionTier meetingCountThisMonth meetingCountResetAt subscriptionExpiresAt')
+    .lean();
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  const monthlyLimit = user.subscriptionTier === 'FREE' ? 5 : 999_999;
+  const meetingsRemaining = Math.max(0, monthlyLimit - user.meetingCountThisMonth);
+
+  res.json({
+    tier: user.subscriptionTier,
+    meetingCountThisMonth: user.meetingCountThisMonth,
+    monthlyLimit,
+    meetingsRemaining,
+    subscriptionExpiresAt: user.subscriptionExpiresAt?.toISOString() || null,
+    isSubscribed: user.subscriptionTier !== 'FREE',
+  });
+}));
 
 // Login
 router.post('/login',
@@ -108,7 +230,7 @@ router.post('/login',
   asyncHandler(async (req: Request, res: Response) => {
     const { email, password } = req.body as z.infer<typeof loginSchema>;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await User.findOne({ email }).lean() as any;
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -122,34 +244,22 @@ router.post('/login',
       return res.status(403).json({ message: 'Account is inactive' });
     }
 
-    const token = await createToken(user.id, user.email);
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        createdAt: user.createdAt.toISOString(),
-        updatedAt: user.updatedAt.toISOString()
-      }
-    });
+    await sendAuthResponse(res, user);
   })
 );
 
-// Get current authenticated user
+// Get current authenticated user (access token required)
 router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.userId! },
-    select: { id: true, email: true, name: true, createdAt: true, updatedAt: true },
-  });
+  const user = await User.findById(req.userId!)
+    .select('email name createdAt updatedAt')
+    .lean();
 
   if (!user) {
     return res.status(404).json({ message: 'User not found' });
   }
 
   return res.json({
-    id: user.id,
+    id: user._id.toString(),
     email: user.email,
     name: user.name,
     createdAt: user.createdAt.toISOString(),
@@ -166,7 +276,7 @@ router.patch(
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const { name, email } = req.body as z.infer<typeof updateProfileSchema>;
 
-    const data: { name?: string; email?: string } = {};
+    const data: Record<string, string> = {};
     if (typeof name === 'string' && name.trim()) {
       data.name = name.trim();
     }
@@ -178,57 +288,69 @@ router.patch(
       return res.status(400).json({ message: 'No profile changes provided' });
     }
 
-    const updated = await prisma.user.update({
-      where: { id: req.userId! },
-      data,
-      select: { id: true, email: true, name: true, createdAt: true, updatedAt: true },
-    });
+    const updated = await User.findByIdAndUpdate(req.userId!, data, { returnDocument: 'after' })
+      .select('email name createdAt updatedAt')
+      .lean();
 
-    const token = await createToken(updated.id, updated.email);
+    if (!updated) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-    return res.json({
-      token,
-      user: {
-        id: updated.id,
-        email: updated.email,
-        name: updated.name,
-        createdAt: updated.createdAt.toISOString(),
-        updatedAt: updated.updatedAt.toISOString(),
-      },
-    });
+    // Profile update returns a new access token + rotated refresh token
+    await sendAuthResponse(res, updated);
   })
 );
 
 // ── Logout ────────────────────────────────────────────────────────────────
-// JWT is stateless — the client discards the token. This endpoint exists so the
-// frontend auth service can make a request and get a clean acknowledgment.
-router.post('/logout', (_req: Request, res: Response) => {
+// Clears the refresh token cookie and deletes the refresh token from the DB.
+router.post('/logout', apiLimiter, asyncHandler(async (req: Request, res: Response) => {
+  const rawToken = req.cookies?.[REFRESH_COOKIE] as string | undefined;
+  if (rawToken) {
+    const tokenHash = hashToken(rawToken);
+    await RefreshToken.deleteMany({ tokenHash });
+  }
+  res.clearCookie(REFRESH_COOKIE, { path: '/' });
   res.json({ message: 'Logged out successfully' });
-});
+}));
 
 // ── Refresh token ──────────────────────────────────────────────────────────
-// Issues a new JWT with fresh expiry using the current valid token.
-router.post('/refresh', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.userId! },
-    select: { id: true, email: true, isActive: true },
-  });
+// Reads the httpOnly refresh cookie, validates the token, rotates it, and
+// returns a new short-lived access token. Also returns user data so the
+// frontend can restore the session in one call.
+router.post('/refresh', authLimiter, asyncHandler(async (req: Request, res: Response) => {
+  const userId = await validateAndRotateRefreshToken(req, res);
+  if (!userId) {
+    return res.status(401).json({ message: 'Session expired. Please log in again.' });
+  }
+
+  const user = await User.findById(userId)
+    .select('email name isActive createdAt updatedAt')
+    .lean();
   if (!user) {
-    return res.status(404).json({ message: 'User not found' });
+    return res.status(401).json({ message: 'User not found' });
   }
   if (!user.isActive) {
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
     return res.status(403).json({ message: 'Account is inactive' });
   }
 
-  const token = await createToken(user.id, user.email);
-  return res.json({ token });
+  const accessToken = await createAccessToken(userId, user.email);
+
+  return res.json({
+    token: accessToken,
+    user: {
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+    },
+  });
 }));
 
 // ── Password reset request ─────────────────────────────────────────────────
 // Reset tokens are stored in Redis (with a 1-hour TTL), falling back to an
-// in-memory Map when Redis is not available. This enables multi-process
-// deployments where any server instance can confirm a token regardless of
-// which instance issued it.
+// in-memory Map when Redis is not available.
 
 // ── SMTP email helper for password reset ────────────────────────────────────
 const sendPasswordResetEmail = async (email: string, token: string): Promise<void> => {
@@ -268,7 +390,7 @@ router.post('/password-reset',
   validate(passwordResetSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { email } = req.body as z.infer<typeof passwordResetSchema>;
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await User.findOne({ email }).lean();
 
     // Always return success to avoid revealing whether the email exists
     if (!user) {
@@ -276,7 +398,7 @@ router.post('/password-reset',
     }
 
     const token = crypto.randomBytes(32).toString('hex');
-    await setResetToken(token, user.id);
+    await setResetToken(token, user._id.toString());
 
     // Send the reset token via email (or log in dev if SMTP not configured)
     await sendPasswordResetEmail(email, token);
@@ -298,36 +420,94 @@ router.post('/password-reset/confirm',
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    await prisma.user.update({
-      where: { id: userId },
-      data: { hashedPassword },
-    });
+    await User.findByIdAndUpdate(userId, { hashedPassword });
 
     await deleteResetToken(token);
 
-    return res.json({ message: 'Password updated successfully' });
+    // Invalidate all existing refresh tokens (password changed — force re-login)
+    await RefreshToken.deleteMany({ userId: userId as any });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+
+    return res.json({ message: 'Password updated successfully. Please log in again.' });
+  })
+);
+
+// ── Admin: upgrade user subscription tier ──────────────────────────────
+// Gated by ADMIN_EMAIL env var. The authenticated user whose email matches
+// ADMIN_EMAIL can upgrade themselves to PRO (enabling team features).
+// Use for testing when no payment gateway is integrated.
+router.post('/admin/set-tier',
+  apiLimiter,
+  authenticate,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const adminEmail = process.env.ADMIN_EMAIL;
+
+    if (!adminEmail) {
+      return res.status(501).json({ message: 'ADMIN_EMAIL not configured on server' });
+    }
+
+    // Get the authenticated user's email
+    const currentUser = await User.findById(req.userId!)
+      .select('email name')
+      .lean();
+
+    if (!currentUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (currentUser.email !== adminEmail) {
+      return res.status(403).json({
+        message: 'Your email is not authorized for admin upgrades',
+      });
+    }
+
+    const { tier } = req.body as { tier?: string };
+
+    if (!tier || !['PRO', 'TEAM'].includes(tier)) {
+      return res.status(400).json({
+        message: 'Provide tier (PRO or TEAM)',
+      });
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      currentUser._id,
+      {
+        subscriptionTier: tier as 'PRO' | 'TEAM',
+        subscriptionExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+      },
+      { returnDocument: 'after' }
+    )
+      .select('email name subscriptionTier subscriptionExpiresAt')
+      .lean();
+
+    if (!updated) {
+      return res.status(500).json({ message: 'Failed to update user' });
+    }
+
+    console.log(`✅ Admin upgraded user ${updated.email} to ${tier}`);
+
+    res.json({
+      user: {
+        id: updated._id.toString(),
+        email: updated.email,
+        name: updated.name,
+        subscriptionTier: updated.subscriptionTier,
+        subscriptionExpiresAt: updated.subscriptionExpiresAt?.toISOString(),
+      },
+    });
   })
 );
 
 /**
  * POST /auth/google/init — Secure OAuth initialization.
- *
- * The frontend calls this endpoint with the JWT in the Authorization header
- * (handled automatically by apiClient). The backend verifies the token,
- * sets httpOnly cookies for the userId + OAuth state, and returns the
- * Google authorization URL. The frontend then redirects the browser.
- *
- * This avoids passing the JWT as a URL query parameter (which could be
- * leaked via server logs, Referer headers, or browser history).
  */
-router.post('/google/init', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post('/google/init', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = req.userId!;
   const oauthClient = getGoogleOAuthClient();
   const forceConsent = req.query.force === '1';
-  const existingGoogleAuth = await prisma.googleCalendarAuth.findUnique({
-    where: { userId },
-    select: { id: true },
-  });
+  const existingGoogleAuth = await GoogleCalendarAuth.findOne({ userId: userId as any })
+    .select('_id')
+    .lean();
 
   const state = crypto.randomBytes(24).toString('hex');
 
@@ -356,10 +536,7 @@ router.post('/google/init', authenticate, asyncHandler(async (req: AuthRequest, 
   return res.json({ authUrl });
 }));
 
-// REMOVED: Legacy GET /auth/google endpoint — leaked JWT in query string.
-// Use POST /auth/google/init (secure, JWT via Authorization header) instead.
-
-router.get('/google/callback', asyncHandler(async (req: Request, res: Response) => {
+router.get('/google/callback', authLimiter, asyncHandler(async (req: Request, res: Response) => {
   const returnedState = typeof req.query.state === 'string' ? req.query.state : '';
   const stateFromCookie = req.cookies?.[OAUTH_STATE_COOKIE] as string | undefined;
   const userId = req.cookies?.[OAUTH_UID_COOKIE] as string | undefined;

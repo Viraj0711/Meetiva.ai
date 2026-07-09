@@ -7,7 +7,7 @@ import { useAppSelector } from '@/store/hooks';
 import { authService, integrationService } from '@/services';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store';
-import { setUser } from '@/store/slices/authSlice';
+import { loginSuccess } from '@/store/slices/authSlice';
 
 interface Integration {
   id: string;
@@ -125,10 +125,8 @@ const Settings: React.FC = () => {
         email: profileForm.email.trim().toLowerCase(),
       });
 
-      if (response?.token) {
-        localStorage.setItem('token', response.token);
-      }
-      dispatch(setUser(response.user));
+      // response.token is automatically stored in-memory by authService.updateProfile
+      dispatch(loginSuccess({ user: response.user, token: response.token }));
       setProfileMessage({ type: 'success', text: 'Profile updated successfully.' });
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to save profile changes.';

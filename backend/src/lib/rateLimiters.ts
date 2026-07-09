@@ -18,36 +18,41 @@ import { createRateLimitStore } from './redis';
  *   uploadLimiter — 10 /  1 hr   — meeting uploads + AI proxy (cost protection)
  */
 
-const store = createRateLimitStore();
+/**
+ * Create a new store for each limiter so express-rate-limit doesn't complain
+ * about ERR_ERL_STORE_REUSE (each limiter must have its own store instance).
+ * Returns undefined when Redis is unavailable (falls back to in-memory).
+ */
+const withFreshStore = <T extends object>(config: T): T => {
+  const store = createRateLimitStore();
+  return store ? { ...config, store } : config;
+};
 
 /** Strict — sensitive auth endpoints (login, register, password reset). */
-export const authLimiter = rateLimit({
+export const authLimiter = rateLimit(withFreshStore({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many attempts. Please try again after 15 minutes.' },
-  ...(store ? { store } : {}),
-});
+}));
 
 /** General — read-mostly CRUD (meetings, action items, teams, workspace, profile). */
-export const apiLimiter = rateLimit({
+export const apiLimiter = rateLimit(withFreshStore({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 60,
   standardHeaders: true,
   legacyHeaders: false,
-  ...(store ? { store } : {}),
-});
+}));
 
 /**
  * Cost protection — meeting uploads + AI proxy (both hit external APIs).
  * 10 requests per hour per IP keeps runaway scripts in check.
  */
-export const uploadLimiter = rateLimit({
+export const uploadLimiter = rateLimit(withFreshStore({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many uploads or AI requests. Please slow down.' },
-  ...(store ? { store } : {}),
-});
+}));

@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/Progress';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { meetingService, type DuplicateMeetingInfo, type UploadDuplicateError } from '@/services';
 import { API_BASE_URL } from '@/services/api.config';
+import { getAccessToken } from '@/services/api.client';
 import { retryWithBackoff, isRetryableError } from '@/utils/retry.utils';
 
 interface FileUploadState {
@@ -99,7 +100,7 @@ const Upload: React.FC = () => {
   const handleExcelDownload = async (exportUrl: string, title?: string) => {
     setDownloading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = getAccessToken();
       const response = await fetch(`${API_BASE_URL}${exportUrl}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error('Download failed');
       const blob = await response.blob();

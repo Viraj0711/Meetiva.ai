@@ -59,7 +59,12 @@ export const getRedisClient = (): Redis | null => {
  */
 export const createRateLimitStore = (): RedisStore | undefined => {
   const client = getRedisClient();
-  if (!client) return undefined;
+  // Only create a RedisStore when the client is actually connected.
+  // With lazyConnect:true the client object exists but will fail with
+  // "Connection is closed" if we try to send commands before the connection
+  // succeeds — or after a connection failure. In those cases we return
+  // undefined so express-rate-limit falls back to its built-in memory store.
+  if (!client || client.status !== 'ready') return undefined;
 
   return new RedisStore({
     sendCommand: (...args: [string, ...string[]]) =>

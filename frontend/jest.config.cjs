@@ -5,8 +5,8 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.{ts,tsx}', '**/__tests__/**/*.spec.{ts,tsx}'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    '^@shared/(.*)$': '<rootDir>/../shared/$1',
-    '@shared$': '<rootDir>/../shared',
+    '^@shared/(.*)$': '<rootDir>/../backend/src/lib/$1',
+    '@shared$': '<rootDir>/../backend/src/lib',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],

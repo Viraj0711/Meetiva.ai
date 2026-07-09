@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAppSelector } from '@/store/hooks';
 
 const Landing = React.lazy(() => import('@/pages/LandingNew'));

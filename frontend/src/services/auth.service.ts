@@ -1,61 +1,79 @@
-﻿import axios from 'axios';
+import { apiClient, setAccessToken } from './api.client';
 import { AuthResponse, LoginCredentials, RegisterData, User } from '@/types';
 import { API_BASE_URL } from './api.config';
+import axios from 'axios';
 
 export const authService = {
   /**
-   * Login user
+   * Login user — stores access token in-memory (via apiClient).
+   * Refresh token is set as an httpOnly cookie by the server.
    */
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const response = await axios.post<AuthResponse>(`${API_BASE_URL}/auth/login`, credentials);
+    const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
+    if (response.data.token) {
+      setAccessToken(response.data.token);
+    }
     return response.data;
   },
 
   /**
-   * Register new team leader
+   * Register new team leader — stores access token in-memory.
    */
   register: async (data: RegisterData): Promise<AuthResponse> => {
-    const response = await axios.post<AuthResponse>(`${API_BASE_URL}/auth/register-leader`, data);
+    const response = await apiClient.post<AuthResponse>('/auth/register-leader', data);
+    if (response.data.token) {
+      setAccessToken(response.data.token);
+    }
     return response.data;
   },
 
   /**
-   * Logout user
+   * Logout — tells the server to clear the refresh token cookie.
+   * Also clears the in-memory access token.
    */
   logout: async (): Promise<void> => {
-    await axios.post(`${API_BASE_URL}/auth/logout`);
+    try {
+      // Use axios directly so we don't need an auth header for logout
+      await axios.post(`${API_BASE_URL}/auth/logout`, null, {
+        withCredentials: true,
+      });
+    } finally {
+      setAccessToken(null);
+    }
   },
 
   /**
-   * Get current user profile
+   * Get current user profile (uses in-memory token via apiClient interceptor).
    */
   getCurrentUser: async (): Promise<User> => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get<User>(`${API_BASE_URL}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await apiClient.get<User>('/auth/me');
     return response.data;
   },
 
   /**
-   * Update current user profile
+   * Update current user profile — returns new access token + rotated refresh cookie.
    */
   updateProfile: async (data: { name?: string; email?: string }): Promise<AuthResponse> => {
-    const token = localStorage.getItem('token');
-    const response = await axios.patch<AuthResponse>(`${API_BASE_URL}/auth/me`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await apiClient.patch<AuthResponse>('/auth/me', data);
+    if (response.data.token) {
+      setAccessToken(response.data.token);
+    }
     return response.data;
   },
 
   /**
-   * Refresh access token
+   * Refresh access token using the httpOnly refresh cookie.
+   * Used during app initialization to restore a session.
    */
-  refreshToken: async (): Promise<{ token: string }> => {
-    const token = localStorage.getItem('token');
-    const response = await axios.post<{ token: string }>(`${API_BASE_URL}/auth/refresh`, null, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+  refreshToken: async (): Promise<{ token: string; user?: User }> => {
+    const response = await axios.post<{ token: string; user?: User }>(
+      `${API_BASE_URL}/auth/refresh`,
+      null,
+      { withCredentials: true }
+    );
+    if (response.data.token) {
+      setAccessToken(response.data.token);
+    }
     return response.data;
   },
 
@@ -63,13 +81,13 @@ export const authService = {
    * Request password reset
    */
   requestPasswordReset: async (email: string): Promise<void> => {
-    await axios.post(`${API_BASE_URL}/auth/password-reset`, { email });
+    await apiClient.post('/auth/password-reset', { email });
   },
 
   /**
    * Reset password with token
    */
   resetPassword: async (token: string, newPassword: string): Promise<void> => {
-    await axios.post(`${API_BASE_URL}/auth/password-reset/confirm`, { token, password: newPassword });
+    await apiClient.post('/auth/password-reset/confirm', { token, password: newPassword });
   },
 };

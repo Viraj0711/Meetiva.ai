@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { google, calendar_v3 } from 'googleapis';
-import prisma from '../lib/prisma';
+import GoogleCalendarAuth from '../models/GoogleCalendarAuth';
+import { Types } from 'mongoose';
 
 const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
@@ -93,7 +94,7 @@ export const upsertGoogleTokens = async (
     scope?: string | null;
   }
 ): Promise<void> => {
-  const existing = await prisma.googleCalendarAuth.findUnique({ where: { userId } });
+  const existing = await GoogleCalendarAuth.findOne({ userId: new Types.ObjectId(userId) }).lean();
 
   const accessTokenSource = tokens.access_token || (existing ? decryptToken(existing.encryptedAccessToken) : null);
   const refreshTokenSource = tokens.refresh_token || (existing ? decryptToken(existing.encryptedRefreshToken) : null);
@@ -102,28 +103,23 @@ export const upsertGoogleTokens = async (
     throw new Error('Google OAuth tokens are incomplete');
   }
 
-  await prisma.googleCalendarAuth.upsert({
-    where: { userId },
-    update: {
-      encryptedAccessToken: encryptToken(accessTokenSource),
-      encryptedRefreshToken: encryptToken(refreshTokenSource),
-      expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : existing?.expiryDate || null,
-      tokenType: tokens.token_type || existing?.tokenType || 'Bearer',
-      scope: tokens.scope || existing?.scope || GOOGLE_SCOPES.join(' '),
-    },
-    create: {
-      userId,
-      encryptedAccessToken: encryptToken(accessTokenSource),
-      encryptedRefreshToken: encryptToken(refreshTokenSource),
-      expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-      tokenType: tokens.token_type || 'Bearer',
-      scope: tokens.scope || GOOGLE_SCOPES.join(' '),
-    },
-  });
+  const updateData = {
+    encryptedAccessToken: encryptToken(accessTokenSource),
+    encryptedRefreshToken: encryptToken(refreshTokenSource),
+    expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : (existing?.expiryDate || null),
+    tokenType: tokens.token_type || existing?.tokenType || 'Bearer',
+    scope: tokens.scope || existing?.scope || GOOGLE_SCOPES.join(' '),
+  };
+
+  await GoogleCalendarAuth.findOneAndUpdate(
+    { userId: new Types.ObjectId(userId) },
+    { $set: updateData },
+    { upsert: true, returnDocument: 'after' },
+  );
 };
 
 export const getValidGoogleAccessToken = async (userId: string): Promise<string | null> => {
-  const auth = await prisma.googleCalendarAuth.findUnique({ where: { userId } });
+  const auth = await GoogleCalendarAuth.findOne({ userId: new Types.ObjectId(userId) }).lean();
 
   if (!auth) {
     return null;
@@ -172,10 +168,9 @@ export const getGoogleCalendarClient = async (userId: string): Promise<calendar_
 };
 
 export const getCalendarConnectionStatus = async (userId: string) => {
-  const auth = await prisma.googleCalendarAuth.findUnique({
-    where: { userId },
-    select: { expiryDate: true, updatedAt: true },
-  });
+  const auth = await GoogleCalendarAuth.findOne({ userId: new Types.ObjectId(userId) })
+    .select('expiryDate updatedAt')
+    .lean();
 
   return {
     connected: Boolean(auth),
@@ -185,7 +180,7 @@ export const getCalendarConnectionStatus = async (userId: string) => {
 };
 
 export const revokeGoogleConnection = async (userId: string) => {
-  const auth = await prisma.googleCalendarAuth.findUnique({ where: { userId } });
+  const auth = await GoogleCalendarAuth.findOne({ userId: new Types.ObjectId(userId) }).lean();
   if (!auth) {
     return;
   }
@@ -198,5 +193,5 @@ export const revokeGoogleConnection = async (userId: string) => {
     console.warn('Google token revoke warning:', error);
   }
 
-  await prisma.googleCalendarAuth.delete({ where: { userId } });
+  await GoogleCalendarAuth.findOneAndDelete({ userId: new Types.ObjectId(userId) });
 };

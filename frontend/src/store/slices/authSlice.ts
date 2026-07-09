@@ -1,36 +1,17 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { AuthState, User } from '@/types';
+import { setAccessToken } from '@/services/api.client';
 
-const loadInitialState = (): AuthState => {
-  const token = localStorage.getItem('token');
-  const userStr = localStorage.getItem('user');
-
-  if (token && userStr) {
-    try {
-      const user = JSON.parse(userStr);
-      return {
-        user,
-        token,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      };
-    } catch {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    }
-  }
-
-  return {
-    user: null,
-    token: null,
-    isAuthenticated: false,
-    isLoading: false,
-    error: null,
-  };
+// No longer reads from localStorage — token comes from login/register/refresh.
+// On a fresh page load, the app must call /auth/refresh (which reads the
+// httpOnly cookie) to restore the session.
+const initialState: AuthState = {
+  user: null,
+  token: null,
+  isAuthenticated: false,
+  isLoading: false,
+  error: null,
 };
-
-const initialState: AuthState = loadInitialState();
 
 const authSlice = createSlice({
   name: 'auth',
@@ -42,21 +23,20 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.isLoading = false;
       state.error = null;
-      localStorage.setItem('token', action.payload.token);
-      localStorage.setItem('user', JSON.stringify(action.payload.user));
+      // Token is stored in-memory via the apiClient module variable —
+      // NOT in localStorage (prevents XSS/inspect theft).
+      setAccessToken(action.payload.token);
     },
     logout: (state) => {
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
       state.error = null;
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      setAccessToken(null);
     },
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
       state.isAuthenticated = true;
-      localStorage.setItem('user', JSON.stringify(action.payload));
     },
     clearError: (state) => {
       state.error = null;

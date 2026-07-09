@@ -1,34 +1,68 @@
 /**
- * ── Canonical shared Zod validation schemas ──────────────────────────────
+ * ── Canonical Zod validation schemas ──────────────────────────────────────
  *
- * This file is the single source of truth for all Zod validation schemas
- * used by both the backend (Express) and frontend (React) apps.
+ * Pure Zod schemas only — no Express middleware here.  Import this file
+ * from both backend (Express routes) and frontend (React forms).
  *
- *  - Backend:  import from   ../../shared/validation
- *  - Frontend: import from   @shared/validation
+ * Backend:   import { ... } from '../lib/schemas';
+ * Frontend:  import { ... } from '@shared/schemas';
  *
- * No Express-specific or React-specific code here — only pure Zod.
+ * Express-specific middleware lives in `validation.ts` alongside this file.
  */
 import { z } from 'zod';
 
 // ── Reusable field schemas ─────────────────────────────────────────────────
 
+/** Encode HTML special characters to prevent stored XSS. */
+export const sanitize = (value: string): string =>
+  value
+    .replace(/[<]/g, '&lt;')
+    .replace(/[>]/g, '&gt;');
+
 export const uuidField = z.string().uuid('Must be a valid UUID');
-export const emailField = z.string().email('Invalid email address').toLowerCase().trim();
+
+/** Validate a 24-character hex string (MongoDB ObjectId format). */
+export const objectIdField = z.string().regex(
+  /^[0-9a-fA-F]{24}$/,
+  'Must be a valid ObjectId (24-character hex string)'
+);
+export const emailField = z
+  .string()
+  .email('Invalid email address')
+  .toLowerCase()
+  .trim()
+  .transform((val) => sanitize(val));
 export const passwordField = z.string().min(8, 'Password must be at least 8 characters');
-export const optionalDescription = z.string().trim().max(5000).optional().nullable();
+export const optionalDescription = z
+  .string()
+  .trim()
+  .max(5000)
+  .transform((val) => sanitize(val))
+  .optional()
+  .nullable();
 export const iso8601Field = z.string().datetime({ message: 'Must be an ISO-8601 date' });
 
-export const paginationFields = {
+/** Validates and coerces query params for paginated list endpoints. */
+export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(10),
-};
+});
+
+/** Validates and coerces query params with optional status filter. */
+export const statusFilterSchema = z.object({
+  status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
+});
 
 // ── Auth schemas ───────────────────────────────────────────────────────────
 
 export const registerSchema = z.object({
   email: emailField,
-  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(50),
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(50)
+    .transform((val) => sanitize(val)),
   password: passwordField,
 });
 
@@ -47,7 +81,13 @@ export const passwordResetConfirmSchema = z.object({
 });
 
 export const updateProfileSchema = z.object({
-  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80).optional(),
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(80)
+    .transform((val) => sanitize(val))
+    .optional(),
   email: emailField.optional(),
 }).refine(data => data.name || data.email, {
   message: 'At least one of name or email must be provided',
@@ -56,14 +96,30 @@ export const updateProfileSchema = z.object({
 // ── Meeting schemas ────────────────────────────────────────────────────────
 
 export const createMeetingSchema = z.object({
-  title: z.string().trim().min(1, 'Title is required').max(200),
+  title: z
+    .string()
+    .trim()
+    .min(1, 'Title is required')
+    .max(200)
+    .transform((val) => sanitize(val)),
   description: optionalDescription,
   duration: z.number().int().min(0).optional(),
-  participants: z.array(z.string()).optional().default([]),
+  participants: z.array(
+    z
+      .string()
+      .trim()
+      .transform((val) => sanitize(val))
+  ).optional().default([]),
 });
 
 export const updateMeetingSchema = z.object({
-  title: z.string().trim().min(1).max(200).optional(),
+  title: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .transform((val) => sanitize(val))
+    .optional(),
   description: optionalDescription,
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   status: z.enum(['pending', 'uploading', 'processing', 'transcribing', 'analyzing', 'completed', 'failed']).optional(),
@@ -72,18 +128,41 @@ export const updateMeetingSchema = z.object({
 // ── Action Item schemas ────────────────────────────────────────────────────
 
 export const createActionItemSchema = z.object({
-  meetingId: uuidField,
-  title: z.string().trim().min(1, 'Title is required').max(500),
+  meetingId: objectIdField,
+  title: z
+    .string()
+    .trim()
+    .min(1, 'Title is required')
+    .max(500)
+    .transform((val) => sanitize(val)),
   description: optionalDescription,
-  assignee: z.string().trim().max(200).optional().nullable(),
+  assignee: z
+    .string()
+    .trim()
+    .max(200)
+    .transform((val) => sanitize(val))
+    .optional()
+    .nullable(),
   dueDate: z.string().datetime().optional().nullable(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().default('medium'),
 });
 
 export const updateActionItemSchema = z.object({
-  title: z.string().trim().min(1).max(500).optional(),
+  title: z
+    .string()
+    .trim()
+    .min(1)
+    .max(500)
+    .transform((val) => sanitize(val))
+    .optional(),
   description: optionalDescription,
-  assignee: z.string().trim().max(200).optional().nullable(),
+  assignee: z
+    .string()
+    .trim()
+    .max(200)
+    .transform((val) => sanitize(val))
+    .optional()
+    .nullable(),
   dueDate: z.string().datetime().optional().nullable(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
@@ -92,8 +171,19 @@ export const updateActionItemSchema = z.object({
 // ── Team schemas ───────────────────────────────────────────────────────────
 
 export const createTeamSchema = z.object({
-  name: z.string().trim().min(2, 'Team name must be at least 2 characters').max(100),
-  description: z.string().trim().max(500).optional().nullable(),
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Team name must be at least 2 characters')
+    .max(100)
+    .transform((val) => sanitize(val)),
+  description: z
+    .string()
+    .trim()
+    .max(500)
+    .transform((val) => sanitize(val))
+    .optional()
+    .nullable(),
 });
 
 export const inviteMemberSchema = z.object({
@@ -105,24 +195,52 @@ export const updateMemberRoleSchema = z.object({
 });
 
 export const updateMemberProfileSchema = z.object({
-  name: z.string().trim().min(2).max(50).optional(),
+  name: z
+    .string()
+    .trim()
+    .min(2)
+    .max(50)
+    .transform((val) => sanitize(val))
+    .optional(),
   email: emailField.optional(),
 }).refine(data => data.name || data.email, {
   message: 'At least one of name or email must be provided',
 });
 
 export const chatMessageSchema = z.object({
-  message: z.string().trim().min(1, 'Message is required').max(2000),
+  message: z
+    .string()
+    .trim()
+    .min(1, 'Message is required')
+    .max(2000)
+    .transform((val) => sanitize(val)),
 });
 
 // ── Calendar schemas ───────────────────────────────────────────────────────
 
 export const createEventSchema = z.object({
-  title: z.string().trim().min(1, 'Title is required').max(140),
-  description: z.string().trim().max(5000).optional().default(''),
+  title: z
+    .string()
+    .trim()
+    .min(1, 'Title is required')
+    .max(140)
+    .transform((val) => sanitize(val)),
+  description: z
+    .string()
+    .trim()
+    .max(5000)
+    .transform((val) => sanitize(val))
+    .optional()
+    .default(''),
   startTime: iso8601Field,
   endTime: iso8601Field,
-  timeZone: z.string().trim().min(1).max(100).optional(),
+  timeZone: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .transform((val) => sanitize(val))
+    .optional(),
 }).refine(data => new Date(data.endTime).getTime() > new Date(data.startTime).getTime(), {
   message: 'endTime must be later than startTime',
   path: ['endTime'],
@@ -131,14 +249,39 @@ export const createEventSchema = z.object({
 // ── Contact form schemas ───────────────────────────────────────────────────
 
 export const contactFormSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required').max(100),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Name is required')
+    .max(100)
+    .transform((val) => sanitize(val)),
   email: emailField,
-  subject: z.string().trim().min(1, 'Subject is required').max(200),
-  message: z.string().trim().min(1, 'Message is required').max(5000),
+  subject: z
+    .string()
+    .trim()
+    .min(1, 'Subject is required')
+    .max(200)
+    .transform((val) => sanitize(val)),
+  message: z
+    .string()
+    .trim()
+    .min(1, 'Message is required')
+    .max(5000)
+    .transform((val) => sanitize(val)),
 });
 
 // ── Notification schemas ───────────────────────────────────────────────────
 
 export const notificationQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(25),
 });
+
+// ── Name field (backend-specific max length) ───────────────────────────────
+
+export const nameField = z
+  .string()
+  .trim()
+  .min(2, 'Must be at least 2 characters')
+  .max(100)
+  .transform((val) => sanitize(val));

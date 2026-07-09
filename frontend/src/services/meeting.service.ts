@@ -1,4 +1,4 @@
-import { apiClient } from './api.client';
+import { apiClient, getAccessToken } from './api.client';
 import { API_BASE_URL } from './api.config';
 import {
   Meeting,
@@ -73,7 +73,7 @@ export const meetingService = {
     if (description) formData.append('description', description);
     if (participants) formData.append('participants', JSON.stringify(participants));
 
-    const token = localStorage.getItem('token');
+    const token = getAccessToken();
     
     const response = await fetch(`${API_BASE_URL}/meetings/upload`, {
       method: 'POST',

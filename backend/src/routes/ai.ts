@@ -73,9 +73,11 @@ router.post('/grok', uploadLimiter, authenticate, validate(grokChatSchema), asyn
     const result = (await response.json().catch(() => null)) as GrokChatCompletionResponse | null;
 
     if (!response.ok) {
-      return res.status(response.status).json({
-        message: 'Grok API request failed',
-        error: result
+      // Log the full error server-side for debugging, but never expose
+      // API provider details (rate limits, internal error messages, etc.) to the client.
+      console.error(`[Grok] API error ${response.status}:`, JSON.stringify(result));
+      return res.status(502).json({
+        message: 'The AI service returned an error. Please try again later.'
       });
     }
 
