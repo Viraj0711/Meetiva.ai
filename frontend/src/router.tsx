@@ -20,6 +20,7 @@ const TeamsAdmin = React.lazy(() => import('@/pages/TeamsAdmin'));
 const Workspace = React.lazy(() => import('@/pages/Workspace'));
 const Profile = React.lazy(() => import('@/pages/Profile'));
 const Settings = React.lazy(() => import('@/pages/Settings'));
+const SubscriptionUpgrade = React.lazy(() => import('@/pages/SubscriptionUpgrade'));
 const Pricing = React.lazy(() => import('@/pages/Pricing'));
 const Contact = React.lazy(() => import('@/pages/Contact'));
 const Terms = React.lazy(() => import('@/pages/Terms'));
@@ -202,6 +203,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LoadingSpinner />}>
             <Settings />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'upgrade',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <SubscriptionUpgrade />
           </Suspense>
         ),
       },

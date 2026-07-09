@@ -15,6 +15,9 @@ import {
   useResetTeamMemberCredentials,
   useUpdateTeamMemberRole,
   useRemoveTeamMember,
+  usePendingMembers,
+  useApproveMember,
+  useRejectMember,
 } from '@/hooks/useTeams';
 
 import { createTeamSchema, inviteMemberSchema, updateMemberProfileSchema, zodResolver } from '@/lib/validation';
@@ -71,8 +74,14 @@ export const TeamsAdmin: React.FC = () => {
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [issuedCredentials, setIssuedCredentials] = useState<IssuedCredentials | null>(null);
 
-  // ── React Query hooks ──────────────────────────────────────────────────
+  // ── Derived role checks (must be declared before hooks that depend on them) ──
   const { data: teams = [], isLoading: teamsLoading, error: teamsError } = useTeams();
+  const currentTeam = teams.find(t => t.id === currentTeamId) || null;
+  const currentTeamRole = currentTeam?.role;
+  const canInviteMembers = currentTeamRole === 'LEAD';
+  const visibleTeams = teams;
+
+  // ── React Query hooks ──────────────────────────────────────────────────
   const { data: teamMembers = [], isLoading: membersLoading, error: membersError } = useTeamMembers(currentTeamId ?? undefined);
   const deleteTeamMutation = useDeleteTeam();
   const createTeamMutation = useCreateTeam();
@@ -81,10 +90,21 @@ export const TeamsAdmin: React.FC = () => {
   const updateProfileMutation = useUpdateTeamMemberProfile();
   const removeMemberMutation = useRemoveTeamMember();
   const resetCredentialsMutation = useResetTeamMemberCredentials();
+  const { data: pendingMembers = [], isLoading: pendingLoading } = usePendingMembers(
+    canInviteMembers ? currentTeamId ?? undefined : undefined
+  );
+  const approveMemberMutation = useApproveMember();
+  const rejectMemberMutation = useRejectMember();
 
-  const currentTeam = teams.find(t => t.id === currentTeamId) || null;
   const isLoading = teamsLoading || membersLoading;
   const error = teamsError || membersError;
+
+  const canCreateTeam =
+    visibleTeams.length === 0 ||
+    visibleTeams.some((team) => team.role === 'LEAD' || team.role === 'MANAGER');
+  const canManageTeam = currentTeamRole === 'MANAGER' || currentTeamRole === 'LEAD';
+  const canChangeRoles = currentTeamRole === 'MANAGER';
+
 
   const handleDeleteTeam = async () => {
     if (!currentTeam) return;
@@ -114,11 +134,12 @@ export const TeamsAdmin: React.FC = () => {
         email: data.email,
       });
 
+      const invitation = response.invitation;
       if (response.temporaryCredentials) {
         setIssuedCredentials({
           email: response.temporaryCredentials.email,
           temporaryPassword: response.temporaryCredentials.temporaryPassword,
-          memberName: response.member?.email || data.email,
+          memberName: invitation.email || data.email,
           issuedAt: new Date().toISOString(),
         });
       }
@@ -203,15 +224,6 @@ export const TeamsAdmin: React.FC = () => {
       }));
     }
   };
-
-  const visibleTeams = teams;
-  const currentTeamRole = currentTeam?.role;
-  const canCreateTeam =
-    visibleTeams.length === 0 ||
-    visibleTeams.some((team) => team.role === 'LEAD' || team.role === 'MANAGER');
-  const canManageTeam = currentTeamRole === 'MANAGER' || currentTeamRole === 'LEAD';
-  const canInviteMembers = currentTeamRole === 'LEAD';
-  const canChangeRoles = currentTeamRole === 'MANAGER';
 
   return (
     <div className="teams-admin">
@@ -357,6 +369,65 @@ export const TeamsAdmin: React.FC = () => {
                   <button type="button" className="btn btn-primary btn-sm" onClick={copyIssuedCredentials}>
                     Copy Credentials
                   </button>
+                </div>
+              )}
+
+              {/* Pending Members Approval — visible only to LEADs */}
+              {canInviteMembers && pendingMembers.length > 0 && (
+                <div className="pending-members-section">
+                  <h3>Pending Approvals ({pendingMembers.length})</h3>
+                  <p className="pending-members-note">
+                    These users have accepted their invitation and subscribed. Review and approve or reject their membership.
+                  </p>
+                  {pendingLoading ? (
+                    <div className="teams-loading">
+                      <div className="spinner"></div>
+                      <p>Loading pending members...</p>
+                    </div>
+                  ) : (
+                    <div className="pending-members-list">
+                      {pendingMembers.map((pm) => (
+                        <div key={pm.userId} className="pending-member-card">
+                          <div className="pending-member-info">
+                            <p className="pending-member-name">{pm.name}</p>
+                            <p className="pending-member-email">{pm.email}</p>
+                            {pm.invitedAt && (
+                              <p className="pending-member-date">
+                                Invited: {new Date(pm.invitedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                          <div className="pending-member-actions">
+                            <button
+                              className="btn btn-primary btn-sm"
+                              disabled={approveMemberMutation.isPending || rejectMemberMutation.isPending}
+                              onClick={async () => {
+                                await approveMemberMutation.mutateAsync({
+                                  teamId: currentTeamId!,
+                                  userId: pm.userId,
+                                });
+                              }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="btn btn-danger btn-sm"
+                              disabled={approveMemberMutation.isPending || rejectMemberMutation.isPending}
+                              onClick={async () => {
+                                if (!window.confirm(`Reject ${pm.name} (${pm.email}) from joining this team?`)) return;
+                                await rejectMemberMutation.mutateAsync({
+                                  teamId: currentTeamId!,
+                                  userId: pm.userId,
+                                });
+                              }}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

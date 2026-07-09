@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { useAppDispatch } from '@/store/hooks';
 import { addToast } from '@/store/slices/uiSlice';
-import { calendarService, workspaceService } from '@/services';
+import { integrationService, workspaceService } from '@/services';
 import { createEventSchema, zodResolver } from '@/lib/validation';
 import {
   CalendarConnectionStatus,
@@ -89,14 +89,14 @@ const Workspace: React.FC = () => {
       setLoading(true);
       const [overviewData, status] = await Promise.all([
         workspaceService.getOverview(),
-        calendarService.getConnectionStatus(),
+        integrationService.getConnectionStatus(),
       ]);
 
       setOverview(overviewData);
       setConnection(status);
 
       if (status.connected) {
-        const upcoming = await calendarService.getUpcomingEvents();
+        const upcoming = await integrationService.getUpcomingEvents();
         setEvents(upcoming);
       } else {
         setEvents([]);
@@ -125,7 +125,7 @@ const Workspace: React.FC = () => {
   const handleConnectGoogle = async (forceReconnect = false) => {
     try {
       setIsConnecting(true);
-      const authUrl = await calendarService.getGoogleConnectUrl(forceReconnect);
+      const authUrl = await integrationService.getGoogleConnectUrl(forceReconnect);
       window.location.href = authUrl;
     } catch (error: any) {
       setIsConnecting(false);
@@ -136,7 +136,7 @@ const Workspace: React.FC = () => {
   const onCreateEvent = async (data: CalendarFormData) => {
     try {
       setIsCreatingEvent(true);
-      await calendarService.createEvent(data);
+      await integrationService.createEvent(data);
       dispatch(addToast({ type: 'success', message: 'Event created in Google Calendar.' }));
       resetEventForm();
       setEventForm((prev: CreateCalendarEventRequest) => ({
@@ -146,7 +146,7 @@ const Workspace: React.FC = () => {
         startTime: '',
         endTime: '',
       }));
-      const upcoming = await calendarService.getUpcomingEvents();
+      const upcoming = await integrationService.getUpcomingEvents();
       setEvents(upcoming);
     } catch (error: any) {
       dispatch(addToast({ type: 'error', message: error.message || 'Event creation failed.' }));

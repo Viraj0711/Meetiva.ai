@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/Input';
 import { Progress } from '@/components/ui/Progress';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { meetingService, type DuplicateMeetingInfo, type UploadDuplicateError } from '@/services';
+import { useSubscription } from '@/hooks/useAuth';
+import { useAppDispatch } from '@/store/hooks';
+import { addToast } from '@/store/slices/uiSlice';
 import { API_BASE_URL } from '@/services/api.config';
 import { getAccessToken } from '@/services/api.client';
 import { retryWithBackoff, isRetryableError } from '@/utils/retry.utils';
@@ -24,9 +27,39 @@ interface FileUploadState {
 const Upload: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [meetingTitle, setMeetingTitle] = useState('');
-  const [uploadState, setUploadState] = useState<FileUploadState>({ file: null, uploading: false, progress: 0, error: null, exportUrl: null, meetingId: null });
+  const { data: subscription } = useSubscription();
+  const [uploadState, setUploadState] = useState<FileUploadState>({
+    file: null, uploading: false, progress: 0, error: null, exportUrl: null, meetingId: null
+  });
+  const lastNudgedCount = useRef<number | null>(null);
+
+  // ── Upgrade nudge: show a toast when the user hits 1 remaining meeting ──
+  // Resets on month boundary (when meetingCountThisMonth === 0) so users see
+  // the nudge again each month they approach the limit.
+  useEffect(() => {
+    if (!subscription || subscription.isSubscribed) return;
+
+    // Month reset — clear the ref so the nudge can fire again
+    if (subscription.meetingCountThisMonth === 0) {
+      lastNudgedCount.current = null;
+      return;
+    }
+
+    if (subscription.meetingsRemaining === 1 && lastNudgedCount.current !== 1) {
+      lastNudgedCount.current = 1;
+      dispatch(
+        addToast({
+          type: 'warning',
+          message: 'You have 1 meeting remaining this month. Upgrade to PRO for unlimited meetings.',
+          duration: 8000,
+        })
+      );
+    }
+  }, [subscription, dispatch]);
+
   const [dragActive, setDragActive] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -124,7 +157,10 @@ const Upload: React.FC = () => {
       setUploadState((prev) => ({ ...prev, uploading: true, error: null, exportUrl: null, meetingId: null }));
       const result = await retryWithBackoff(() => meetingService.uploadMeetingFile(uploadState.file!, meetingTitle || uploadState.file!.name, `Meeting uploaded on ${new Date().toLocaleDateString()}`, undefined, (progress) => setUploadState((prev) => ({ ...prev, progress }))), { maxAttempts: 3 });
       setUploadState((prev) => ({ ...prev, uploading: false, progress: 100, error: null, exportUrl: result.actionItemsExportUrl, meetingId: result.data.id }));
-      await queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['meetings'] }),
+        queryClient.invalidateQueries({ queryKey: ['user', 'subscription'] }),
+      ]);
     } catch (error) {
       if ((error as UploadDuplicateError)?.code === 'MEETING_DUPLICATE') {
         setUploadState((prev) => ({ ...prev, uploading: false, error: null }));
@@ -218,8 +254,51 @@ const Upload: React.FC = () => {
           </Card>
 
           <Card className="p-6">
-            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">Activity preview</p>
-            <div className="mt-4 space-y-3">{['Summary generated', 'Tasks classified', 'Calendar reminder created'].map((item) => (<div key={item} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/75"><span>{item}</span><span className="text-cyan-300">live</span></div>))}</div>
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">Meeting credits</p>
+            <div className="mt-5 space-y-4">
+              {!subscription ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-cyan-300 border-t-transparent" />
+                </div>
+              ) : subscription.isSubscribed ? (
+                <>
+                  <div className="rounded-2xl bg-gradient-to-br from-cyan-500/20 to-purple-500/10 p-4 text-center">
+                    <p className="text-2xl font-bold text-white">Unlimited</p>
+                    <p className="mt-1 text-sm text-cyan-300">You're on the {subscription.tier} plan</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/55">
+                    No meeting limits — upload as many as you need.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-2xl bg-white/[0.03] p-4 text-center">
+                    <p className="text-xs text-white/45 uppercase tracking-wider">Free tier — {subscription.monthlyLimit} meetings/month</p>
+                    <p className="mt-3 text-4xl font-bold tracking-tight text-white">{subscription.meetingsRemaining}</p>
+                    <p className="mt-1 text-sm text-white/55">remaining this month</p>
+                  </div>
+                  <div className="flex h-2 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="rounded-full bg-gradient-to-r from-purple-400 to-cyan-300 transition-all duration-500"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (subscription.meetingCountThisMonth / subscription.monthlyLimit) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-white/45">
+                    {subscription.meetingCountThisMonth} of {subscription.monthlyLimit} used
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => navigate('/dashboard/upgrade')}
+                  >
+                    Upgrade to PRO
+                  </Button>
+                </>
+              )}
+            </div>
           </Card>
         </div>
       </div>

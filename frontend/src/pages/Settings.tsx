@@ -67,9 +67,7 @@ const Settings: React.FC = () => {
   }, [user?.name, user?.email]);
 
   // ── Integration state ──────────────────────────────────────────────────
-  const [integrations, setIntegrations] = useState<Integration[]>([
-    { id: 'google-calendar', name: 'Google Calendar', description: 'Schedule meetings and set reminders', icon: '', connected: false, status: undefined },
-  ]);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [checkingCalendar, setCheckingCalendar] = useState(false);
 
   // Check actual Google Calendar connection status on mount
@@ -78,15 +76,18 @@ const Settings: React.FC = () => {
       try {
         setCheckingCalendar(true);
         const status = await integrationService.getGoogleCalendarStatus();
-        setIntegrations((prev) =>
-          prev.map((int) =>
-            int.id === 'google-calendar'
-              ? { ...int, connected: status.isConnected, status: status.isConnected ? 'active' : undefined }
-              : int
-          )
-        );
+        setIntegrations([
+          {
+            id: 'google-calendar',
+            name: 'Google Calendar',
+            description: 'Schedule meetings and set reminders',
+            icon: '',
+            connected: status.isConnected,
+            status: status.isConnected ? 'active' : undefined,
+          },
+        ]);
       } catch {
-        // leave as disconnected
+        setIntegrations([]);
       } finally {
         setCheckingCalendar(false);
       }
@@ -332,44 +333,70 @@ const Settings: React.FC = () => {
 
           <div>
             <h2 className="text-lg font-bold mb-4">Calendar</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              {integrations
-                .filter((i) => ['google-calendar'].includes(i.id))
-                .map((integration) => (
-                  <Card key={integration.id} className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start flex-1">
-                        <div className="text-4xl mr-4">{integration.icon}</div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold">{integration.name}</h3>
-                            {checkingCalendar && <span className="text-xs text-muted-foreground">Checking...</span>}
-                            {!checkingCalendar && integration.connected && (
-                              <Badge variant="default">Connected</Badge>
-                            )}
+
+            {/* Checking state */}
+            {checkingCalendar && (
+              <Card className="p-8 text-center border border-white/10 bg-white/[0.03]">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+                  <p className="text-sm text-white/60">Checking integration status...</p>
+                </div>
+              </Card>
+            )}
+
+            {/* Empty state — no integrations available */}
+            {!checkingCalendar && integrations.length === 0 && (
+              <Card className="p-10 text-center border border-white/10 bg-white/[0.02]">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]">
+                  <svg className="h-6 w-6 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-semibold text-white mb-1">No integrations connected</h3>
+                <p className="text-sm text-white/50 max-w-sm mx-auto mb-6">
+                  Connect Google Calendar to sync your meetings, set reminders, and manage your schedule directly from Meetiva.
+                </p>
+                <Button onClick={() => handleToggleIntegration('google-calendar')}>
+                  Connect Google Calendar
+                </Button>
+              </Card>
+            )}
+
+            {/* Integration cards */}
+            {!checkingCalendar && integrations.length > 0 && (
+              <div className="grid gap-4 md:grid-cols-2">
+                {integrations
+                  .filter((i) => ['google-calendar'].includes(i.id))
+                  .map((integration) => (
+                    <Card key={integration.id} className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start flex-1">
+                          <div className="text-4xl mr-4">{integration.icon}</div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold">{integration.name}</h3>
+                              {integration.connected && (
+                                <Badge variant="default">Connected</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{integration.description}</p>
                           </div>
-                          <p className="text-sm text-muted-foreground">{integration.description}</p>
                         </div>
                       </div>
-                    </div>
-                    <div className="mt-4">
-                      <Button
-                        variant={integration.connected ? 'outline' : 'default'}
-                        size="sm"
-                        onClick={() => handleToggleIntegration(integration.id)}
-                        className="w-full"
-                        disabled={checkingCalendar}
-                      >
-                        {checkingCalendar
-                          ? 'Checking...'
-                          : integration.connected
-                            ? 'Disconnect'
-                            : 'Connect'}
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-            </div>
+                      <div className="mt-4">
+                        <Button
+                          variant={integration.connected ? 'outline' : 'default'}
+                          size="sm"
+                          onClick={() => handleToggleIntegration(integration.id)}
+                          className="w-full"
+                        >
+                          {integration.connected ? 'Disconnect' : 'Connect'}
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+              </div>
+            )}
           </div>
         </div>
       )}

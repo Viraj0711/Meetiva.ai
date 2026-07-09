@@ -30,25 +30,25 @@ export interface TeamMemberCredentialsResetResult {
 // Create a new team
 export const createTeam = async (data: CreateTeamRequest) => {
   const response = await apiClient.post<{ team: Team; membership: { role: string; status: string; acceptedAt: string } }>('/teams', data);
-  return response.data;
+  return response;
 };
 
 // Get all teams for current user
 export const getTeams = async () => {
   const response = await apiClient.get<{ teams: Team[] }>('/teams');
-  return response.data;
+  return response;
 };
 
 // Get a specific team's details
 export const getTeam = async (teamId: string) => {
   const response = await apiClient.get<Team>(`/teams/${teamId}`);
-  return response.data;
+  return response;
 };
 
 // Get team members
 export const getTeamMembers = async (teamId: string) => {
   const response = await apiClient.get<{ members: TeamMember[] }>(`/teams/${teamId}/members`);
-  return response.data;
+  return response;
 };
 
 // Add a member to a team
@@ -57,7 +57,7 @@ export const addTeamMember = async (
   data: AddTeamMemberRequest
 ) => {
   const response = await apiClient.post<TeamMember>(`/teams/${teamId}/members`, data);
-  return response.data;
+  return response;
 };
 
 // Update team member role
@@ -70,7 +70,7 @@ export const updateTeamMember = async (
     `/teams/${teamId}/members/${userId}`,
     data
   );
-  return response.data;
+  return response;
 };
 
 // Update team member profile details (name/email)
@@ -83,7 +83,7 @@ export const updateTeamMemberProfile = async (
     `/teams/${teamId}/members/${userId}/profile`,
     data
   );
-  return response.data;
+  return response;
 };
 
 // Reset team member credentials and return one-time temporary password
@@ -95,7 +95,7 @@ export const resetTeamMemberCredentials = async (
     `/teams/${teamId}/members/${userId}/credentials/reset`,
     {}
   );
-  return response.data;
+  return response;
 };
 
 // Remove team member
@@ -104,13 +104,13 @@ export const removeTeamMember = async (
   userId: string
 ) => {
   const response = await apiClient.delete<{ message: string }>(`/teams/${teamId}/members/${userId}`);
-  return response.data;
+  return response;
 };
 
 // Delete a team
 export const deleteTeam = async (teamId: string) => {
   const response = await apiClient.delete<{ message: string }>(`/teams/${teamId}`);
-  return response.data;
+  return response;
 };
 
 // Invite a member to a team
@@ -131,18 +131,26 @@ export interface TeamInvitation {
 }
 
 export interface InvitedMemberResult {
-  member: {
-    userId: string;
+  invitation: {
+    id: string;
     email: string;
-    role: 'MEMBER';
-    invitedAt?: string;
-    joinedAt?: string;
+    role: 'LEAD' | 'MEMBER';
+    status: 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED';
+    expiresAt: string;
   };
-  temporaryCredentials: {
+  temporaryCredentials?: {
     email: string;
     temporaryPassword: string;
   } | null;
   message: string;
+}
+
+export interface PendingMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: 'LEAD' | 'MEMBER';
+  invitedAt: string | null;
 }
 
 export interface TeamChatMessage {
@@ -177,7 +185,7 @@ export const inviteTeamMember = async (
     `/teams/${teamId}/invite`,
     data
   );
-  return response.data;
+  return response;
 };
 
 // Get pending invitations for current user
@@ -185,7 +193,7 @@ export const getPendingInvitations = async () => {
   const response = await apiClient.get<{ invitations: TeamInvitation[] }>(
     '/teams/pending/invitations'
   );
-  return response.data;
+  return response;
 };
 
 // Accept an invitation
@@ -194,7 +202,33 @@ export const acceptInvitation = async (invitationId: string) => {
     `/teams/invitations/${invitationId}/accept`,
     {}
   );
-  return response.data;
+  return response;
+};
+
+// Get pending members for a team (LEAD-only)
+export const getPendingMembers = async (teamId: string) => {
+  const response = await apiClient.get<{ pendingMembers: PendingMember[] }>(
+    `/teams/${teamId}/pending-members`
+  );
+  return response;
+};
+
+// LEAD approves a pending member
+export const approveMember = async (teamId: string, userId: string) => {
+  const response = await apiClient.post<{ member: { userId: string; role: string; status: string; acceptedAt: string } }>(
+    `/teams/${teamId}/members/${userId}/approve`,
+    {}
+  );
+  return response;
+};
+
+// LEAD rejects a pending member
+export const rejectMember = async (teamId: string, userId: string) => {
+  const response = await apiClient.post<{ message: string }>(
+    `/teams/${teamId}/members/${userId}/reject`,
+    {}
+  );
+  return response;
 };
 
 // Get team chat messages
@@ -206,7 +240,7 @@ export const getTeamChatMessages = async (
     `/teams/${teamId}/chat/messages`,
     { params }
   );
-  return response.data;
+  return response;
 };
 
 // Post team follow-up message
@@ -215,7 +249,7 @@ export const postTeamChatMessage = async (teamId: string, message: string) => {
     `/teams/${teamId}/chat/messages`,
     { message }
   );
-  return response.data;
+  return response;
 };
 
 // Aggregate team follow-up chat stats for analytics
@@ -225,5 +259,5 @@ export const getTeamChatStats = async (
   const response = await apiClient.get<TeamChatStats>('/teams/chat/stats', {
     params: { range },
   });
-  return response.data;
+  return response;
 };

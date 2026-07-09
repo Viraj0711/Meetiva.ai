@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Upload, ListTodo, BarChart3, Settings, LogOut, Calendar, Users, Grid2X2, ShieldCheck, ArrowUpRight } from 'lucide-react';
+import { Home, Upload, ListTodo, BarChart3, Settings, LogOut, Calendar, Users, Grid2X2, ArrowUpRight, Crown } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useSubscription } from '@/hooks/useAuth';
 import { logout } from '@/store/slices/authSlice';
 import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
 import { cn } from '@/lib/utils';
@@ -11,6 +12,7 @@ const Sidebar: React.FC = () => {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
+  const { data: subscription } = useSubscription();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const memberNavigation = [
@@ -20,6 +22,7 @@ const Sidebar: React.FC = () => {
     { name: 'My Action Items', href: '/dashboard/action-items', icon: ListTodo },
     { name: 'Upload', href: '/dashboard/upload', icon: Upload },
     { name: 'Workspace', href: '/dashboard/workspace', icon: Grid2X2 },
+    { name: 'Upgrade', href: '/dashboard/upgrade', icon: Crown },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 
@@ -32,6 +35,7 @@ const Sidebar: React.FC = () => {
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
     { name: 'Teams', href: '/dashboard/teams', icon: Users },
     { name: 'Team Report', href: '/dashboard/team-report', icon: Users },
+    { name: 'Upgrade', href: '/dashboard/upgrade', icon: Crown },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 
@@ -53,6 +57,15 @@ const Sidebar: React.FC = () => {
             <div className="flex items-center gap-3 min-w-0">
               <div className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(124,92,255,0.35)]">
                 <span className="text-sm font-bold text-white">M</span>
+                {/* Tier dot — visible in both collapsed and expanded modes */}
+                {subscription && (
+                  <span
+                    className={`absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-[rgba(7,10,18,0.99)] ${
+                      subscription.isSubscribed ? 'bg-cyan-400' : 'bg-amber-400'
+                    }`}
+                    title={subscription.isSubscribed ? 'PRO' : 'FREE'}
+                  />
+                )}
               </div>
               {isExpanded && (
                 <div className="whitespace-nowrap">
@@ -66,24 +79,54 @@ const Sidebar: React.FC = () => {
           {isExpanded && (
             <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
               <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/[0.06] text-cyan-300">
-                  <ShieldCheck className="h-5 w-5" />
+                <div className={`grid h-10 w-10 place-items-center rounded-2xl ${
+                  subscription?.isSubscribed
+                    ? 'bg-gradient-to-br from-cyan-500/30 to-purple-500/20 text-cyan-300'
+                    : 'bg-white/[0.06] text-amber-300'
+                }`}>
+                  <Crown className="h-5 w-5" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs uppercase tracking-[0.26em] text-white/45">Workspace health</p>
-                  <p className="truncate text-sm font-medium text-white">Secure, synced, and live</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs uppercase tracking-[0.26em] text-white/45">Plan</p>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                      subscription?.isSubscribed
+                        ? 'bg-cyan-400/15 text-cyan-300'
+                        : 'bg-amber-400/15 text-amber-300'
+                    }`}>
+                      {subscription ? subscription.tier : '…'}
+                    </span>
+                  </div>
+                  <p className="truncate text-sm font-medium text-white">
+                    {!subscription
+                      ? 'Loading…'
+                      : subscription.isSubscribed
+                        ? 'Unlimited meetings'
+                        : `${subscription.meetingsRemaining} meeting${subscription.meetingsRemaining === 1 ? '' : 's'} left`}
+                  </p>
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-white/55">
-                <div className="rounded-2xl bg-white/[0.03] px-3 py-2">
-                  <p className="text-white/35">Focus score</p>
-                  <p className="mt-1 text-sm font-semibold text-white">92%</p>
+              {subscription && !subscription.isSubscribed && (
+                <div className="mt-3">
+                  <div className="flex h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="rounded-full bg-gradient-to-r from-amber-400 to-cyan-300 transition-all duration-500"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (subscription.meetingCountThisMonth / subscription.monthlyLimit) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-white/40">
+                    <span>{subscription.meetingCountThisMonth} / {subscription.monthlyLimit} used</span>
+                    <Link
+                      to="/dashboard/upgrade"
+                      className="text-cyan-300 transition hover:text-white"
+                    >
+                      Upgrade
+                    </Link>
+                  </div>
                 </div>
-                <div className="rounded-2xl bg-white/[0.03] px-3 py-2">
-                  <p className="text-white/35">Sync status</p>
-                  <p className="mt-1 text-sm font-semibold text-cyan-300">Live</p>
-                </div>
-              </div>
+              )}
             </div>
           )}
         </div>

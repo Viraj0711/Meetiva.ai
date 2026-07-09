@@ -10,6 +10,9 @@ import {
   resetTeamMemberCredentials,
   updateTeamMember as apiUpdateTeamMember,
   removeTeamMember as apiRemoveTeamMember,
+  getPendingMembers,
+  approveMember as apiApproveMember,
+  rejectMember as apiRejectMember,
 } from '@/services/teams.service';
 import { Team, CreateTeamRequest } from '@/types';
 import { useAppDispatch } from '@/store/hooks';
@@ -170,6 +173,47 @@ export const useRemoveTeamMember = () =>
       invalidateKeys: [['teams']],
       onSuccess: (_, { teamId }, { queryClient }) => {
         queryClient.invalidateQueries({ queryKey: ['teams', teamId, 'members'] });
+      },
+    },
+  );
+
+/** Get pending members for a team (LEAD-only) */
+export const usePendingMembers = (teamId: string | undefined) =>
+  useQuery({
+    queryKey: ['teams', teamId, 'pending-members'],
+    queryFn: async () => {
+      const response = await getPendingMembers(teamId!);
+      return response?.pendingMembers ?? [];
+    },
+    enabled: !!teamId,
+    staleTime: 10_000,
+  });
+
+/** Approve a pending member (LEAD-only) */
+export const useApproveMember = () =>
+  useTeamMutation(
+    ({ teamId, userId }: { teamId: string; userId: string }) =>
+      apiApproveMember(teamId, userId),
+    {
+      successMessage: 'Member approved',
+      invalidateKeys: [['teams']],
+      onSuccess: (_, { teamId }, { queryClient }) => {
+        queryClient.invalidateQueries({ queryKey: ['teams', teamId, 'members'] });
+        queryClient.invalidateQueries({ queryKey: ['teams', teamId, 'pending-members'] });
+      },
+    },
+  );
+
+/** Reject a pending member (LEAD-only) */
+export const useRejectMember = () =>
+  useTeamMutation(
+    ({ teamId, userId }: { teamId: string; userId: string }) =>
+      apiRejectMember(teamId, userId),
+    {
+      successMessage: 'Member rejected',
+      invalidateKeys: [['teams']],
+      onSuccess: (_, { teamId }, { queryClient }) => {
+        queryClient.invalidateQueries({ queryKey: ['teams', teamId, 'pending-members'] });
       },
     },
   );

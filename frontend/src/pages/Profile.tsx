@@ -93,14 +93,7 @@ const Profile: React.FC = () => {
     } catch (err) {
       console.error('Failed to load integrations:', err);
       setError('Failed to load integrations. Please try again later.');
-      setIntegrations([{
-        id: IntegrationType.CALENDAR,
-        name: 'Google Calendar',
-        description: 'Schedule meetings and set reminders',
-        icon: '',
-        category: 'calendar',
-        connected: false,
-      }]);
+      setIntegrations([]);
     } finally {
       setLoading(false);
     }

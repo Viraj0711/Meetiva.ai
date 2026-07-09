@@ -1,6 +1,14 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { ApiError, ApiResponse, User } from '@/types';
+import { ApiError } from '@/types';
 import { API_BASE_URL } from './api.config';
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface FetchConfig {
+  // Accept any object for params — avoids index-signature mismatch with
+  // typed param interfaces like PaginationParams & FilterParams.
+  params?: object;
+  signal?: AbortSignal;
+}
 
 // ── In-memory access token ─────────────────────────────────────────────────
 // The token is stored in a module-level variable — NOT in localStorage.
@@ -18,6 +26,7 @@ export const getAccessToken = (): string | null => accessToken;
 // ── 401 refresh queue ──────────────────────────────────────────────────────
 // When multiple requests fail with 401 simultaneously, only one refresh
 // request is made. All other requests are queued and retried with the new token.
+
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value: unknown) => void;
@@ -35,167 +44,168 @@ const processQueue = (error: unknown, token: string | null = null): void => {
   failedQueue = [];
 };
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Append query-string parameters to a URL.
+ * Skips keys whose value is `undefined` or `null`.
+ */
+const buildUrl = (url: string, config?: FetchConfig): string => {
+  const base = `${API_BASE_URL}${url}`;
+  if (!config?.params) return base;
+
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(config.params)) {
+    if (value !== undefined && value !== null) {
+      searchParams.append(key, String(value));
+    }
+  }
+
+  const qs = searchParams.toString();
+  return qs ? `${base}?${qs}` : base;
+};
+
+/** Parse a fetch Response into an ApiError. */
+const buildApiError = async (response: Response): Promise<ApiError> => {
+  const apiError: ApiError = {
+    message: 'An unexpected error occurred',
+    status: response.status,
+  };
+
+  try {
+    const body = await response.json() as Record<string, unknown>;
+    apiError.message = (body.message as string) || (body.detail as string) || apiError.message!;
+    apiError.code = body.code as string;
+    apiError.errors = body.errors as Record<string, string[]>;
+  } catch {
+    // Response body wasn't JSON — keep default message
+  }
+
+  return apiError;
+};
+
+/** Build the standard headers for a fetch call (Authorization, Content-Type). */
+const buildHeaders = (hasBody: boolean): Record<string, string> => {
+  const headers: Record<string, string> = {};
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+  // Let fetch auto-set Content-Type for FormData; set for JSON bodies.
+  if (hasBody) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
+};
+
 // ── ApiClient class ────────────────────────────────────────────────────────
 
 class ApiClient {
-  private client: AxiosInstance;
+  private async request<T>(
+    method: string,
+    url: string,
+    data?: unknown,
+    config?: FetchConfig,
+  ): Promise<T> {
+    const fullUrl = buildUrl(url, config);
+    const headers = buildHeaders(data !== undefined);
+    const body: BodyInit | undefined =
+      data !== undefined ? JSON.stringify(data) : undefined;
 
-  constructor() {
-    this.client = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout: 30000,
-    });
+    const doFetch = (): Promise<Response> =>
+      fetch(fullUrl, { method, headers, body, signal: config?.signal });
 
-    this.setupInterceptors();
-  }
+    let response = await doFetch();
 
-  private setupInterceptors(): void {
-    // ── Request interceptor: attach access token ──────────────────────────
-    this.client.interceptors.request.use(
-      (config) => {
-        if (accessToken) {
-          config.headers.Authorization = `Bearer ${accessToken}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
-
-    // ── Response interceptor: auto-refresh on 401 ─────────────────────────
-    this.client.interceptors.response.use(
-      (response) => response,
-      async (error: AxiosError) => {
-        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
-
-        // Build the ApiError regardless of whether we retry
-        const apiError = this.buildApiError(error);
-
-        // Only attempt refresh on 401 responses that aren't themselves refresh attempts
-        if (error.response?.status !== 401 || originalRequest._retry) {
-          return Promise.reject(apiError);
-        }
-
-        // Prevent infinite loop — don't retry the refresh endpoint itself
-        if (typeof originalRequest.url === 'string' && originalRequest.url.includes('/auth/refresh')) {
-          return Promise.reject(apiError);
-        }
-
-        if (isRefreshing) {
-          // Another refresh is in progress — queue this request
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          }).then((newToken) => {
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            }
-            return this.client(originalRequest);
-          }).catch((err) => Promise.reject(err));
-        }
-
-        originalRequest._retry = true;
-        isRefreshing = true;
-
+    // ── 401 auto-refresh flow ─────────────────────────────────────────────
+    if (response.status === 401 && !url.includes('/auth/refresh')) {
+      // Another refresh is in progress — queue this request
+      if (isRefreshing) {
         try {
-          const response = await axios.post<{ token: string; user?: User }>(
+          await new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          });
+          // Token was already updated by the successful refresh — retry
+          response = await doFetch();
+        } catch {
+          throw await buildApiError(response);
+        }
+      } else {
+        isRefreshing = true;
+        try {
+          const refreshResponse = await fetch(
             `${API_BASE_URL}/auth/refresh`,
-            null,
-            { withCredentials: true } // Send the httpOnly refresh cookie
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+            },
           );
 
-          const newToken = response.data.token;
-          setAccessToken(newToken);
-
-          processQueue(null, newToken);
-
-          // Retry the original request with the new token
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          if (!refreshResponse.ok) {
+            throw new Error('Refresh failed');
           }
-          return this.client(originalRequest);
+
+          const refreshData = await refreshResponse.json() as { token: string };
+          setAccessToken(refreshData.token);
+          processQueue(null, refreshData.token);
+
+          // Retry the original request with the fresh token
+          response = await doFetch();
         } catch (refreshError) {
           processQueue(refreshError, null);
           setAccessToken(null);
 
-          // Redirect to login — session expired
+          // Session expired — redirect to login
           window.location.href = '/login';
-          return Promise.reject(apiError);
+          throw refreshError;
         } finally {
           isRefreshing = false;
         }
       }
-    );
-  }
-
-  private buildApiError(error: AxiosError): ApiError {
-    const apiError: ApiError = {
-      message: 'An unexpected error occurred',
-      status: error.response?.status,
-    };
-
-    if (error.response) {
-      const data = error.response.data as Record<string, unknown>;
-      apiError.message = (data.message as string) || (data.detail as string) || error.message;
-      apiError.code = data.code as string;
-      apiError.errors = data.errors as Record<string, string[]>;
-    } else if (error.request) {
-      apiError.message = 'No response from server. Please check your connection.';
-      apiError.code = 'ERR_NETWORK';
-    } else {
-      apiError.message = error.message;
     }
 
-    return apiError;
+    if (!response.ok) {
+      throw await buildApiError(response);
+    }
+
+    // Handle 204 No Content (e.g. DELETE responses)
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    return response.json() as Promise<T>;
   }
 
-  async get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response: AxiosResponse<ApiResponse<T>> = await this.client.get(url, config);
-    return response.data;
+  async get<T = unknown>(url: string, config?: FetchConfig): Promise<T> {
+    return this.request<T>('GET', url, undefined, config);
   }
 
-  async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response: AxiosResponse<ApiResponse<T>> = await this.client.post(url, data, config);
-    return response.data;
-  }
-
-  async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response: AxiosResponse<ApiResponse<T>> = await this.client.put(url, data, config);
-    return response.data;
-  }
-
-  async patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response: AxiosResponse<ApiResponse<T>> = await this.client.patch(url, data, config);
-    return response.data;
-  }
-
-  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response: AxiosResponse<ApiResponse<T>> = await this.client.delete(url, config);
-    return response.data;
-  }
-
-  async upload<T>(
+  async post<T = unknown>(
     url: string,
-    file: File,
-    onProgress?: (progress: number) => void
-  ): Promise<ApiResponse<T>> {
-    const formData = new FormData();
-    formData.append('file', file);
+    data?: unknown,
+    config?: FetchConfig,
+  ): Promise<T> {
+    return this.request<T>('POST', url, data, config);
+  }
 
-    const response: AxiosResponse<ApiResponse<T>> = await this.client.post(url, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      onUploadProgress: (progressEvent) => {
-        if (onProgress && progressEvent.total) {
-          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          onProgress(progress);
-        }
-      },
-    });
+  async put<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: FetchConfig,
+  ): Promise<T> {
+    return this.request<T>('PUT', url, data, config);
+  }
 
-    return response.data;
+  async patch<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: FetchConfig,
+  ): Promise<T> {
+    return this.request<T>('PATCH', url, data, config);
+  }
+
+  async delete<T = unknown>(url: string, config?: FetchConfig): Promise<T> {
+    return this.request<T>('DELETE', url, undefined, config);
   }
 }
 

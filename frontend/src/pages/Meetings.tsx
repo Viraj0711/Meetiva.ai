@@ -28,7 +28,7 @@ const Meetings: React.FC = () => {
   });
 
   const meetings = meetingsResponse?.data || [];
-  const totalPages = meetingsResponse?.totalPages || 1;
+  const totalPages = meetingsResponse?.pagination?.totalPages || 1;
   const myMeetings = userId ? meetings.filter((m) => m.userId === userId) : [];
   const displayedMeetings = showTeamMeetings ? meetings : myMeetings.length > 0 ? myMeetings : meetings;
 
