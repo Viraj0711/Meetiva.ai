@@ -6,250 +6,186 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const authorize_1 = require("../middleware/authorize");
-const prisma_1 = __importDefault(require("../lib/prisma"));
 const meetingStatus_1 = require("../services/meetingStatus");
+const rateLimiters_1 = require("../lib/rateLimiters");
+const validation_1 = require("../lib/validation");
+const errors_1 = require("../lib/errors");
+const ActionItem_1 = __importDefault(require("../models/ActionItem"));
+const Meeting_1 = __importDefault(require("../models/Meeting"));
+const TeamMember_1 = __importDefault(require("../models/TeamMember"));
+const mongoose_1 = require("mongoose");
 const router = (0, express_1.Router)();
-// Helper to get the appropriate where clause based on user's role
-const getActionItemsWhereClause = async (req) => {
+// Validate all :id route params as MongoDB ObjectId
+router.param('id', (req, res, next, value) => {
+    if (!mongoose_1.Types.ObjectId.isValid(value)) {
+        return res.status(400).json({ message: 'Invalid id: must be a valid ObjectId' });
+    }
+    next();
+});
+// Helper to get the appropriate filter based on user's role
+const getActionItemsFilter = async (req) => {
     try {
         // For members or users with no team membership, only show their own action items
         if (!req.userTeams || req.userTeams.length === 0) {
-            console.log(`[getActionItemsWhereClause] User ${req.userId} has no teams, returning own items only`);
-            return { userId: req.userId };
+            return { userId: new mongoose_1.Types.ObjectId(req.userId) };
         }
         // Check if user is MANAGER or LEAD in any team
         const isManagerOrLead = req.userTeams.some(team => team.role === 'MANAGER' || team.role === 'LEAD');
         if (!isManagerOrLead) {
-            // User is just a MEMBER, show only their own items
-            console.log(`[getActionItemsWhereClause] User ${req.userId} is MEMBER only, returning own items`);
-            return { userId: req.userId };
+            return { userId: new mongoose_1.Types.ObjectId(req.userId) };
         }
         // User is MANAGER or LEAD - fetch all team members from their teams
         const teamIds = req.userTeams
             .filter(team => team.role === 'MANAGER' || team.role === 'LEAD')
-            .map(team => team.teamId);
+            .map(team => new mongoose_1.Types.ObjectId(team.teamId));
         if (teamIds.length === 0) {
-            console.log(`[getActionItemsWhereClause] User ${req.userId} has no MANAGER/LEAD teams`);
-            return { userId: req.userId };
+            return { userId: new mongoose_1.Types.ObjectId(req.userId) };
         }
-        console.log(`[getActionItemsWhereClause] User ${req.userId} is MANAGER/LEAD in teams: ${teamIds.join(', ')}`);
-        const teamMembers = await prisma_1.default.teamMember.findMany({
-            where: { teamId: { in: teamIds } },
-            select: { userId: true }
-        });
-        const memberUserIds = Array.from(new Set([req.userId, ...teamMembers.map(tm => tm.userId)]));
-        console.log(`[getActionItemsWhereClause] Showing items for ${memberUserIds.length} users`);
-        return {
-            userId: { in: memberUserIds }
-        };
+        const teamMembers = await TeamMember_1.default.find({ teamId: { $in: teamIds } })
+            .select('userId')
+            .lean();
+        const memberUserIds = Array.from(new Set([
+            new mongoose_1.Types.ObjectId(req.userId),
+            ...teamMembers.map(tm => tm.userId),
+        ]));
+        return { userId: { $in: memberUserIds } };
     }
-    catch (error) {
-        console.error(`[getActionItemsWhereClause] Error: ${error}`);
-        console.log(`[getActionItemsWhereClause] Fallback: returning only own items for user ${req.userId}`);
-        return { userId: req.userId };
+    catch {
+        return { userId: new mongoose_1.Types.ObjectId(req.userId) };
     }
 };
-router.get('/', auth_1.authenticate, async (req, res) => {
-    try {
-        const { page = '1', limit = '10', status } = req.query;
-        const pageNumber = Math.max(1, parseInt(page, 10) || 1);
-        const limitNumber = Math.max(1, parseInt(limit, 10) || 10);
-        const skip = (pageNumber - 1) * limitNumber;
-        let where = await getActionItemsWhereClause(req);
-        if (status) {
-            where = {
-                ...where,
-                status: status
-            };
-        }
-        const [actionItems, total] = await Promise.all([
-            prisma_1.default.actionItem.findMany({
-                where,
-                skip,
-                take: limitNumber,
-                orderBy: { createdAt: 'desc' },
-                include: {
-                    meeting: {
-                        select: {
-                            id: true,
-                            title: true
-                        }
-                    }
-                }
-            }),
-            prisma_1.default.actionItem.count({ where })
-        ]);
-        res.json({
-            data: actionItems,
-            pagination: {
-                total,
-                page: pageNumber,
-                limit: limitNumber,
-                totalPages: Math.ceil(total / limitNumber)
-            }
-        });
+const actionItemQuerySchema = validation_1.paginationQuerySchema.merge(validation_1.statusFilterSchema);
+router.get('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(actionItemQuerySchema, 'query'), (0, errors_1.asyncHandler)(async (req, res) => {
+    const { page, limit, status } = req.query;
+    const skip = (page - 1) * limit;
+    let filter = await getActionItemsFilter(req);
+    if (status) {
+        filter.status = status;
     }
-    catch (error) {
-        console.error('Error fetching action items:', error);
-        res.status(500).json({ message: 'Failed to fetch action items' });
+    const [actionItems, total] = await Promise.all([
+        ActionItem_1.default.find(filter)
+            .skip(skip)
+            .limit(limit)
+            .sort({ createdAt: -1 })
+            .populate('meetingId', 'title')
+            .lean(),
+        ActionItem_1.default.countDocuments(filter),
+    ]);
+    res.json({
+        data: actionItems.map((item) => ({
+            ...item,
+            id: item._id.toString(),
+            meeting: item.meetingId ? { id: item.meetingId._id.toString(), title: item.meetingId.title } : undefined,
+            meetingId: item.meetingId?._id?.toString() || item.meetingId?.toString(),
+        })),
+        pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        },
+    });
+}));
+router.get('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
+    const actionItem = await ActionItem_1.default.findById(req.params.id)
+        .populate('meetingId')
+        .lean();
+    if (!actionItem) {
+        return res.status(404).json({ message: 'Action item not found' });
     }
-});
-router.get('/:id', auth_1.authenticate, async (req, res) => {
-    try {
-        const actionItem = await prisma_1.default.actionItem.findFirst({
-            where: {
-                id: req.params.id
-            },
-            include: {
-                meeting: true
-            }
-        });
-        if (!actionItem) {
-            return res.status(404).json({ message: 'Action item not found' });
-        }
-        // Check if user can view this action item
-        if (!(0, authorize_1.canViewUserData)(req.userId, actionItem.userId, req.userTeams || [])) {
-            return res.status(403).json({ message: 'You do not have permission to view this action item' });
-        }
-        res.json(actionItem);
+    // Check if user can view this action item
+    if (!(await (0, authorize_1.canViewUserData)(req.userId, actionItem.userId.toString(), req.userTeams || []))) {
+        return res.status(403).json({ message: 'You do not have permission to view this action item' });
     }
-    catch (error) {
-        console.error('Error fetching action item:', error);
-        res.status(500).json({ message: 'Failed to fetch action item' });
+    res.json(actionItem);
+}));
+router.post('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(validation_1.createActionItemSchema), (0, errors_1.asyncHandler)(async (req, res) => {
+    const { meetingId, title, description, assignee, dueDate, priority } = req.body;
+    const meeting = await Meeting_1.default.findOne({
+        _id: new mongoose_1.Types.ObjectId(meetingId),
+        userId: new mongoose_1.Types.ObjectId(req.userId),
+    }).lean();
+    if (!meeting) {
+        return res.status(404).json({ message: 'Meeting not found' });
     }
-});
-router.post('/', auth_1.authenticate, async (req, res) => {
-    try {
-        const { meetingId, title, description, assignee, dueDate, priority } = req.body;
-        const meeting = await prisma_1.default.meeting.findFirst({
-            where: {
-                id: meetingId,
-                userId: req.userId
-            }
-        });
-        if (!meeting) {
-            return res.status(404).json({ message: 'Meeting not found' });
-        }
-        const actionItem = await prisma_1.default.actionItem.create({
-            data: {
-                meetingId,
-                title,
-                description,
-                assignee,
-                dueDate: dueDate ? new Date(dueDate) : null,
-                priority: priority || 'medium',
-                reminderSentAt: null,
-                userId: req.userId
-            }
-        });
-        await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(meetingId);
-        res.status(201).json(actionItem);
+    const actionItem = await ActionItem_1.default.create({
+        meetingId: meeting._id,
+        title,
+        description,
+        assignee,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        priority: priority || 'medium',
+        reminderSentAt: null,
+        userId: new mongoose_1.Types.ObjectId(req.userId),
+    });
+    await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(meetingId);
+    res.status(201).json(actionItem.toObject());
+}));
+router.patch('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(validation_1.updateActionItemSchema), (0, errors_1.asyncHandler)(async (req, res) => {
+    const { title, description, assignee, dueDate, priority, status } = req.body;
+    const actionItem = await ActionItem_1.default.findOne({
+        _id: new mongoose_1.Types.ObjectId(req.params.id),
+        userId: new mongoose_1.Types.ObjectId(req.userId),
+    }).lean();
+    if (!actionItem) {
+        return res.status(404).json({ message: 'Action item not found' });
     }
-    catch (error) {
-        console.error('Error creating action item:', error);
-        res.status(500).json({ message: 'Failed to create action item' });
+    // Check if user can modify this action item (must be owner)
+    if (actionItem.userId.toString() !== req.userId) {
+        return res.status(403).json({ message: 'You do not have permission to modify this action item' });
     }
-});
-router.patch('/:id', auth_1.authenticate, async (req, res) => {
-    try {
-        const { title, description, assignee, dueDate, priority, status } = req.body;
-        const actionItem = await prisma_1.default.actionItem.findFirst({
-            where: {
-                id: req.params.id,
-                userId: req.userId
-            }
-        });
-        if (!actionItem) {
-            return res.status(404).json({ message: 'Action item not found' });
-        }
-        // Check if user can modify this action item (must be owner)
-        if (actionItem.userId !== req.userId) {
-            return res.status(403).json({ message: 'You do not have permission to modify this action item' });
-        }
-        const updateData = {};
-        if (title !== undefined)
-            updateData.title = title;
-        if (description !== undefined)
-            updateData.description = description;
-        if (assignee !== undefined)
-            updateData.assignee = assignee;
-        if (priority !== undefined)
-            updateData.priority = priority;
-        if (status !== undefined)
-            updateData.status = status;
-        if (dueDate !== undefined) {
-            updateData.dueDate = dueDate ? new Date(dueDate) : null;
-            updateData.reminderSentAt = null;
-        }
-        if (status === 'completed' && !actionItem.completedAt) {
-            updateData.completedAt = new Date();
-        }
-        if (status !== undefined && status !== 'completed') {
-            updateData.reminderSentAt = null;
-        }
-        const updated = await prisma_1.default.actionItem.update({
-            where: { id: req.params.id },
-            data: updateData
-        });
-        await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId);
-        res.json(updated);
+    const updateData = {};
+    if (title !== undefined)
+        updateData.title = title;
+    if (description !== undefined)
+        updateData.description = description;
+    if (assignee !== undefined)
+        updateData.assignee = assignee;
+    if (priority !== undefined)
+        updateData.priority = priority;
+    if (status !== undefined)
+        updateData.status = status;
+    if (dueDate !== undefined) {
+        updateData.dueDate = dueDate ? new Date(dueDate) : null;
+        updateData.reminderSentAt = null;
     }
-    catch (error) {
-        console.error('Error updating action item:', error);
-        res.status(500).json({ message: 'Failed to update action item' });
+    if (status === 'completed' && !actionItem.completedAt) {
+        updateData.completedAt = new Date();
     }
-});
-router.delete('/:id', auth_1.authenticate, async (req, res) => {
-    try {
-        const actionItem = await prisma_1.default.actionItem.findFirst({
-            where: {
-                id: req.params.id,
-                userId: req.userId
-            }
-        });
-        if (!actionItem) {
-            return res.status(404).json({ message: 'Action item not found' });
-        }
-        // Check if user can delete this action item (must be owner)
-        if (actionItem.userId !== req.userId) {
-            return res.status(403).json({ message: 'You do not have permission to delete this action item' });
-        }
-        await prisma_1.default.actionItem.delete({
-            where: { id: req.params.id }
-        });
-        await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId);
-        res.status(204).send();
+    if (status !== undefined && status !== 'completed') {
+        updateData.reminderSentAt = null;
     }
-    catch (error) {
-        console.error('Error deleting action item:', error);
-        res.status(500).json({ message: 'Failed to delete action item' });
+    const updated = await ActionItem_1.default.findByIdAndUpdate(actionItem._id, { $set: updateData }, { returnDocument: 'after' }).lean();
+    await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId.toString());
+    res.json(updated ? { ...updated, id: updated._id.toString() } : null);
+}));
+router.delete('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
+    const actionItem = await ActionItem_1.default.findOne({
+        _id: new mongoose_1.Types.ObjectId(req.params.id),
+        userId: new mongoose_1.Types.ObjectId(req.userId),
+    }).lean();
+    if (!actionItem) {
+        return res.status(404).json({ message: 'Action item not found' });
     }
-});
-router.post('/:id/complete', auth_1.authenticate, async (req, res) => {
-    try {
-        const actionItem = await prisma_1.default.actionItem.findFirst({
-            where: {
-                id: req.params.id,
-                userId: req.userId
-            }
-        });
-        if (!actionItem) {
-            return res.status(404).json({ message: 'Action item not found' });
-        }
-        const updated = await prisma_1.default.actionItem.update({
-            where: { id: req.params.id },
-            data: {
-                status: 'completed',
-                completedAt: new Date()
-            }
-        });
-        await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId);
-        res.json(updated);
+    // Check if user can delete this action item (must be owner)
+    if (actionItem.userId.toString() !== req.userId) {
+        return res.status(403).json({ message: 'You do not have permission to delete this action item' });
     }
-    catch (error) {
-        console.error('Error completing action item:', error);
-        res.status(500).json({ message: 'Failed to complete action item' });
+    await ActionItem_1.default.findByIdAndDelete(actionItem._id);
+    await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId.toString());
+    res.status(204).send();
+}));
+router.post('/:id/complete', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
+    const actionItem = await ActionItem_1.default.findOne({
+        _id: new mongoose_1.Types.ObjectId(req.params.id),
+        userId: new mongoose_1.Types.ObjectId(req.userId),
+    }).lean();
+    if (!actionItem) {
+        return res.status(404).json({ message: 'Action item not found' });
     }
-});
+    const updated = await ActionItem_1.default.findByIdAndUpdate(actionItem._id, { $set: { status: 'completed', completedAt: new Date() } }, { returnDocument: 'after' }).lean();
+    await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId.toString());
+    res.json(updated ? { ...updated, id: updated._id.toString() } : null);
+}));
 exports.default = router;
 //# sourceMappingURL=actionItems.js.map

@@ -1,46 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState, AppDispatch } from '@/store';
-import {
-  setTeams,
-  setCurrentTeam,
-  setTeamMembers,
-  addTeam,
-  removeTeam,
-  removeTeamMember,
-  setLoading,
-  setError,
-} from '@/store/slices/teamsSlice';
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { useAppDispatch } from '@/store/hooks';
 import { addToast } from '@/store/slices/uiSlice';
 import {
-  createTeam,
-  getTeams,
-  getTeam,
-  getTeamMembers,
-  inviteTeamMember,
-  deleteTeam as apiDeleteTeam,
-  updateTeamMemberProfile,
-  resetTeamMemberCredentials,
-  updateTeamMember as apiUpdateTeamMember,
-  removeTeamMember as apiRemoveTeamMember,
-} from '@/services/teams.service';
-import { Team, ApiError } from '@/types';
+  useTeams,
+  useTeamMembers,
+  useCreateTeam,
+  useInviteTeamMember,
+  useDeleteTeam,
+  useUpdateTeamMemberProfile,
+  useResetTeamMemberCredentials,
+  useUpdateTeamMemberRole,
+  useRemoveTeamMember,
+  usePendingMembers,
+  useApproveMember,
+  useRejectMember,
+} from '@/hooks/useTeams';
+
+import {
+  createTeamSchema,
+  inviteMemberSchema,
+  updateMemberProfileSchema,
+  zodResolver,
+  type SchemaOutput,
+} from '@/lib/validation';
 import './TeamsAdmin.css';
-
-interface CreateTeamForm {
-  name: string;
-  description: string;
-}
-
-interface InviteMemberForm {
-  email: string;
-}
-
-interface EditMemberForm {
-  memberId: string;
-  name: string;
-  email: string;
-}
 
 interface IssuedCredentials {
   email: string;
@@ -50,369 +36,168 @@ interface IssuedCredentials {
 }
 
 export const TeamsAdmin: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useAppDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { teams, currentTeam, teamMembers, isLoading, error } = useSelector(
-    (state: RootState) => state.teams
-  );
-  const [fetchedTeams, setFetchedTeams] = useState<Team[]>([]);
 
+  const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
   const [showCreateTeamModal, setShowCreateTeamModal] = useState(false);
   const [showInviteMemberModal, setShowInviteMemberModal] = useState(false);
   const [showEditMemberModal, setShowEditMemberModal] = useState(false);
-  const [createTeamForm, setCreateTeamForm] = useState<CreateTeamForm>({
-    name: '',
-    description: '',
+
+  const {
+    register: registerCreateTeam,
+    handleSubmit: handleCreateTeamSubmit,
+    formState: { errors: createTeamErrors },
+    reset: resetCreateTeamForm,
+  } = useForm<SchemaOutput<typeof createTeamSchema>>({
+    resolver: zodResolver(createTeamSchema),
+    defaultValues: { name: '', description: '' },
   });
-  const [inviteMemberForm, setInviteMemberForm] = useState<InviteMemberForm>({
-    email: '',
+
+  const {
+    register: registerInviteMember,
+    handleSubmit: handleInviteMemberSubmit,
+    formState: { errors: inviteMemberErrors },
+    reset: resetInviteMemberForm,
+  } = useForm<SchemaOutput<typeof inviteMemberSchema>>({
+    resolver: zodResolver(inviteMemberSchema),
+    defaultValues: { email: '' },
   });
+
+  const {
+    register: registerEditMember,
+    handleSubmit: handleEditMemberSubmit,
+    formState: { errors: editMemberErrors },
+    reset: resetEditMemberForm,
+  } = useForm<SchemaOutput<typeof updateMemberProfileSchema>>({
+    resolver: zodResolver(updateMemberProfileSchema),
+    defaultValues: { name: '', email: '' },
+  });
+
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [newMemberRole, setNewMemberRole] = useState<'LEAD' | 'MEMBER'>('MEMBER');
-  const [editMemberForm, setEditMemberForm] = useState<EditMemberForm>({
-    memberId: '',
-    name: '',
-    email: '',
-  });
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [issuedCredentials, setIssuedCredentials] = useState<IssuedCredentials | null>(null);
 
-  const loadTeams = React.useCallback(async () => {
-    try {
-      dispatch(setLoading(true));
-      const response = await getTeams();
-      const nextTeams = response?.teams ?? [];
-      setFetchedTeams(nextTeams);
-      dispatch(setTeams(nextTeams));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to load teams';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
-  }, [dispatch]);
+  // ── Derived role checks (must be declared before hooks that depend on them) ──
+  const { data: teams = [], isLoading: teamsLoading, error: teamsError } = useTeams();
+  const currentTeam = teams.find(t => t.id === currentTeamId) || null;
+  const currentTeamRole = currentTeam?.role;
+  const canInviteMembers = currentTeamRole === 'LEAD';
+  const visibleTeams = teams;
 
-  // Load teams on component mount
-  useEffect(() => {
-    loadTeams();
-  }, [loadTeams]);
+  // ── React Query hooks ──────────────────────────────────────────────────
+  const { data: teamMembers = [], isLoading: membersLoading, error: membersError } = useTeamMembers(currentTeamId ?? undefined);
+  const deleteTeamMutation = useDeleteTeam();
+  const createTeamMutation = useCreateTeam();
+  const inviteMemberMutation = useInviteTeamMember();
+  const updateRoleMutation = useUpdateTeamMemberRole();
+  const updateProfileMutation = useUpdateTeamMemberProfile();
+  const removeMemberMutation = useRemoveTeamMember();
+  const resetCredentialsMutation = useResetTeamMemberCredentials();
+  const { data: pendingMembers = [], isLoading: pendingLoading } = usePendingMembers(
+    canInviteMembers ? currentTeamId ?? undefined : undefined
+  );
+  const approveMemberMutation = useApproveMember();
+  const rejectMemberMutation = useRejectMember();
 
-  const loadTeamMembers = React.useCallback(async (teamId: string) => {
-    try {
-      dispatch(setLoading(true));
-      const [teamResult, membersResult] = await Promise.allSettled([
-        getTeam(teamId),
-        getTeamMembers(teamId),
-      ]);
+  const isLoading = teamsLoading || membersLoading;
+  const error = teamsError || membersError;
 
-      if (teamResult.status === 'rejected') {
-        throw teamResult.reason;
-      }
+  const canCreateTeam =
+    visibleTeams.length === 0 ||
+    visibleTeams.some((team) => team.role === 'LEAD' || team.role === 'MANAGER');
+  const canManageTeam = currentTeamRole === 'MANAGER' || currentTeamRole === 'LEAD';
+  const canChangeRoles = currentTeamRole === 'MANAGER';
 
-      if (membersResult.status === 'rejected') {
-        throw membersResult.reason;
-      }
-
-      dispatch(setCurrentTeam(teamResult.value));
-      dispatch(setTeamMembers(membersResult.value?.members ?? []));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to load team details';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
-  }, [dispatch]);
 
   const handleDeleteTeam = async () => {
     if (!currentTeam) return;
-
-    if (!window.confirm(`Delete team "${currentTeam.name}"? This cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      dispatch(setLoading(true));
-      await apiDeleteTeam(currentTeam.id);
-      dispatch(removeTeam(currentTeam.id));
-      setFetchedTeams((prev) => prev.filter((team) => team.id !== currentTeam.id));
-      dispatch(addToast({
-        type: 'success',
-        message: 'Team deleted successfully',
-        duration: 3000,
-      }));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to delete team';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
+    if (!window.confirm(`Delete team "${currentTeam.name}"? This cannot be undone.`)) return;
+    deleteTeamMutation.mutate(currentTeam.id);
+    setCurrentTeamId(null);
   };
 
-  const formatMessageTime = (isoDate: string) => {
-    const date = new Date(isoDate);
-    return date.toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+  const handleCreateTeam = async (data: SchemaOutput<typeof createTeamSchema>) => {
+    await createTeamMutation.mutateAsync({
+      name: data.name,
+      description: data.description || undefined,
     });
+    resetCreateTeamForm();
+    setShowCreateTeamModal(false);
   };
 
-  const handleCreateTeam = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!createTeamForm.name.trim()) {
-      dispatch(addToast({
-        type: 'error',
-        message: 'Team name is required',
-        duration: 3000,
-      }));
+  const handleInviteMember = async (data: SchemaOutput<typeof inviteMemberSchema>) => {
+    if (!currentTeamId) {
+      dispatch(addToast({ type: 'error', message: 'No team selected', duration: 3000 }));
       return;
     }
 
     try {
-      dispatch(setLoading(true));
-      const response = await createTeam({
-        name: createTeamForm.name,
-        description: createTeamForm.description || undefined,
-      });
-      
-      if (!response?.team || !response?.membership) {
-        throw new Error('Invalid response from server: missing team or membership data');
-      }
-      
-      const newTeam: Team = {
-        id: response.team.id,
-        name: response.team.name,
-        description: response.team.description,
-        role: 'LEAD',
-        createdAt: response.team.createdAt,
-        updatedAt: response.team.updatedAt,
-        joinedAt: response.membership.acceptedAt,
-      };
-      
-      dispatch(addTeam(newTeam));
-      setFetchedTeams((prev) => [...prev, newTeam]);
-      dispatch(addToast({
-        type: 'success',
-        message: `Team "${createTeamForm.name}" created successfully!`,
-        duration: 3000,
-      }));
-
-      setCreateTeamForm({ name: '', description: '' });
-      setShowCreateTeamModal(false);
-      
-      // Load the new team's details
-      if (response?.team?.id) {
-        await loadTeamMembers(response.team.id);
-      }
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to create team';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
-  };
-
-  const handleInviteMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!currentTeam) {
-      dispatch(addToast({
-        type: 'error',
-        message: 'No team selected',
-        duration: 3000,
-      }));
-      return;
-    }
-
-    if (!inviteMemberForm.email.trim()) {
-      dispatch(addToast({
-        type: 'error',
-        message: 'Email is required',
-        duration: 3000,
-      }));
-      return;
-    }
-
-    try {
-      dispatch(setLoading(true));
-      const response = await inviteTeamMember(currentTeam.id, {
-        email: inviteMemberForm.email,
+      const response = await inviteMemberMutation.mutateAsync({
+        teamId: currentTeamId,
+        email: data.email,
       });
 
-      await loadTeamMembers(currentTeam.id);
-
+      const invitation = response.invitation;
       if (response.temporaryCredentials) {
-        const memberName = response.member?.email || inviteMemberForm.email;
         setIssuedCredentials({
           email: response.temporaryCredentials.email,
           temporaryPassword: response.temporaryCredentials.temporaryPassword,
-          memberName,
+          memberName: invitation.email || data.email,
           issuedAt: new Date().toISOString(),
         });
-        dispatch(addToast({
-          type: 'success',
-          message: `New credentials: ${response.temporaryCredentials.email} / ${response.temporaryCredentials.temporaryPassword}`,
-          duration: 7000,
-        }));
       }
-      
-      dispatch(addToast({
-        type: 'success',
-        message: response.message,
-        duration: 3000,
-      }));
 
-      setInviteMemberForm({ email: '' });
+      resetInviteMemberForm();
       setShowInviteMemberModal(false);
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to send invitation';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
+    } catch {
+      // Toast is handled by the mutation
     }
   };
 
   const handleUpdateMemberRole = async (memberId: string) => {
-    if (!currentTeam) return;
-
-    try {
-      dispatch(setLoading(true));
-      await apiUpdateTeamMember(currentTeam.id, memberId, {
-        role: newMemberRole,
-      });
-
-      // Reload team members
-      await loadTeamMembers(currentTeam.id);
-
-      dispatch(addToast({
-        type: 'success',
-        message: `Member role updated to ${newMemberRole}`,
-        duration: 3000,
-      }));
-
-      setSelectedMemberId(null);
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to update member role';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
+    if (!currentTeamId) return;
+    await updateRoleMutation.mutateAsync({
+      teamId: currentTeamId,
+      userId: memberId,
+      role: newMemberRole,
+    });
+    setSelectedMemberId(null);
   };
 
   const handleRemoveMember = async (memberId: string) => {
-    if (!currentTeam) return;
-
-    if (!window.confirm('Are you sure you want to remove this member?')) {
-      return;
-    }
-
-    try {
-      dispatch(setLoading(true));
-      await apiRemoveTeamMember(currentTeam.id, memberId);
-
-      dispatch(removeTeamMember(memberId));
-      dispatch(addToast({
-        type: 'success',
-        message: 'Member removed from team',
-        duration: 3000,
-      }));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to remove member';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
+    if (!currentTeamId) return;
+    if (!window.confirm('Are you sure you want to remove this member?')) return;
+    await removeMemberMutation.mutateAsync({ teamId: currentTeamId, userId: memberId });
   };
 
   const handleOpenEditMember = (memberId: string, currentName: string, currentEmail: string) => {
-    setEditMemberForm({
-      memberId,
-      name: currentName,
-      email: currentEmail,
-    });
+    resetEditMemberForm({ name: currentName, email: currentEmail });
+    setEditingMemberId(memberId);
     setShowEditMemberModal(true);
   };
 
-  const handleEditMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentTeam) return;
-
-    if (!editMemberForm.memberId || !editMemberForm.name.trim() || !editMemberForm.email.trim()) {
-      return;
-    }
-
-    try {
-      dispatch(setLoading(true));
-      await updateTeamMemberProfile(currentTeam.id, editMemberForm.memberId, {
-        name: editMemberForm.name.trim(),
-        email: editMemberForm.email.trim(),
-      });
-      await loadTeamMembers(currentTeam.id);
-      setShowEditMemberModal(false);
-      dispatch(addToast({
-        type: 'success',
-        message: 'Member profile updated',
-        duration: 3000,
-      }));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to update member details';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
-    }
+  const handleEditMember = async (data: SchemaOutput<typeof updateMemberProfileSchema>) => {
+    if (!currentTeamId || !editingMemberId) return;
+    await updateProfileMutation.mutateAsync({
+      teamId: currentTeamId,
+      userId: editingMemberId,
+      name: data.name!,
+      email: data.email!,
+    });
+    setShowEditMemberModal(false);
   };
 
   const handleResetCredentials = async (memberId: string) => {
-    if (!currentTeam) return;
-
-    if (!window.confirm('Reset this member credentials and generate a new temporary password?')) {
-      return;
-    }
+    if (!currentTeamId) return;
+    if (!window.confirm('Reset this member credentials and generate a new temporary password?')) return;
 
     try {
-      dispatch(setLoading(true));
-      const response = await resetTeamMemberCredentials(currentTeam.id, memberId);
+      const response = await resetCredentialsMutation.mutateAsync({
+        teamId: currentTeamId,
+        userId: memberId,
+      });
       const member = teamMembers.find((item) => item.userId === memberId);
       setIssuedCredentials({
         email: response.credentials.email,
@@ -420,21 +205,8 @@ export const TeamsAdmin: React.FC = () => {
         memberName: member?.name || response.credentials.email,
         issuedAt: new Date().toISOString(),
       });
-      dispatch(addToast({
-        type: 'success',
-        message: `Credentials reset: ${response.credentials.email} / ${response.credentials.temporaryPassword}`,
-        duration: 8000,
-      }));
-    } catch (err) {
-      const message = (err as ApiError).message || 'Failed to reset member credentials';
-      dispatch(setError(message));
-      dispatch(addToast({
-        type: 'error',
-        message,
-        duration: 3000,
-      }));
-    } finally {
-      dispatch(setLoading(false));
+    } catch {
+      // Toast handled by mutation
     }
   };
 
@@ -457,15 +229,6 @@ export const TeamsAdmin: React.FC = () => {
       }));
     }
   };
-
-  const visibleTeams = fetchedTeams.length > 0 ? fetchedTeams : teams;
-  const currentTeamRole = currentTeam?.role;
-  const canCreateTeam =
-    visibleTeams.length === 0 ||
-    visibleTeams.some((team) => team.role === 'LEAD' || team.role === 'MANAGER');
-  const canManageTeam = currentTeamRole === 'MANAGER' || currentTeamRole === 'LEAD';
-  const canInviteMembers = currentTeamRole === 'LEAD';
-  const canChangeRoles = currentTeamRole === 'MANAGER';
 
   return (
     <div className="teams-admin">
@@ -490,7 +253,7 @@ export const TeamsAdmin: React.FC = () => {
 
       {error && (
         <div className="alert alert-error">
-          {error}
+          {(error instanceof Error ? error.message : String(error)) || 'An error occurred'}
         </div>
       )}
 
@@ -532,7 +295,7 @@ export const TeamsAdmin: React.FC = () => {
                   className={`team-card ${
                     currentTeam?.id === team.id ? 'active' : ''
                   }`}
-                  onClick={() => loadTeamMembers(team.id)}
+                  onClick={() => setCurrentTeamId(team.id)}
                 >
                   <div className="team-card-header">
                     <h3>{team.name}</h3>
@@ -611,6 +374,65 @@ export const TeamsAdmin: React.FC = () => {
                   <button type="button" className="btn btn-primary btn-sm" onClick={copyIssuedCredentials}>
                     Copy Credentials
                   </button>
+                </div>
+              )}
+
+              {/* Pending Members Approval — visible only to LEADs */}
+              {canInviteMembers && pendingMembers.length > 0 && (
+                <div className="pending-members-section">
+                  <h3>Pending Approvals ({pendingMembers.length})</h3>
+                  <p className="pending-members-note">
+                    These users have accepted their invitation and subscribed. Review and approve or reject their membership.
+                  </p>
+                  {pendingLoading ? (
+                    <div className="teams-loading">
+                      <div className="spinner"></div>
+                      <p>Loading pending members...</p>
+                    </div>
+                  ) : (
+                    <div className="pending-members-list">
+                      {pendingMembers.map((pm) => (
+                        <div key={pm.userId} className="pending-member-card">
+                          <div className="pending-member-info">
+                            <p className="pending-member-name">{pm.name}</p>
+                            <p className="pending-member-email">{pm.email}</p>
+                            {pm.invitedAt && (
+                              <p className="pending-member-date">
+                                Invited: {new Date(pm.invitedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                          <div className="pending-member-actions">
+                            <button
+                              className="btn btn-primary btn-sm"
+                              disabled={approveMemberMutation.isPending || rejectMemberMutation.isPending}
+                              onClick={async () => {
+                                await approveMemberMutation.mutateAsync({
+                                  teamId: currentTeamId!,
+                                  userId: pm.userId,
+                                });
+                              }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="btn btn-danger btn-sm"
+                              disabled={approveMemberMutation.isPending || rejectMemberMutation.isPending}
+                              onClick={async () => {
+                                if (!window.confirm(`Reject ${pm.name} (${pm.email}) from joining this team?`)) return;
+                                await rejectMemberMutation.mutateAsync({
+                                  teamId: currentTeamId!,
+                                  userId: pm.userId,
+                                });
+                              }}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -693,26 +515,26 @@ export const TeamsAdmin: React.FC = () => {
                             ×
                           </button>
                         </div>
-                        <form onSubmit={handleEditMember}>
+                        <form onSubmit={handleEditMemberSubmit(handleEditMember)}>
                           <div className="form-group">
                             <label htmlFor="edit-member-name">Name *</label>
                             <input
                               id="edit-member-name"
                               type="text"
-                              className="form-input"
-                              value={editMemberForm.name}
-                              onChange={(e) => setEditMemberForm((prev) => ({ ...prev, name: e.target.value }))}
+                              className={`form-input${editMemberErrors.name ? ' form-input-error' : ''}`}
+                              {...registerEditMember('name')}
                             />
+                            {editMemberErrors.name && <span className="form-error">{editMemberErrors.name.message}</span>}
                           </div>
                           <div className="form-group">
                             <label htmlFor="edit-member-email">Email *</label>
                             <input
                               id="edit-member-email"
                               type="email"
-                              className="form-input"
-                              value={editMemberForm.email}
-                              onChange={(e) => setEditMemberForm((prev) => ({ ...prev, email: e.target.value }))}
+                              className={`form-input${editMemberErrors.email ? ' form-input-error' : ''}`}
+                              {...registerEditMember('email')}
                             />
+                            {editMemberErrors.email && <span className="form-error">{editMemberErrors.email.message}</span>}
                           </div>
                           <div className="modal-actions">
                             <button
@@ -760,19 +582,17 @@ export const TeamsAdmin: React.FC = () => {
                 ×
               </button>
             </div>
-            <form onSubmit={handleCreateTeam}>
+            <form onSubmit={handleCreateTeamSubmit(handleCreateTeam)}>
               <div className="form-group">
                 <label htmlFor="team-name">Team Name *</label>
                 <input
                   id="team-name"
                   type="text"
-                  className="form-input"
+                  className={`form-input${createTeamErrors.name ? ' form-input-error' : ''}`}
                   placeholder="e.g., Product Team"
-                  value={createTeamForm.name}
-                  onChange={(e) =>
-                    setCreateTeamForm({ ...createTeamForm, name: e.target.value })
-                  }
+                  {...registerCreateTeam('name')}
                 />
+                {createTeamErrors.name && <span className="form-error">{createTeamErrors.name.message}</span>}
               </div>
               <div className="form-group">
                 <label htmlFor="team-description">Description</label>
@@ -781,13 +601,7 @@ export const TeamsAdmin: React.FC = () => {
                   className="form-textarea"
                   placeholder="Team description (optional)"
                   rows={3}
-                  value={createTeamForm.description}
-                  onChange={(e) =>
-                    setCreateTeamForm({
-                      ...createTeamForm,
-                      description: e.target.value,
-                    })
-                  }
+                  {...registerCreateTeam('description')}
                 />
               </div>
               <div className="modal-actions">
@@ -820,19 +634,17 @@ export const TeamsAdmin: React.FC = () => {
                 ×
               </button>
             </div>
-            <form onSubmit={handleInviteMember}>
+            <form onSubmit={handleInviteMemberSubmit(handleInviteMember)}>
               <div className="form-group">
                 <label htmlFor="member-email">Email *</label>
                 <input
                   id="member-email"
                   type="email"
-                  className="form-input"
+                  className={`form-input${inviteMemberErrors.email ? ' form-input-error' : ''}`}
                   placeholder="member@example.com"
-                  value={inviteMemberForm.email}
-                  onChange={(e) =>
-                    setInviteMemberForm({ ...inviteMemberForm, email: e.target.value })
-                  }
+                  {...registerInviteMember('email')}
                 />
+                {inviteMemberErrors.email && <span className="form-error">{inviteMemberErrors.email.message}</span>}
               </div>
               <div className="form-info">
                 <p>

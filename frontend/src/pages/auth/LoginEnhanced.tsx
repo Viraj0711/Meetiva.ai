@@ -2,32 +2,37 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useAppDispatch } from '@/store/hooks';
-import { loginAsync } from '@/store/slices/authSlice';
+import { useLogin } from '@/hooks/useAuth';
+import { loginSchema, zodResolver, type SchemaOutput } from '@/lib/validation';
+
+type LoginFormData = SchemaOutput<typeof loginSchema>;
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const loginMutation = useLogin();
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setServerError('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
 
+  const onSubmit = async (data: LoginFormData) => {
+    setServerError('');
     try {
-      await dispatch(loginAsync(formData)).unwrap();
+      await loginMutation.mutateAsync(data);
       navigate('/dashboard');
     } catch (error: unknown) {
       const err = error as { message?: string };
       setServerError(err?.message || 'Invalid email or password.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -87,17 +92,18 @@ const LoginPage: React.FC = () => {
 
             {serverError && <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{serverError}</div>}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-white/75">Email address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
                   <Input
                     type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                    id="login-email"
+                    error={errors.email?.message}
                     className="pl-11"
                     placeholder="you@company.com"
+                    {...register('email')}
                   />
                 </div>
               </div>
@@ -108,10 +114,11 @@ const LoginPage: React.FC = () => {
                   <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                    id="login-password"
+                    error={errors.password?.message}
                     className="pl-11 pr-11"
                     placeholder="Enter your password"
+                    {...register('password')}
                   />
                   <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/35 transition hover:text-white">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -124,12 +131,12 @@ const LoginPage: React.FC = () => {
                   <input type="checkbox" className="rounded border-white/20 bg-white/5 text-cyan-400 focus:ring-cyan-400" />
                   Remember me
                 </label>
-                <Link to="/" className="text-cyan-300 transition hover:text-white">Forgot password?</Link>
+                <Link to="/reset-password" className="text-cyan-300 transition hover:text-white">Forgot password?</Link>
               </div>
 
-              <Button type="submit" size="lg" className="w-full" isLoading={isLoading}>
-                {isLoading ? 'Signing in' : 'Enter workspace'}
-                {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
+              <Button type="submit" size="lg" className="w-full" isLoading={isSubmitting}>
+                {isSubmitting ? 'Signing in' : 'Enter workspace'}
+                {!isSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}
               </Button>
             </form>
 
@@ -151,5 +158,4 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
-
 

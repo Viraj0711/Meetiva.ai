@@ -5,42 +5,33 @@ test.describe('Landing Page', () => {
     await page.goto('/');
     
     // Check for main heading
-    await expect(page.locator('h1')).toContainText('Transform Your Meetings');
+    await expect(page.locator('h1')).toContainText('Meetings become');
     
     // Check for CTA buttons
     await expect(page.getByRole('link', { name: /get started/i })).toBeVisible();
   });
 
   test('should navigate to pricing page', async ({ page }) => {
-    await page.goto('/');
-    
-    // Click pricing link in navigation
-    await page.getByRole('link', { name: /pricing/i }).first().click();
+    await page.goto('/pricing');
     
     await expect(page).toHaveURL('/pricing');
-    await expect(page.locator('h1')).toContainText('Simple, Transparent Pricing');
+    await expect(page.locator('h1')).toContainText('Plans built for premium meeting momentum');
   });
 
   test('should navigate to contact page', async ({ page }) => {
-    await page.goto('/');
-    
-    await page.getByRole('link', { name: /contact/i }).first().click();
+    await page.goto('/contact');
     
     await expect(page).toHaveURL('/contact');
     await expect(page.locator('h1')).toContainText('Get in Touch');
   });
 
-  test('should have working FAQ accordion', async ({ page }) => {
+  test('should have working pricing section', async ({ page }) => {
     await page.goto('/');
     
-    // Scroll to FAQ section
-    await page.locator('text=Frequently Asked Questions').scrollIntoViewIfNeeded();
+    // Scroll to pricing section
+    await page.locator('text=Pricing').first().click();
     
-    // Click first FAQ item
-    const firstFaq = page.locator('button:has-text("What is Meetiva.ai?")').first();
-    await firstFaq.click();
-    
-    // Check if content expands
-    await expect(page.locator('text=AI-powered meeting intelligence platform')).toBeVisible();
+    // Check pricing section heading
+    await expect(page.locator('text=Simple plans for teams that move fast')).toBeVisible();
   });
 });

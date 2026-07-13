@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis, Legend } from 'recharts';
-import { ArrowRight, Calendar, Clock, Sparkles, Users, CheckCircle2, Activity, Plus, FileText } from 'lucide-react';
+import { ArrowRight, Calendar, Clock, Sparkles, Users, CheckCircle2, Activity, Plus, FileText, Zap } from 'lucide-react';
 import { meetingService, actionItemService } from '@/services';
+import { useSubscription } from '@/hooks/useAuth';
+import { useAppDispatch } from '@/store/hooks';
+import { addToast } from '@/store/slices/uiSlice';
+import { Meeting, ActionItem } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
@@ -24,12 +28,39 @@ const statCards: StatCard[] = [
 
 const DashboardEnhanced: React.FC = () => {
   const [loading, setLoading] = useState(true);
+  const { data: subscription } = useSubscription();
+  const dispatch = useAppDispatch();
+  const lastNudgedCount = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Upgrade nudge: show a toast when the user hits 1 remaining meeting ──
+  // Resets on month boundary (when meetingCountThisMonth === 0) so users see
+  // the nudge again each month they approach the limit.
+  useEffect(() => {
+    if (!subscription || subscription.isSubscribed) return;
+
+    // Month reset — clear the ref so the nudge can fire again
+    if (subscription.meetingCountThisMonth === 0) {
+      lastNudgedCount.current = null;
+      return;
+    }
+
+    if (subscription.meetingsRemaining === 1 && lastNudgedCount.current !== 1) {
+      lastNudgedCount.current = 1;
+      dispatch(
+        addToast({
+          type: 'warning',
+          message: 'You have 1 meeting remaining this month. Upgrade to PRO for unlimited meetings.',
+          duration: 8000,
+        })
+      );
+    }
+  }, [subscription, dispatch]);
   const [stats, setStats] = useState({ totalMeetings: 0, completedActions: 0, averageDuration: 0, upcomingMeetings: 0 });
   const [weeklyData, setWeeklyData] = useState<{ name: string; meetings: number; actions: number }[]>([]);
   const [actionItemsByStatus, setActionItemsByStatus] = useState<{ name: string; value: number; color: string }[]>([]);
-  const [recentMeetings, setRecentMeetings] = useState<any[]>([]);
-  const [upcomingActions, setUpcomingActions] = useState<any[]>([]);
+  const [recentMeetings, setRecentMeetings] = useState<Meeting[]>([]);
+  const [upcomingActions, setUpcomingActions] = useState<ActionItem[]>([]);
   const actionCount = upcomingActions.length;
 
   useEffect(() => {
@@ -39,29 +70,27 @@ const DashboardEnhanced: React.FC = () => {
         const [meetingStats, meetings, actionItems] = await Promise.all([
           meetingService.getMeetingStats(),
           meetingService.getMeetings({ limit: 8 }),
-          actionItemService.getActionItems({ limit: 120 }),
+          actionItemService.getActionItems({ limit: 100 }),
         ]);
 
-        const items = actionItems.data || [];
+        const items: ActionItem[] = actionItems.data || [];
         setStats({
           totalMeetings: meetingStats.total || 0,
-          completedActions: items.filter((item) => item.status === 'completed').length,
+          completedActions: items.filter((item: ActionItem) => item.status === 'completed').length,
           averageDuration: meetingStats.avgDuration || 0,
-          upcomingMeetings: meetingStats.upcoming || 0,
+          upcomingMeetings: meetingStats.processingMeetings || 0,
         });
 
-        setWeeklyData(meetingStats.weeklyActivity || [
-          { name: 'Mon', meetings: 0, actions: 0 },
-          { name: 'Tue', meetings: 0, actions: 0 },
-          { name: 'Wed', meetings: 0, actions: 0 },
-          { name: 'Thu', meetings: 0, actions: 0 },
-          { name: 'Fri', meetings: 0, actions: 0 },
-        ]);
+        setWeeklyData(meetingStats.trends?.map((t) => ({
+          name: t.month,
+          meetings: t.count,
+          actions: 0,
+        })) || []);
 
-        const completed = items.filter((item) => item.status === 'completed').length;
-        const inProgress = items.filter((item) => item.status === 'in_progress').length;
-        const pending = items.filter((item) => item.status === 'pending').length;
-        const overdue = items.filter((item) => item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'completed').length;
+        const completed = items.filter((item: ActionItem) => item.status === 'completed').length;
+        const inProgress = items.filter((item: ActionItem) => item.status === 'in_progress').length;
+        const pending = items.filter((item: ActionItem) => item.status === 'pending').length;
+        const overdue = items.filter((item: ActionItem) => item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'completed').length;
 
         setActionItemsByStatus([
           { name: 'Completed', value: completed, color: '#30d5f6' },
@@ -70,8 +99,8 @@ const DashboardEnhanced: React.FC = () => {
           { name: 'Overdue', value: overdue, color: '#fb7185' },
         ]);
 
-        setRecentMeetings((meetings.data || []).slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 4));
-        setUpcomingActions(items.filter((item) => item.status !== 'completed').sort((a, b) => {
+        setRecentMeetings((meetings.data || []).slice().sort((a: Meeting, b: Meeting) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 4));
+        setUpcomingActions(items.filter((item: ActionItem) => item.status !== 'completed').sort((a: ActionItem, b: ActionItem) => {
           if (!a.dueDate) return 1;
           if (!b.dueDate) return -1;
           return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
@@ -109,8 +138,22 @@ const DashboardEnhanced: React.FC = () => {
             <p className="max-w-2xl text-lg leading-8 text-white/60">Track summaries, action items, and calendar sync in a cinematic workspace designed to feel edited, not assembled.</p>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/40">Signal</p>
-                <p className="mt-2 text-2xl font-semibold text-white">Live</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-white/40">
+                  <Zap className="-mt-0.5 mr-1 inline h-3 w-3 text-cyan-300" />
+                  Meetings left
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-white">
+                  {!subscription ? (
+                    <span className="text-white/30">—</span>
+                  ) : subscription.isSubscribed ? (
+                    <span className="text-cyan-300">Unlimited</span>
+                  ) : (
+                    <span className="text-cyan-300">{subscription.meetingsRemaining}</span>
+                  )}
+                </p>
+                <p className="mt-1 text-xs text-white/40">
+                  {!subscription ? 'Loading…' : subscription.isSubscribed ? `on ${subscription.tier}` : 'this month'}
+                </p>
               </div>
               <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-white/40">Completion</p>

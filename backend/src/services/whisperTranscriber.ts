@@ -47,13 +47,22 @@ export const transcribeWithWhisper = async (
   form.append('model', 'whisper-1');
   form.append('response_format', 'text');
 
-  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: form,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120_000); // 2 minutes for up to 25 MB files
+
+  let response: Response;
+  try {
+    response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: form,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const text = await response.text();
 

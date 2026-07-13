@@ -84,3 +84,7 @@ backend/prisma/migrations/
 
 # ─── Miscellaneous ───────────────────────────────────────────────────────────
 ai-system/
+
+# ─── AI Agent Skills (internal use only) ─────────────────────────────────────
+.claude/
+.specify/

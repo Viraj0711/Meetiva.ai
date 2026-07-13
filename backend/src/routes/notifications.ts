@@ -1,63 +1,79 @@
 import { Router, Response } from 'express';
-import { query, validationResult } from 'express-validator';
-import prisma from '../lib/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { apiLimiter } from '../lib/rateLimiters';
+import { validate, notificationQuerySchema } from '../lib/validation';
+import { asyncHandler } from '../lib/errors';
+import Notification from '../models/Notification';
+import { Types } from 'mongoose';
 
 const router = Router();
 
+// Validate all :id route params as MongoDB ObjectId
+router.param('id', (req, res, next, value) => {
+  if (!Types.ObjectId.isValid(value)) {
+    return res.status(400).json({ message: 'Invalid id: must be a valid ObjectId' });
+  }
+  next();
+});
+
 router.get(
   '/',
+  apiLimiter,
   authenticate,
-  [query('limit').optional().isInt({ min: 1, max: 100 })],
-  async (req: AuthRequest, res: Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ message: 'Invalid query parameters', errors: errors.array() });
-    }
+  validate(notificationQuerySchema, 'query'),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { limit, page } = req.query as unknown as { limit: number; page: number };
+    const skip = (page - 1) * limit;
 
-    const limit = req.query.limit ? Number(req.query.limit) : 25;
+    const [notifications, total] = await Promise.all([
+      Notification.find({ userId: new Types.ObjectId(req.userId!) })
+        .populate('actionItemId', 'title dueDate status')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Notification.countDocuments({ userId: new Types.ObjectId(req.userId!) }),
+    ]);
 
-    try {
-      const notifications = await prisma.notification.findMany({
-        where: { userId: req.userId! },
-        include: {
-          actionItem: {
-            select: { id: true, title: true, dueDate: true, status: true },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-      });
+    const data = notifications.map((n: any) => ({
+      ...n,
+      id: n._id.toString(),
+      userId: n.userId.toString(),
+      actionItemId: n.actionItemId?._id?.toString() || n.actionItemId?.toString() || null,
+      actionItem: n.actionItemId || undefined,
+    }));
 
-      return res.json({ data: notifications });
-    } catch (error) {
-      console.error('Fetch notifications failed:', error);
-      return res.status(500).json({ message: 'Failed to fetch notifications' });
-    }
-  }
+    return res.json({
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  })
 );
 
-router.patch('/:id/read', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const target = await prisma.notification.findFirst({
-      where: { id: req.params.id, userId: req.userId! },
-      select: { id: true },
-    });
+router.patch('/:id/read', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const target = await Notification.findOne({
+    _id: new Types.ObjectId(req.params.id),
+    userId: new Types.ObjectId(req.userId!),
+  })
+    .select('_id')
+    .lean();
 
-    if (!target) {
-      return res.status(404).json({ message: 'Notification not found' });
-    }
-
-    const updated = await prisma.notification.update({
-      where: { id: target.id },
-      data: { isRead: true, readAt: new Date() },
-    });
-
-    return res.json({ data: updated, message: 'Notification marked as read' });
-  } catch (error) {
-    console.error('Mark notification as read failed:', error);
-    return res.status(500).json({ message: 'Failed to update notification' });
+  if (!target) {
+    return res.status(404).json({ message: 'Notification not found' });
   }
-});
+
+  const updated = await Notification.findByIdAndUpdate(
+    target._id,
+    { $set: { isRead: true, readAt: new Date() } },
+    { returnDocument: 'after' }
+  ).lean();
+
+  return res.json({ data: updated ? { ...updated, id: updated._id.toString() } : null, message: 'Notification marked as read' });
+}));
 
 export default router;

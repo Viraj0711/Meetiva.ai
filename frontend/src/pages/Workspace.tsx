@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { CalendarClock, CheckCircle2, Link2, Loader2, PlusCircle, Rocket, Users } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { useAppDispatch } from '@/store/hooks';
 import { addToast } from '@/store/slices/uiSlice';
-import { calendarService, workspaceService } from '@/services';
+import { integrationService, workspaceService } from '@/services';
+import { createEventSchema, zodResolver } from '@/lib/validation';
 import {
   CalendarConnectionStatus,
   CalendarEvent,
@@ -46,6 +49,28 @@ const Workspace: React.FC = () => {
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   });
 
+  type CalendarFormData = {
+    title: string;
+    description?: string;
+    startTime: string;
+    endTime: string;
+  };
+
+  const {
+    register,
+    handleSubmit: handleEventSubmit,
+    formState: { errors: eventErrors },
+    reset: resetEventForm,
+  } = useForm<CalendarFormData>({
+    resolver: zodResolver(createEventSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      startTime: '',
+      endTime: '',
+    },
+  });
+
   const googleConnectionQueryFlag = searchParams.get('googleConnected');
 
   const upcomingDeadlines = useMemo(
@@ -64,14 +89,14 @@ const Workspace: React.FC = () => {
       setLoading(true);
       const [overviewData, status] = await Promise.all([
         workspaceService.getOverview(),
-        calendarService.getConnectionStatus(),
+        integrationService.getConnectionStatus(),
       ]);
 
       setOverview(overviewData);
       setConnection(status);
 
       if (status.connected) {
-        const upcoming = await calendarService.getUpcomingEvents();
+        const upcoming = await integrationService.getUpcomingEvents();
         setEvents(upcoming);
       } else {
         setEvents([]);
@@ -97,27 +122,23 @@ const Workspace: React.FC = () => {
     }
   }, [googleConnectionQueryFlag]);
 
-  const handleConnectGoogle = (forceReconnect = false) => {
+  const handleConnectGoogle = async (forceReconnect = false) => {
     try {
       setIsConnecting(true);
-      window.location.href = calendarService.getGoogleConnectUrl(forceReconnect);
+      const authUrl = await integrationService.getGoogleConnectUrl(forceReconnect);
+      window.location.href = authUrl;
     } catch (error: any) {
       setIsConnecting(false);
       dispatch(addToast({ type: 'error', message: error.message || 'Unable to start OAuth flow.' }));
     }
   };
 
-  const handleCreateEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!eventForm.startTime) {
-      dispatch(addToast({ type: 'error', message: 'Please select appointment time.' }));
-      return;
-    }
-
+  const onCreateEvent = async (data: CalendarFormData) => {
     try {
       setIsCreatingEvent(true);
-      await calendarService.createEvent(eventForm);
+      await integrationService.createEvent(data);
       dispatch(addToast({ type: 'success', message: 'Event created in Google Calendar.' }));
+      resetEventForm();
       setEventForm((prev: CreateCalendarEventRequest) => ({
         ...prev,
         title: '',
@@ -125,7 +146,7 @@ const Workspace: React.FC = () => {
         startTime: '',
         endTime: '',
       }));
-      const upcoming = await calendarService.getUpcomingEvents();
+      const upcoming = await integrationService.getUpcomingEvents();
       setEvents(upcoming);
     } catch (error: any) {
       dispatch(addToast({ type: 'error', message: error.message || 'Event creation failed.' }));
@@ -150,40 +171,40 @@ const Workspace: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="rounded-2xl bg-gradient-to-r text-emerald-800 to-lime-700 p-6 text-white shadow-lg">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Team Workspace</h1>
-        <p className="mt-2 text-emerald-800">
+      <div className="rounded-2xl bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.14),transparent_26%),rgba(255,255,255,0.03)] p-6 text-white shadow-lg">
+        <h1 className="text-3xl font-bold tracking-tight text-white">Team Workspace</h1>
+        <p className="mt-2 text-white/65">
           Shared execution center for project momentum, deadlines, and calendar coordination.
         </p>
       </div>
 
       {loading ? (
         <div className="flex h-48 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-800" />
+          <Loader2 className="h-8 w-8 animate-spin text-cyan-300" />
         </div>
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="p-5 text-emerald-800">
+            <Card className="p-5 text-cyan-300">
               <p className="text-sm text-muted-foreground">Team Members</p>
-              <div className="mt-2 flex items-center gap-2 text-3xl font-bold text-emerald-800">
+              <div className="mt-2 flex items-center gap-2 text-3xl font-bold text-cyan-300">
                 <Users className="h-7 w-7" />
                 {overview.teamSize}
               </div>
             </Card>
-            <Card className="p-5 border-emerald-200/60">
+            <Card className="p-5">
               <p className="text-sm text-muted-foreground">Cumulative Velocity</p>
-              <div className="mt-2 flex items-center gap-2 text-3xl font-bold text-emerald-700">
+              <div className="mt-2 flex items-center gap-2 text-3xl font-bold text-white">
                 <Rocket className="h-7 w-7" />
                 {overview.cumulativeVelocity}/week
               </div>
             </Card>
-            <Card className="p-5 text-emerald-800">
+            <Card className="p-5 text-cyan-300">
               <p className="text-sm text-muted-foreground">Google Calendar</p>
               <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
                 {connection.connected ? (
                   <>
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600" /> Connected
+                    <CheckCircle2 className="h-5 w-5 text-cyan-300" /> Connected
                   </>
                 ) : (
                   <>
@@ -208,34 +229,25 @@ const Workspace: React.FC = () => {
                   </Button>
                 )}
               </div>
-              <form onSubmit={handleCreateEvent} className="space-y-3">
-                <input
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+              <form onSubmit={handleEventSubmit(onCreateEvent)} className="space-y-3">
+                <Input
+                  id="event-title"
                   placeholder="Event title"
-                  value={eventForm.title}
-                  onChange={(e) =>
-                    setEventForm((prev: CreateCalendarEventRequest) => ({
-                      ...prev,
-                      title: e.target.value,
-                    }))
-                  }
+                  error={eventErrors.title?.message}
                   disabled={!connection.connected || isCreatingEvent}
-                  required
+                  {...register('title')}
                 />
                 <textarea
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                   placeholder="Description"
-                  value={eventForm.description}
-                  onChange={(e) =>
-                    setEventForm((prev: CreateCalendarEventRequest) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
                   disabled={!connection.connected || isCreatingEvent}
+                  {...register('description')}
                 />
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Appointment Time</label>
+                  {eventErrors.startTime && (
+                    <p className="text-xs text-red-400">{eventErrors.startTime.message}</p>
+                  )}
                   <button
                     type="button"
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-left text-sm select-none"
@@ -251,26 +263,22 @@ const Workspace: React.FC = () => {
                     type="datetime-local"
                     className="sr-only"
                     value={eventForm.startTime}
-                    onChange={(e) =>
-                      setEventForm((prev: CreateCalendarEventRequest) => {
-                        const nextStart = e.target.value;
-                        const endDate = new Date(nextStart);
-                        endDate.setMinutes(endDate.getMinutes() + 30);
-
-                        return {
-                          ...prev,
-                          startTime: nextStart,
-                          endTime: toLocalDateTimeValue(endDate),
-                        };
-                      })
-                    }
+                    onChange={(e) => {
+                      const nextStart = e.target.value;
+                      const endDate = new Date(nextStart);
+                      endDate.setMinutes(endDate.getMinutes() + 30);
+                      setEventForm((prev: CreateCalendarEventRequest) => ({
+                        ...prev,
+                        startTime: nextStart,
+                        endTime: toLocalDateTimeValue(endDate),
+                      }));
+                    }}
                     disabled={!connection.connected || isCreatingEvent}
                   />
                 </div>
                 <Button
                   type="submit"
                   className="w-full"
-                  variant="accent"
                   isLoading={isCreatingEvent}
                   disabled={!connection.connected || isCreatingEvent}
                 >
@@ -289,10 +297,10 @@ const Workspace: React.FC = () => {
                   events.map((event) => (
                     <div
                       key={event.id}
-                      className="rounded-lg border border-slate-200 bg-slate-50 p-3 transition hover:translate-x-1"
+                      className="rounded-lg border border-white/10 bg-white/[0.03] p-3 transition hover:translate-x-1"
                     >
-                      <p className="font-medium text-slate-900">{event.summary || 'Untitled event'}</p>
-                      <p className="text-xs text-slate-600">
+                      <p className="font-medium text-white">{event.summary || 'Untitled event'}</p>
+                      <p className="text-xs text-white/55">
                         {event.start?.dateTime || event.start?.date || '-'}
                       </p>
                     </div>
@@ -331,7 +339,7 @@ const Workspace: React.FC = () => {
                   upcomingDeadlines.map((item: WorkspaceDeadline) => (
                     <div key={item.id} className="rounded-lg border p-3">
                       <div className="flex items-center gap-2 font-medium">
-                        <CalendarClock className="h-4 w-4 text-emerald-800" />
+                        <CalendarClock className="h-4 w-4 text-cyan-300" />
                         {item.title}
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">

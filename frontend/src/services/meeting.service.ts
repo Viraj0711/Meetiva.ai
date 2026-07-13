@@ -1,4 +1,5 @@
-import { apiClient } from './api.client';
+import { apiClient, getAccessToken } from './api.client';
+import { API_BASE_URL } from './api.config';
 import {
   Meeting,
   MeetingSummary,
@@ -72,8 +73,7 @@ export const meetingService = {
     if (description) formData.append('description', description);
     if (participants) formData.append('participants', JSON.stringify(participants));
 
-    const token = localStorage.getItem('token');
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+    const token = getAccessToken();
     
     const response = await fetch(`${API_BASE_URL}/meetings/upload`, {
       method: 'POST',
@@ -132,10 +132,11 @@ export const meetingService = {
 
   /**
    * Get meeting action items
+   * Backend returns { data: ActionItem[], pagination: ... } — extract the array.
    */
   getMeetingActionItems: async (meetingId: string): Promise<ActionItem[]> => {
-    const response = await apiClient.get<ActionItem[]>(`/meetings/${meetingId}/action-items`);
-    return response;
+    const response = await apiClient.get<{ data: ActionItem[] }>(`/meetings/${meetingId}/action-items`);
+    return response.data;
   },
 
   /**

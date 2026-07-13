@@ -29,7 +29,9 @@
 
     /* Paths */
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@shared": ["../backend/src/lib/schemas"],
+      "@shared/*": ["../backend/src/lib/*"]
     }
   },
   "include": ["src"],
