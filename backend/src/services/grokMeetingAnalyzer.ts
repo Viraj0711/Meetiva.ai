@@ -91,12 +91,21 @@ const fallbackFromTranscript = (transcript: string): GrokAnalysisResult => {
 const GROK_FETCH_TIMEOUT_MS = parseInt(process.env.GROK_FETCH_TIMEOUT_MS || '60000', 10);
 
 export const analyzeTranscriptWithGrok = async (transcript: string): Promise<GrokAnalysisResult> => {
-  const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
-  const baseUrl = process.env.XAI_BASE_URL || 'https://api.x.ai/v1';
-  const model = process.env.GROK_MODEL || 'grok-2-latest';
+  const grokApiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
+  const cerebrasApiKey = process.env.CEREBRAS_API_KEY;
+
+  const useCerebras = !grokApiKey && !!cerebrasApiKey;
+
+  const apiKey = useCerebras ? cerebrasApiKey : (grokApiKey ?? '');
+  const baseUrl = useCerebras
+    ? (process.env.CEREBRAS_BASE_URL || 'https://api.cerebras.ai/v1')
+    : (process.env.XAI_BASE_URL || 'https://api.x.ai/v1');
+  const model = useCerebras
+    ? (process.env.CEREBRAS_MODEL || 'gemma-4-9b-it')
+    : (process.env.GROK_MODEL || 'grok-2-latest');
 
   if (!apiKey) {
-    throw new Error('Missing GROK_API_KEY (or XAI_API_KEY)');
+    throw new Error('Missing GROK_API_KEY (or XAI_API_KEY) or CEREBRAS_API_KEY');
   }
 
   const messages: GrokMessage[] = [
@@ -137,7 +146,8 @@ export const analyzeTranscriptWithGrok = async (transcript: string): Promise<Gro
   const payload = (await response.json().catch(() => null)) as GrokChatCompletionResponse | null;
 
   if (!response.ok) {
-    const errorDetails = `Grok API error ${response.status}: ${JSON.stringify(payload)}`;
+    const provider = useCerebras ? 'Cerebras' : 'Grok';
+    const errorDetails = `${provider} API error ${response.status}: ${JSON.stringify(payload)}`;
     console.error(errorDetails);
     throw new Error(errorDetails);
   }
