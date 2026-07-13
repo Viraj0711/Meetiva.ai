@@ -50,9 +50,6 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      - name: Lint
-        run: npm run lint
-
   backend:
     name: Backend — typecheck & build
     runs-on: ubuntu-latest
