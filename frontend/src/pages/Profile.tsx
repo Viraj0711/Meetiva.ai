@@ -1,11 +1,16 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { useAppSelector } from '@/store/hooks';
-import { integrationService } from '@/services';
+import { authService, integrationService } from '@/services';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store';
+import { loginSuccess } from '@/store/slices/authSlice';
+import { updateProfileSchema, zodResolver, type SchemaOutput } from '@/lib/validation';
 import {
   User,
   Mail,
@@ -18,7 +23,7 @@ import {
   Shield,
   AlertCircle,
 } from 'lucide-react';
-import { Integration as APIIntegration, IntegrationType } from '@/types/integration.types';
+import { IntegrationType } from '@/types/integration.types';
 
 interface LocalIntegration {
   id: string;
@@ -26,60 +31,42 @@ interface LocalIntegration {
   description: string;
   icon: string;
   connected: boolean;
-  category: 'project' | 'calendar' | 'communication';
+  category: 'calendar';
 }
 
-const integrationMetadata: Record<string, Omit<LocalIntegration, 'id' | 'connected'>> = {
-  [IntegrationType.JIRA]: {
-    name: 'JIRA',
-    description: 'Automatically create tickets from action items',
-    icon: '',
-    category: 'project',
-  },
-  [IntegrationType.TRELLO]: {
-    name: 'Trello',
-    description: 'Sync tasks to Trello boards',
-    icon: '',
-    category: 'project',
-  },
-  [IntegrationType.ASANA]: {
-    name: 'Asana',
-    description: 'Create Asana tasks from meetings',
-    icon: '',
-    category: 'project',
-  },
-  'google-calendar': {
-    name: 'Google Calendar',
-    description: 'Schedule meetings and set reminders',
-    icon: '',
-    category: 'calendar',
-  },
-  'outlook': {
-    name: 'Outlook Calendar',
-    description: 'Integrate with Microsoft Outlook',
-    icon: '',
-    category: 'calendar',
-  },
-  [IntegrationType.SLACK]: {
-    name: 'Slack',
-    description: 'Send meeting summaries to Slack channels',
-    icon: '',
-    category: 'communication',
-  },
-  'teams': {
-    name: 'Microsoft Teams',
-    description: 'Share updates with Teams channels',
-    icon: '',
-    category: 'communication',
-  },
-};
-
 const Profile: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
   const user = useAppSelector((state) => state.auth.user);
   const [activeTab, setActiveTab] = useState<'account' | 'integrations' | 'notifications'>('account');
   const [integrations, setIntegrations] = useState<LocalIntegration[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [profileForm, setProfileForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    company: '',
+    jobTitle: '',
+  });
+
+  type ProfileFormData = SchemaOutput<typeof updateProfileSchema>;
+
+  const {
+    register: registerProfile,
+    handleSubmit: handleProfileSubmit,
+    formState: { errors: profileErrors, isSubmitting: isSavingProfile },
+    reset: resetProfileForm,
+  } = useForm<ProfileFormData>({
+    resolver: zodResolver(updateProfileSchema),
+    defaultValues: { name: '', email: '' },
+  });
+
+  useEffect(() => {
+    const name = user?.name || '';
+    const email = user?.email || '';
+    resetProfileForm({ name, email });
+  }, [user?.name, user?.email, resetProfileForm]);
 
   useEffect(() => {
     if (activeTab === 'integrations') {
@@ -91,29 +78,21 @@ const Profile: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const apiIntegrations = await integrationService.getIntegrations();
-      
-      const allIntegrations: LocalIntegration[] = Object.keys(integrationMetadata).map(key => {
-        const metadata = integrationMetadata[key];
-        const apiIntegration = apiIntegrations.find((i: APIIntegration) => i.type === key);
-        return {
-          id: key,
-          ...metadata,
-          connected: apiIntegration?.isConnected || false,
-        };
-      });
-      
+      // Check Google Calendar status directly via the calendar endpoint
+      const status = await integrationService.getGoogleCalendarStatus();
+      const allIntegrations: LocalIntegration[] = [{
+        id: IntegrationType.CALENDAR,
+        name: 'Google Calendar',
+        description: 'Schedule meetings and set reminders',
+        icon: '',
+        category: 'calendar',
+        connected: status.isConnected,
+      }];
       setIntegrations(allIntegrations);
     } catch (err) {
       console.error('Failed to load integrations:', err);
       setError('Failed to load integrations. Please try again later.');
-      setIntegrations(
-        Object.keys(integrationMetadata).map(key => ({
-          id: key,
-          ...integrationMetadata[key],
-          connected: false,
-        }))
-      );
+      setIntegrations([]);
     } finally {
       setLoading(false);
     }
@@ -124,7 +103,6 @@ const Profile: React.FC = () => {
     actionItemReminders: true,
     overdueAlerts: true,
     weeklyReports: false,
-    slackNotifications: false,
     meetingProcessed: true,
   });
 
@@ -133,26 +111,22 @@ const Profile: React.FC = () => {
     if (!integration) return;
 
     try {
-      setIntegrations(integrations.map(i =>
-        i.id === id ? { ...i, connected: !i.connected } : i
-      ));
-
       if (integration.connected) {
-        await integrationService.deleteIntegration(id);
+        // Disconnect
+        await integrationService.disconnectGoogleCalendar();
+        setIntegrations(integrations.map(i =>
+          i.id === id ? { ...i, connected: false } : i
+        ));
       } else {
-        await integrationService.createIntegration({
-          name: integration.name,
-          type: id as IntegrationType,
-          config: {},
-        });
+        // Connect — redirect to Google OAuth
+        const { authUrl } = await integrationService.getGoogleAuthUrl('');
+        window.location.href = authUrl;
       }
     } catch (err) {
       console.error('Failed to toggle integration:', err);
-      // Revert on error
-      setIntegrations(integrations.map(i =>
-        i.id === id ? { ...i, connected: integration.connected } : i
-      ));
       setError('Failed to update integration. Please try again.');
+      // Reload status on failure to revert UI state
+      loadIntegrations();
     }
   };
 
@@ -165,6 +139,34 @@ const Profile: React.FC = () => {
   };
 
   const connectedCount = integrations.filter(i => i.connected).length;
+
+  const handleProfileChange = (field: keyof typeof profileForm, value: string) => {
+    setProfileForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleProfileCancel = () => {
+    const name = user?.name || '';
+    const email = user?.email || '';
+    resetProfileForm({ name, email });
+    setProfileMessage(null);
+  };
+
+  const onProfileSave = async (data: ProfileFormData) => {
+    try {
+      setProfileMessage(null);
+
+      const response = await authService.updateProfile({
+        name: data.name || user?.name || '',
+        email: data.email || user?.email || '',
+      });
+
+      // response.token is automatically stored in-memory by authService.updateProfile
+      dispatch(loginSuccess({ user: response.user, token: response.token }));
+      setProfileMessage('Profile updated successfully.');
+    } catch (err: any) {
+      setProfileMessage(err?.response?.data?.message || 'Failed to save profile changes.');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -187,8 +189,8 @@ const Profile: React.FC = () => {
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Zap className="w-6 h-6 text-blue-600" />
+            <div className="w-12 h-12 text-cyan-300 rounded-lg flex items-center justify-center">
+              <Zap className="w-6 h-6 text-cyan-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">{connectedCount}</p>
@@ -198,8 +200,8 @@ const Profile: React.FC = () => {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <Bell className="w-6 h-6 text-green-600" />
+            <div className="w-12 h-12 bg-white/[0.06] rounded-lg flex items-center justify-center">
+              <Bell className="w-6 h-6 text-cyan-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">
@@ -211,8 +213,8 @@ const Profile: React.FC = () => {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Shield className="w-6 h-6 text-purple-600" />
+            <div className="w-12 h-12 bg-white/[0.06] rounded-lg flex items-center justify-center">
+              <Shield className="w-6 h-6 text-violet-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">Secure</p>
@@ -269,49 +271,69 @@ const Profile: React.FC = () => {
               <User className="w-5 h-5 text-primary" />
               <h2 className="text-xl font-bold">Personal Information</h2>
             </div>
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium mb-2">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    First Name
-                  </label>
-                  <Input type="text" placeholder="John" defaultValue={user?.name?.split(' ')[0]} />
+            <form onSubmit={handleProfileSubmit(onProfileSave)} className="space-y-4">
+              {profileMessage && (
+                <div className="rounded-lg border border-input bg-background px-3 py-2 text-sm">
+                  {profileMessage}
                 </div>
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium mb-2">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    Last Name
-                  </label>
-                  <Input type="text" placeholder="Smith" defaultValue={user?.name?.split(' ')[1]} />
-                </div>
+              )}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium mb-2">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  Full Name
+                </label>
+                <Input
+                  type="text"
+                  id="profile-name"
+                  error={profileErrors.name?.message}
+                  placeholder="John Smith"
+                  {...registerProfile('name')}
+                />
               </div>
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium mb-2">
                   <Mail className="w-4 h-4 text-muted-foreground" />
                   Email Address
                 </label>
-                <Input type="email" placeholder="john@example.com" defaultValue={user?.email} />
+                <Input
+                  type="email"
+                  id="profile-email"
+                  error={profileErrors.email?.message}
+                  placeholder="john@example.com"
+                  {...registerProfile('email')}
+                />
               </div>
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium mb-2">
                   <Building className="w-4 h-4 text-muted-foreground" />
                   Company
                 </label>
-                <Input type="text" placeholder="Acme Inc." />
+                <Input
+                  type="text"
+                  placeholder="Acme Inc."
+                  value={profileForm.company}
+                  onChange={(e) => handleProfileChange('company', e.target.value)}
+                />
               </div>
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium mb-2">
                   <Briefcase className="w-4 h-4 text-muted-foreground" />
                   Job Title
                 </label>
-                <Input type="text" placeholder="Product Manager" />
+                <Input
+                  type="text"
+                  placeholder="Product Manager"
+                  value={profileForm.jobTitle}
+                  onChange={(e) => handleProfileChange('jobTitle', e.target.value)}
+                />
               </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <Button variant="outline">Cancel</Button>
-              <Button>Save Changes</Button>
-            </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <Button type="button" variant="outline" onClick={handleProfileCancel}>Cancel</Button>
+                <Button type="submit" disabled={isSavingProfile}>
+                  {isSavingProfile ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
           </Card>
 
           <Card className="p-6">
@@ -332,11 +354,11 @@ const Profile: React.FC = () => {
                 <label className="block text-sm font-medium mb-2">Confirm New Password</label>
                 <Input type="password" placeholder="" />
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-900">
+              <div className="text-cyan-300 border border-white/10 bg-white/[0.03] rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-cyan-300 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-cyan-300">
                   <p className="font-medium mb-1">Password Requirements:</p>
-                  <ul className="list-disc list-inside space-y-1 text-blue-800">
+                  <ul className="list-disc list-inside space-y-1 text-cyan-300">
                     <li>At least 8 characters long</li>
                     <li>Include uppercase and lowercase letters</li>
                     <li>Include at least one number</li>
@@ -393,16 +415,15 @@ const Profile: React.FC = () => {
       {/* Integrations Tab */}
       {activeTab === 'integrations' && (
         <div className="space-y-6">
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+          <Card className="p-6 bg-gradient-to-br from-purple-900/20 to-violet-900/20 border border-white/10">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Zap className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/20">
+                <Zap className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h3 className="font-bold text-lg mb-1">Connect Your Favorite Tools</h3>
-                <p className="text-sm text-gray-700">
-                  Integrate Meetiva with your project management and communication tools to create a seamless workflow. 
-                  Action items automatically sync, and meeting summaries are shared with your team.
+                <h3 className="font-bold text-lg mb-1 text-white">Connect Your Favorite Tools</h3>
+                <p className="text-sm text-white/60">
+                  Connect Meetiva to Google Calendar to schedule meetings and stay synced with your timeline.
                 </p>
               </div>
             </div>
@@ -436,45 +457,9 @@ const Profile: React.FC = () => {
             </Card>
           )}
 
-          {/* Project Management */}
+          {/* Calendar */}
           {!loading && !error && (
           <>
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Briefcase className="w-5 h-5 text-muted-foreground" />
-              <h2 className="text-lg font-bold">Project Management</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {getIntegrationsByCategory('project').map((integration) => (
-                <Card key={integration.id} className="p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="text-4xl">{integration.icon}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold truncate">{integration.name}</h3>
-                          {integration.connected && (
-                            <Badge variant="default" className="flex-shrink-0">Connected</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground leading-snug">{integration.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    variant={integration.connected ? 'outline' : 'default'}
-                    size="sm"
-                    onClick={() => handleToggleIntegration(integration.id)}
-                    className="w-full"
-                  >
-                    {integration.connected ? 'Disconnect' : 'Connect'}
-                  </Button>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          {/* Calendar */}
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Globe className="w-5 h-5 text-muted-foreground" />
@@ -482,42 +467,6 @@ const Profile: React.FC = () => {
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {getIntegrationsByCategory('calendar').map((integration) => (
-                <Card key={integration.id} className="p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="text-4xl">{integration.icon}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold truncate">{integration.name}</h3>
-                          {integration.connected && (
-                            <Badge variant="default" className="flex-shrink-0">Connected</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground leading-snug">{integration.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    variant={integration.connected ? 'outline' : 'default'}
-                    size="sm"
-                    onClick={() => handleToggleIntegration(integration.id)}
-                    className="w-full"
-                  >
-                    {integration.connected ? 'Disconnect' : 'Connect'}
-                  </Button>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          {/* Communication */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Bell className="w-5 h-5 text-muted-foreground" />
-              <h2 className="text-lg font-bold">Communication</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {getIntegrationsByCategory('communication').map((integration) => (
                 <Card key={integration.id} className="p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-3 flex-1">
@@ -651,30 +600,6 @@ const Profile: React.FC = () => {
             </div>
           </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <Bell className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-bold">App Notifications</h2>
-            </div>
-            <div className="flex items-center justify-between py-4">
-              <div className="flex-1">
-                <p className="font-medium">Slack Notifications</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Send meeting summaries to connected Slack channels
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer ml-4">
-                <input
-                  type="checkbox"
-                  checked={notifications.slackNotifications}
-                  onChange={() => handleNotificationToggle('slackNotifications')}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-              </label>
-            </div>
-          </Card>
-
           <Card className="p-6 bg-amber-50 border-amber-200">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -694,3 +619,4 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+

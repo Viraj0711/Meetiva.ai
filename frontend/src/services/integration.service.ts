@@ -1,71 +1,68 @@
+import { CalendarConnectionStatus, CalendarEvent, CreateCalendarEventRequest } from '@/types';
 import { apiClient } from './api.client';
-import {
-  Integration,
-  CreateIntegrationRequest,
-  UpdateIntegrationRequest,
-} from '@/types';
 
 export const integrationService = {
-  /**
-   * Get all integrations
-   */
-  getIntegrations: async (): Promise<Integration[]> => {
-    const response = await apiClient.get<Integration[]>('/integrations');
+  /** Get Google Calendar status (legacy format) */
+  getGoogleCalendarStatus: async (): Promise<{
+    provider: 'GOOGLE';
+    isConnected: boolean;
+    connectedAt: string | null;
+  }> => {
+    const response = await apiClient.get<{ data: { connected: boolean; updatedAt: string | null } }>('/calendar/status');
+    return {
+      provider: 'GOOGLE',
+      isConnected: response.data.connected,
+      connectedAt: response.data.updatedAt,
+    };
+  },
+
+  /** Get raw calendar connection status */
+  getConnectionStatus: async (): Promise<CalendarConnectionStatus> => {
+    const response = await apiClient.get<{ data: CalendarConnectionStatus }>('/calendar/status');
     return response.data;
   },
 
-  /**
-   * Get integration by ID
-   */
-  getIntegrationById: async (id: string): Promise<Integration> => {
-    const response = await apiClient.get<Integration>(`/integrations/${id}`);
+  /** Get Google OAuth authorization URL */
+  getGoogleAuthUrl: async (_teamId?: string, forceReconnect = false): Promise<{ authUrl: string }> => {
+    const params = forceReconnect ? '?force=1' : '';
+    const response = await apiClient.post<{ authUrl: string }>(`/auth/google/init${params}`);
+    return response;
+  },
+
+  /** Get Google OAuth authorization URL — returns just the URL string */
+  getGoogleConnectUrl: async (forceReconnect = false): Promise<string> => {
+    const params = forceReconnect ? '?force=1' : '';
+    const response = await apiClient.post<{ authUrl: string }>(`/auth/google/init${params}`);
+    return response.authUrl;
+  },
+
+  /** Disconnect Google Calendar */
+  disconnectGoogleCalendar: async (): Promise<void> => {
+    await apiClient.post('/calendar/disconnect');
+  },
+
+  /** Get upcoming calendar events */
+  getUpcomingEvents: async (maxResults = 20): Promise<CalendarEvent[]> => {
+    const response = await apiClient.get<{ data: CalendarEvent[] }>('/calendar/events', {
+      params: { maxResults },
+    });
     return response.data;
   },
 
-  /**
-   * Create integration
-   */
-  createIntegration: async (data: CreateIntegrationRequest): Promise<Integration> => {
-    const response = await apiClient.post<Integration>('/integrations', data);
+  /** Create a calendar event */
+  createEvent: async (payload: CreateCalendarEventRequest): Promise<CalendarEvent> => {
+    const response = await apiClient.post<{ data: CalendarEvent }>('/calendar/create-event', payload);
     return response.data;
   },
 
-  /**
-   * Update integration
-   */
-  updateIntegration: async (id: string, data: UpdateIntegrationRequest): Promise<Integration> => {
-    const response = await apiClient.patch<Integration>(`/integrations/${id}`, data);
-    return response.data;
-  },
-
-  /**
-   * Delete integration
-   */
-  deleteIntegration: async (id: string): Promise<void> => {
-    await apiClient.delete(`/integrations/${id}`);
-  },
-
-  /**
-   * Test integration connection
-   */
-  testIntegration: async (id: string): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post<{ success: boolean; message: string }>(
-      `/integrations/${id}/test`
-    );
-    return response.data;
-  },
-
-  /**
-   * Sync action items to integration
-   */
-  syncActionItems: async (
-    integrationId: string,
-    actionItemIds: string[]
-  ): Promise<{ synced: number; failed: number }> => {
-    const response = await apiClient.post<{ synced: number; failed: number }>(
-      `/integrations/${integrationId}/sync`,
-      { actionItemIds }
-    );
-    return response.data;
+  /** Sync meeting to Google Calendar */
+  syncMeetingToCalendar: async (meetingId: string): Promise<void> => {
+    await apiClient.post(`/calendar/create-event`, {
+      title: `Meeting ${meetingId}`,
+      description: `Synced from meeting ${meetingId}`,
+      startTime: new Date().toISOString(),
+      endTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
   },
 };

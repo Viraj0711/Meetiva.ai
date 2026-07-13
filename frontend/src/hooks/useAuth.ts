@@ -71,6 +71,17 @@ export const useCurrentUser = () => {
 };
 
 /**
+ * Hook to get current user's subscription info and meeting credits.
+ */
+export const useSubscription = () => {
+  return useQuery({
+    queryKey: ['user', 'subscription'],
+    queryFn: () => authService.getSubscription(),
+    staleTime: 30_000,
+  });
+};
+
+/**
  * Hook to request password reset
  */
 export const useRequestPasswordReset = () => {
@@ -85,6 +96,53 @@ export const useRequestPasswordReset = () => {
     },
     onError: (error: Error) => {
       dispatch(addToast({ type: 'error', message: error.message }));
+    },
+  });
+};
+
+/**
+ * Hook to reset password with a token
+ */
+export const useResetPassword = () => {
+  const dispatch = useAppDispatch();
+
+  return useMutation({
+    mutationFn: ({ token, password }: { token: string; password: string }) =>
+      authService.resetPassword(token, password),
+    onSuccess: () => {
+      dispatch(
+        addToast({ type: 'success', message: 'Password updated successfully.' })
+      );
+    },
+    onError: (error: Error) => {
+      dispatch(addToast({ type: 'error', message: error.message }));
+    },
+  });
+};
+
+/**
+ * Hook to upgrade the current user's subscription tier.
+ * Calls POST /auth/admin/set-tier — server checks ADMIN_EMAIL env var.
+ */
+export const useUpgradeToPro = () => {
+  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (tier: string) => authService.upgradeToPro(tier),
+    onSuccess: () => {
+      dispatch(addToast({ type: 'success', message: 'Subscription upgraded to PRO! 🎉' }));
+      queryClient.invalidateQueries({ queryKey: ['user', 'subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
+    },
+    onError: (error: Error) => {
+      dispatch(
+        addToast({
+          type: 'error',
+          message: error.message || 'Upgrade failed. Make sure ADMIN_EMAIL matches your account email.',
+          duration: 5000,
+        })
+      );
     },
   });
 };

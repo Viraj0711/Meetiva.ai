@@ -21,12 +21,12 @@ describe('Button Component', () => {
   it('applies variant classes', () => {
     render(<Button variant="destructive">Delete</Button>);
     const button = screen.getByText('Delete');
-    expect(button).toHaveClass('bg-destructive');
+    expect(button.getAttribute('class')).toContain('bg-[rgba(220,38,38,0.9)]');
   });
 
   it('applies size classes', () => {
     render(<Button size="lg">Large Button</Button>);
     const button = screen.getByText('Large Button');
-    expect(button).toHaveClass('h-11');
+    expect(button).toHaveClass('h-12');
   });
 });

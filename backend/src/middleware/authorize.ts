@@ -1,5 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest, TeamRole } from './auth';
+import TeamMember from '../models/TeamMember';
+import { Types } from 'mongoose';
 
 /**
  * Authorize middleware for role-based access control
@@ -48,43 +50,45 @@ export const authorize = (
 };
 
 /**
- * Helper to check if user can view another user's data
+ * Check if a user can view another user's data.
+ *
  * Returns true if:
- * - User is viewing their own data, OR
- * - User is MANAGER or LEAD in a team where the other user is a member
+ * 1. The user is viewing their own data, OR
+ * 2. The user has MANAGER or LEAD role in a team that the target user ALSO belongs to.
+ *
+ * This prevents cross-team data leakage — a MANAGER in Team A cannot view
+ * data of users who only belong to Team B.
+ *
+ * Makes a single indexed query on team_members (userId + teamId indexes).
  */
-export const canViewUserData = (
+export const canViewUserData = async (
   viewingUserId: string,
   targetUserId: string,
   viewingUserTeams: Array<{ teamId: string; role: TeamRole }>
-): boolean => {
+): Promise<boolean> => {
   // Can always view own data
   if (viewingUserId === targetUserId) {
     return true;
   }
 
-  // Managers and Leads can view team members' data
-  return viewingUserTeams.some(team =>
-    (team.role === 'MANAGER' || team.role === 'LEAD')
+  // Find teams where the viewer has MANAGER or LEAD role
+  const elevatedTeams = viewingUserTeams.filter(
+    team => team.role === 'MANAGER' || team.role === 'LEAD'
   );
-};
 
-/**
- * Helper to get all accessible user IDs for a given user
- * Returns userId list that the user can access
- */
-export const getAccessibleUserIds = (
-  userId: string,
-  teamMembers: Array<{ userId: string; role: TeamRole }>
-): string[] => {
-  // Get the user's role
-  const userTeamRole = teamMembers.find(m => m.userId === userId)?.role;
+  if (elevatedTeams.length === 0) {
+    return false; // No elevated role in any team
+  }  // Single indexed query: check if the target user shares any of those teams
+  const sharedTeam = await TeamMember.findOne({
+    userId: new Types.ObjectId(targetUserId),
+    teamId: { $in: elevatedTeams.map(t => new Types.ObjectId(t.teamId)) },
+  })
+    .select('_id')
+    .lean();
 
-  // If user is MANAGER or LEAD, they can see all team members
-  if (userTeamRole === 'MANAGER' || userTeamRole === 'LEAD') {
-    return teamMembers.map(m => m.userId);
-  }
+  return sharedTeam !== null;
+}
 
-  // Regular members can only see themselves
-  return [userId];
-};
+;
+
+

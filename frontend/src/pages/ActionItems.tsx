@@ -8,8 +8,8 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useAppSelector } from '@/store/hooks';
 import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
-import { actionItemService } from '@/services';
-import { ActionItem } from '@/types';
+import { actionItemService, meetingService } from '@/services';
+import { ActionItem, Meeting, CreateActionItemRequest, MeetingPriority } from '@/types';
 import { formatDate } from '@/utils';
 
 const ActionItems: React.FC = () => {
@@ -26,9 +26,41 @@ const ActionItems: React.FC = () => {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
 
+  // ── Create action item modal ────────────────────────────────────────────
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loadingMeetings, setLoadingMeetings] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    meetingId: '',
+    title: '',
+    description: '',
+    assignee: '',
+    dueDate: '',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+  });
+  const [createError, setCreateError] = useState<string | null>(null);
+
   useEffect(() => {
     loadActionItems();
   }, [currentPage, filterStatus, filterPriority, showTeamItems]);
+
+  // Fetch meetings for the create modal meeting selector
+  useEffect(() => {
+    if (!showCreateModal) return;
+    const fetchMeetings = async () => {
+      try {
+        setLoadingMeetings(true);
+        const response = await meetingService.getMeetings({ limit: 100, status: 'completed' });
+        setMeetings(response.data || []);
+      } catch {
+        setMeetings([]);
+      } finally {
+        setLoadingMeetings(false);
+      }
+    };
+    fetchMeetings();
+  }, [showCreateModal]);
 
   const loadActionItems = async () => {
     try {
@@ -44,6 +76,57 @@ const ActionItems: React.FC = () => {
       console.error('Failed to load action items:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateFormChange = (field: keyof typeof createForm, value: string) => {
+    setCreateForm((prev) => ({ ...prev, [field]: value }));
+    setCreateError(null);
+  };
+
+  const resetCreateForm = () => {
+    setCreateForm({
+      meetingId: '',
+      title: '',
+      description: '',
+      assignee: '',
+      dueDate: '',
+      priority: 'medium',
+    });
+    setCreateError(null);
+  };
+
+  const handleCreateActionItem = async () => {
+    if (!createForm.meetingId) {
+      setCreateError('Please select a meeting.');
+      return;
+    }
+    if (!createForm.title.trim()) {
+      setCreateError('Title is required.');
+      return;
+    }
+
+    try {
+      setCreating(true);
+      setCreateError(null);
+
+      const data: CreateActionItemRequest = {
+        meetingId: createForm.meetingId,
+        title: createForm.title.trim(),
+        description: createForm.description.trim() || undefined,
+        assignee: createForm.assignee.trim() || undefined,
+        dueDate: createForm.dueDate || undefined,
+        priority: createForm.priority as MeetingPriority,
+      };
+
+      await actionItemService.createActionItem(data);
+      setShowCreateModal(false);
+      resetCreateForm();
+      loadActionItems();
+    } catch (error: any) {
+      setCreateError(error?.message || 'Failed to create action item.');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -146,6 +229,125 @@ const ActionItems: React.FC = () => {
         }}
       />
 
+      {/* Create Action Item Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => { if (!creating) { setShowCreateModal(false); resetCreateForm(); } }}>
+          <div className="w-full max-w-lg mx-4 rounded-2xl border border-white/10 bg-[#0b1020] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+              <h2 className="text-xl font-bold text-white">Create Action Item</h2>
+              <button
+                className="text-white/40 hover:text-white transition-colors"
+                onClick={() => { setShowCreateModal(false); resetCreateForm(); }}
+                disabled={creating}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              {/* Error */}
+              {createError && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  {createError}
+                </div>
+              )}
+
+              {/* Meeting selector */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">
+                  Meeting <span className="text-red-400">*</span>
+                </label>
+                <select
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white outline-none transition-all focus:border-[rgba(124,92,255,0.35)] focus:bg-white/[0.06]"
+                  value={createForm.meetingId}
+                  onChange={(e) => handleCreateFormChange('meetingId', e.target.value)}
+                  disabled={creating}
+                >
+                  <option value="">{loadingMeetings ? 'Loading meetings...' : 'Select a meeting'}</option>
+                  {meetings.map((m) => (
+                    <option key={m.id} value={m.id}>{m.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">
+                  Title <span className="text-red-400">*</span>
+                </label>
+                <Input
+                  value={createForm.title}
+                  onChange={(e) => handleCreateFormChange('title', e.target.value)}
+                  placeholder="What needs to be done?"
+                  disabled={creating}
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">Description</label>
+                <textarea
+                  className="w-full min-h-[80px] rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white outline-none transition-all focus:border-[rgba(124,92,255,0.35)] focus:bg-white/[0.06] resize-none placeholder:text-[rgba(184,194,207,0.58)]"
+                  value={createForm.description}
+                  onChange={(e) => handleCreateFormChange('description', e.target.value)}
+                  placeholder="Optional details..."
+                  disabled={creating}
+                />
+              </div>
+
+              {/* Assignee + Due Date */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">Assignee</label>
+                  <Input
+                    value={createForm.assignee}
+                    onChange={(e) => handleCreateFormChange('assignee', e.target.value)}
+                    placeholder="Person responsible"
+                    disabled={creating}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">Due Date</label>
+                  <Input
+                    type="date"
+                    value={createForm.dueDate}
+                    onChange={(e) => handleCreateFormChange('dueDate', e.target.value)}
+                    disabled={creating}
+                  />
+                </div>
+              </div>
+
+              {/* Priority */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">Priority</label>
+                <select
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white outline-none transition-all focus:border-[rgba(124,92,255,0.35)] focus:bg-white/[0.06]"
+                  value={createForm.priority}
+                  onChange={(e) => handleCreateFormChange('priority', e.target.value)}
+                  disabled={creating}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 border-t border-white/10 px-6 py-4">
+              <Button variant="outline" onClick={() => { setShowCreateModal(false); resetCreateForm(); }} disabled={creating}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateActionItem} isLoading={creating}>
+                {creating ? 'Creating...' : 'Create Action Item'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -154,7 +356,7 @@ const ActionItems: React.FC = () => {
             Track and manage all tasks extracted from your meetings
           </p>
         </div>
-        <Button>Create Action Item</Button>
+        <Button onClick={() => { resetCreateForm(); setShowCreateModal(true); }}>Create Action Item</Button>
       </div>
 
       {/* Filters */}
@@ -225,8 +427,8 @@ const ActionItems: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">Total</p>
               <p className="text-2xl font-bold">{displayedItems.length}</p>
             </div>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-10 h-10 text-cyan-300 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
@@ -239,7 +441,7 @@ const ActionItems: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">Overdue</p>
               <p className="text-2xl font-bold text-red-600">{groupedItems.overdue.length}</p>
             </div>
-            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-white/[0.03] rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -253,7 +455,7 @@ const ActionItems: React.FC = () => {
               <p className="text-sm font-medium text-muted-foreground">In Progress</p>
               <p className="text-2xl font-bold">{groupedItems.upcoming.length + groupedItems.today.length}</p>
             </div>
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-white/[0.03] rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -265,10 +467,10 @@ const ActionItems: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Completed</p>
-              <p className="text-2xl font-bold text-green-600">{groupedItems.completed.length}</p>
+              <p className="text-2xl font-bold text-cyan-300">{groupedItems.completed.length}</p>
             </div>
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-10 h-10 bg-white/[0.03] rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -533,3 +735,5 @@ const ActionItems: React.FC = () => {
 };
 
 export default ActionItems;
+
+

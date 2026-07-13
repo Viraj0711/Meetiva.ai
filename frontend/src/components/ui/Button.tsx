@@ -3,23 +3,22 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold transition-all duration-300 ease-out transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(124,92,255,0.28)] disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-gradient-primary text-primary-foreground hover:opacity-90',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400',
-        link: 'text-primary underline-offset-4 hover:underline',
-        accent: 'bg-gradient-accent text-white hover:opacity-90',
+        default: 'bg-[linear-gradient(135deg,var(--accent-hex),var(--accent-2-hex))] text-white shadow-[0_16px_50px_rgba(124,92,255,0.24)] hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(48,213,246,0.24)]',
+        destructive: 'bg-[rgba(220,38,38,0.9)] text-white hover:brightness-95',
+        outline: 'bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.09)] text-[var(--muted-hex)] hover:bg-[rgba(255,255,255,0.06)] hover:text-white',
+        secondary: 'bg-[rgba(255,255,255,0.05)] text-white/90 hover:bg-[rgba(255,255,255,0.08)]',
+        ghost: 'bg-transparent text-[var(--muted-hex)] hover:text-white hover:bg-[rgba(255,255,255,0.04)]',
+        link: 'text-[var(--accent-hex)] underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-9 rounded-md px-3',
-        lg: 'h-11 rounded-md px-8',
-        icon: 'h-10 w-10',
+        default: 'h-11 px-5 py-3',
+        sm: 'h-9 px-3 rounded-full',
+        lg: 'h-12 px-8 text-lg',
+        icon: 'h-10 w-10 p-0',
       },
     },
     defaultVariants: {

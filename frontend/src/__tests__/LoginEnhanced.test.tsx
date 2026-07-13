@@ -2,25 +2,32 @@
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LoginEnhanced from '../pages/auth/LoginEnhanced';
-import authReducer from '../features/auth/authSlice';
-import meetingsReducer from '../features/meetings/meetingsSlice';
-import actionItemsReducer from '../features/actionItems/actionItemsSlice';
+import authReducer from '@/store/slices/authSlice';
+import meetingReducer from '@/store/slices/meetingSlice';
 
-// Create a test store with actual reducers
+// Create a test store matching the real app's store shape
 const createTestStore = () => configureStore({
   reducer: {
     auth: authReducer,
-    meetings: meetingsReducer,
-    actionItems: actionItemsReducer,
+    meetings: meetingReducer,
   },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: ['meetings/setUploadProgress'],
-      },
-    }),
 });
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Provider store={createTestStore()}>
+        <BrowserRouter>{children}</BrowserRouter>
+      </Provider>
+    </QueryClientProvider>
+  );
+}
 
 // Mock useNavigate
 const mockNavigate = jest.fn();
@@ -35,27 +42,21 @@ describe('LoginEnhanced Component', () => {
   });
 
   it('renders without crashing', () => {
-    const store = createTestStore();
     render(
-      <Provider store={store}>
-        <BrowserRouter>
-          <LoginEnhanced />
-        </BrowserRouter>
-      </Provider>
+      <TestWrapper>
+        <LoginEnhanced />
+      </TestWrapper>
     );
 
     // Just verify the component mounts without error
-    expect(screen.queryByRole('main') || screen.queryByRole('form') || screen.queryByText(/welcome|login|sign in/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument();
   });
 
   it('accepts user input', () => {
-    const store = createTestStore();
     const { container } = render(
-      <Provider store={store}>
-        <BrowserRouter>
-          <LoginEnhanced />
-        </BrowserRouter>
-      </Provider>
+      <TestWrapper>
+        <LoginEnhanced />
+      </TestWrapper>
     );
 
     // Verify the component has input fields
@@ -65,9 +66,9 @@ describe('LoginEnhanced Component', () => {
 
   it('shows remember me checkbox', () => {
     render(
-      <BrowserRouter>
+      <TestWrapper>
         <LoginEnhanced />
-      </BrowserRouter>
+      </TestWrapper>
     );
 
     const checkbox = screen.getByLabelText('Remember me');
