@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -7,30 +7,44 @@ import { Badge } from '@/components/ui/Badge';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAppSelector } from '@/store/hooks';
 import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
-import { useMeetings, useDeleteMeeting } from '@/hooks';
+import { meetingService } from '@/services';
+import { Meeting } from '@/types';
 import { formatDate } from '@/utils';
 
 const Meetings: React.FC = () => {
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
-  const userId = useAppSelector((state) => state.auth.user?.id);
-  const deleteMeeting = useDeleteMeeting();
 
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showTeamMeetings, setShowTeamMeetings] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [deletingMeetingId, setDeletingMeetingId] = useState<string | null>(null);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const { data: meetingsResponse, isLoading } = useMeetings({
-    page: currentPage,
-    limit: 10,
-    status: filterStatus === 'all' ? undefined : filterStatus,
-  });
+  useEffect(() => {
+    loadMeetings();
+  }, [currentPage, filterStatus, showTeamMeetings]);
 
-  const meetings = meetingsResponse?.data || [];
-  const totalPages = meetingsResponse?.pagination?.totalPages || 1;
-  const myMeetings = userId ? meetings.filter((m) => m.userId === userId) : [];
-  const displayedMeetings = showTeamMeetings ? meetings : myMeetings.length > 0 ? myMeetings : meetings;
+  const loadMeetings = async () => {
+    try {
+      setLoading(true);
+      const response = await meetingService.getMeetings({
+        page: currentPage,
+        limit: 10,
+        status: filterStatus === 'all' ? undefined : filterStatus,
+      });
+      setMeetings(response.data || []);
+      setTotalPages(Math.ceil((response.total || 0) / 10));
+    } catch (error) {
+      console.error('Failed to load meetings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const displayedMeetings = showTeamMeetings ? meetings : meetings.filter((m) => m.userId === userId);
 
   const filteredMeetings = displayedMeetings.filter((meeting) =>
     meeting.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -38,7 +52,7 @@ const Meetings: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'processed':
         return 'default';
       case 'processing':
         return 'secondary';
@@ -46,20 +60,6 @@ const Meetings: React.FC = () => {
         return 'destructive';
       default:
         return 'default';
-    }
-  };
-
-  const handleDeleteMeeting = async (meetingId: string, meetingTitle: string) => {
-    const confirmed = window.confirm(`Delete "${meetingTitle}"? This action cannot be undone.`);
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      setDeletingMeetingId(meetingId);
-      await deleteMeeting.mutateAsync(meetingId);
-    } finally {
-      setDeletingMeetingId(null);
     }
   };
 
@@ -104,7 +104,7 @@ const Meetings: React.FC = () => {
               }}
             >
               <option value="all">All Meetings</option>
-              <option value="completed">Completed</option>
+              <option value="processed">Processed</option>
               <option value="processing">Processing</option>
               <option value="pending">Pending</option>
               <option value="failed">Failed</option>
@@ -149,7 +149,7 @@ const Meetings: React.FC = () => {
       </Card>
 
       {/* Meetings List */}
-      {isLoading ? (
+      {loading ? (
         <div className="flex items-center justify-center h-96">
           <LoadingSpinner size="lg" />
         </div>
@@ -224,14 +224,6 @@ const Meetings: React.FC = () => {
                         View Details
                       </Button>
                     </Link>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDeleteMeeting(meeting.id, meeting.title)}
-                      disabled={deletingMeetingId === meeting.id}
-                    >
-                      {deletingMeetingId === meeting.id ? 'Deleting...' : 'Delete'}
-                    </Button>
                     {meeting.status === 'completed' && (
                       <>
                         <Button size="sm" variant="ghost">
@@ -263,7 +255,7 @@ const Meetings: React.FC = () => {
       )}
 
       {/* Pagination */}
-      {!isLoading && totalPages > 1 && (
+      {!loading && totalPages > 1 && (
         <div className="flex justify-center gap-2">
           <Button
             variant="outline"

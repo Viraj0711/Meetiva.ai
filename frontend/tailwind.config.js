@@ -57,16 +57,14 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['Inter', 'Manrope', 'sans-serif'],
-        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+        sans: ['Inter', 'sans-serif'],
       },
       backgroundImage: {
-        'gradient-primary': 'linear-gradient(135deg, #7c5cff 0%, #30d5f6 100%)',
-        'gradient-secondary': 'linear-gradient(135deg, rgba(124,92,255,0.92) 0%, rgba(48,213,246,0.7) 100%)',
-        'gradient-accent': 'linear-gradient(135deg, #d4af37 0%, #f1d78b 100%)',
+        'gradient-primary': 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)',
+        'gradient-secondary': 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
+        'gradient-accent': 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'grid-fine': 'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)',
       },
       keyframes: {
         'accordion-down': {
@@ -97,31 +95,15 @@ export default {
           '0%': { transform: 'translateX(100%)' },
           '100%': { transform: 'translateX(0)' },
         },
-        'float-slow': {
-          '0%, 100%': { transform: 'translate3d(0, 0, 0)' },
-          '50%': { transform: 'translate3d(0, -14px, 0)' },
-        },
-        'drift': {
-          '0%': { transform: 'translate3d(-2%, -2%, 0) scale(1)' },
-          '50%': { transform: 'translate3d(2%, 1%, 0) scale(1.08)' },
-          '100%': { transform: 'translate3d(-2%, -2%, 0) scale(1)' },
-        },
-        'shine': {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
-        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'float': 'float 6s ease-in-out infinite',
-        'float-slow': 'float-slow 10s ease-in-out infinite',
         'pulse-slow': 'pulse-slow 3s ease-in-out infinite',
         'shimmer': 'shimmer 2s linear infinite',
         'fade-in': 'fade-in 0.5s ease-out',
         'slide-in-right': 'slide-in-right 0.3s ease-out',
-        'drift': 'drift 16s ease-in-out infinite',
-        'shine': 'shine 2.5s linear infinite',
       },
     },
   },

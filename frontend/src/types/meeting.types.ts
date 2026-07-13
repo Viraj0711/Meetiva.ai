@@ -1,5 +1,4 @@
 export enum MeetingStatus {
-  PENDING = 'pending',
   UPLOADING = 'uploading',
   PROCESSING = 'processing',
   TRANSCRIBING = 'transcribing',

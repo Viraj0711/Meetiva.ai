@@ -1,9 +1,4 @@
-import { Router, Response } from 'express';
-import z from 'zod';
-import { authenticate, AuthRequest } from '../middleware/auth';
-import { uploadLimiter } from '../lib/rateLimiters';
-import { validate } from '../lib/validation';
-import { asyncHandler } from '../lib/errors';
+import { Router, Request, Response } from 'express';
 
 type GrokRole = 'system' | 'user' | 'assistant';
 
@@ -12,31 +7,19 @@ interface GrokMessage {
   content: string;
 }
 
-interface GrokChatCompletionResponse {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
+interface GrokChatRequestBody {
+  prompt?: string;
+  messages?: GrokMessage[];
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
-
-const grokChatSchema = z.object({
-  prompt: z.string().optional(),
-  messages: z.array(z.object({
-    role: z.enum(['system', 'user', 'assistant']),
-    content: z.string(),
-  })).optional(),
-  model: z.string().optional(),
-  temperature: z.number().min(0).max(2).optional(),
-  maxTokens: z.number().int().min(1).max(128000).optional(),
-}).refine(data => data.prompt || (Array.isArray(data.messages) && data.messages.length > 0), {
-  message: 'Provide either `prompt` or a non-empty `messages` array.',
-});
 
 const router = Router();
 
-router.post('/grok', uploadLimiter, authenticate, validate(grokChatSchema), asyncHandler(async (req: AuthRequest, res: Response) => {
-  const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
+router.post('/grok', async (req: Request, res: Response) => {
+  try {
+    const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
     const baseUrl = process.env.XAI_BASE_URL || 'https://api.x.ai/v1';
     const defaultModel = process.env.GROK_MODEL || 'grok-2-latest';
 
@@ -46,7 +29,7 @@ router.post('/grok', uploadLimiter, authenticate, validate(grokChatSchema), asyn
       });
     }
 
-    const { prompt, messages, model, temperature, maxTokens } = req.body as z.infer<typeof grokChatSchema>;
+    const { prompt, messages, model, temperature, maxTokens } = req.body as GrokChatRequestBody;
 
     const normalizedMessages: GrokMessage[] =
       Array.isArray(messages) && messages.length > 0
@@ -55,6 +38,11 @@ router.post('/grok', uploadLimiter, authenticate, validate(grokChatSchema), asyn
           ? [{ role: 'user', content: prompt }]
           : [];
 
+    if (normalizedMessages.length === 0) {
+      return res.status(400).json({
+        message: 'Provide either `prompt` or a non-empty `messages` array.'
+      });
+    }
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -70,41 +58,25 @@ router.post('/grok', uploadLimiter, authenticate, validate(grokChatSchema), asyn
       })
     });
 
-    const result = (await response.json().catch(() => null)) as GrokChatCompletionResponse | null;
+    const result = await response.json().catch(() => null);
 
     if (!response.ok) {
-      // Log the full error server-side for debugging, but never expose
-      // API provider details (rate limits, internal error messages, etc.) to the client.
-      console.error(`[Grok] API error ${response.status}:`, JSON.stringify(result));
-      return res.status(502).json({
-        message: 'The AI service returned an error. Please try again later.'
+      return res.status(response.status).json({
+        message: 'Grok API request failed',
+        error: result
       });
     }
 
     const text = result?.choices?.[0]?.message?.content ?? '';
 
-    // Validate Grok response structure before returning to client.
-    // This catches unexpected API changes early and prevents passing
-    // malformed data downstream.
-    const grokResponseSchema = z.object({
-      choices: z.array(z.object({
-        message: z.object({
-          content: z.string(),
-        }).optional(),
-      })).optional(),
-    });
-    const validation = grokResponseSchema.safeParse(result);
-    if (!validation.success) {
-      return res.status(502).json({
-        message: 'Received an unexpected response format from the AI provider',
-      });
-    }
-
     res.json({
       text,
       raw: result
     });
+  } catch (error) {
+    console.error('Grok API proxy error:', error);
+    res.status(500).json({ message: 'Failed to call Grok API' });
   }
-));
+});
 
 export default router;

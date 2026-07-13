@@ -5,17 +5,22 @@ export interface ApiError {
   errors?: Record<string, string[]>;
 }
 
-/** Backend paginated response format. */
-export interface BackendPagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
+export interface ApiResponse<T> {
+  data: T;
+  message?: string;
+  meta?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+  };
 }
 
 export interface PaginatedResponse<T> {
   data: T[];
-  pagination: BackendPagination;
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 export interface PaginationParams {

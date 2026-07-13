@@ -50,23 +50,22 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
           className={cn(
-            'w-full flex items-center justify-between gap-2 px-3 py-3 rounded-xl',
-            'bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.04)] text-[var(--muted-hex)]',
-            'transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[rgba(124,92,255,0.12)]',
-            !disabled && 'hover:bg-[rgba(255,255,255,0.03)] cursor-pointer',
-            disabled && 'opacity-50 cursor-not-allowed',
-            isOpen && 'ring-2 ring-[rgba(124,92,255,0.12)]'
+            'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[10px]',
+            'bg-white border border-[#DDE6F0] text-[#333333]',
+            'transition-all duration-200 ease-in-out',
+            'focus:outline-none focus:ring-2 focus:ring-[rgba(47,128,237,0.15)] focus:border-[#2F80ED]',
+            !disabled && 'hover:bg-[#F2F7FD] hover:border-[#2F80ED] cursor-pointer',
+            disabled && 'opacity-50 cursor-not-allowed bg-gray-50',
+            isOpen && 'border-[#2F80ED] ring-2 ring-[rgba(47,128,237,0.15)]'
           )}
         >
-          <span className={cn('text-sm', !selectedOption && 'text-[rgba(184,194,207,0.6)]')}>
+          <span className={cn('text-sm', !selectedOption && 'text-[#828282]')}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <ChevronDown
             className={cn(
-              'h-4 w-4 text-[var(--muted-hex)] transition-transform duration-200',
+              'h-4 w-4 text-[#828282] transition-transform duration-200',
               isOpen && 'transform rotate-180'
             )}
           />
@@ -75,12 +74,11 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
         {/* Dropdown Menu */}
         {isOpen && (
           <div
-            role="listbox"
             className={cn(
-              'absolute z-50 w-full mt-2 py-2',
-              'bg-[rgba(15,23,32,0.95)] border border-[rgba(255,255,255,0.04)] rounded-xl',
-              'shadow-[0_20px_60px_rgba(2,6,23,0.6)] max-h-60 overflow-auto',
-              'animate-in fade-in-0 zoom-in-95 duration-150'
+              'absolute z-50 w-full mt-1 py-1',
+              'bg-white border border-[#DDE6F0] rounded-[10px]',
+              'shadow-lg max-h-60 overflow-auto',
+              'animate-in fade-in-0 zoom-in-95 duration-100'
             )}
           >
             {options.map((option) => {
@@ -89,18 +87,17 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                 <button
                   key={option.value}
                   type="button"
-                  role="option"
-                  aria-selected={isSelected}
                   onClick={() => handleSelect(option.value)}
                   className={cn(
-                    'w-full flex items-center justify-between gap-2 px-4 py-2',
-                    'text-sm text-left transition-all duration-150 ease-in-out',
-                    'hover:bg-[rgba(255,255,255,0.02)] hover:text-white',
-                    isSelected ? 'bg-[rgba(124,92,255,0.12)] text-white font-medium' : 'text-[var(--muted-hex)]'
+                    'w-full flex items-center justify-between gap-2 px-3 py-2',
+                    'text-sm text-left transition-all duration-200 ease-in-out',
+                    'hover:bg-[#F2F7FD] hover:text-[#2F80ED]',
+                    isSelected && 'bg-[#E6F0FA] text-[#2F80ED] font-medium',
+                    !isSelected && 'text-[#333333]'
                   )}
                 >
                   <span>{option.label}</span>
-                  {isSelected && <Check className="h-4 w-4 text-white" />}
+                  {isSelected && <Check className="h-4 w-4" />}
                 </button>
               );
             })}
@@ -114,5 +111,3 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
 Select.displayName = 'Select';
 
 export { Select };
-
-

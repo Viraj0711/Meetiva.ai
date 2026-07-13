@@ -16,9 +16,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ size = 'md', className 
 
   return (
     <div className={cn('flex items-center justify-center', className)} role="status" aria-label="Loading">
-      <div className={cn('flex items-center justify-center rounded-full p-1 bg-[rgba(255,255,255,0.02)]')}> 
-        <Loader2 className={cn('animate-spin text-[var(--accent-hex)]', sizeClasses[size])} />
-      </div>
+      <Loader2 className={cn('animate-spin text-primary', sizeClasses[size])} />
       <span className="sr-only">Loading...</span>
     </div>
   );

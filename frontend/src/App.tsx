@@ -1,14 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Provider, useDispatch } from 'react-redux';
+import { Provider } from 'react-redux';
 import { store } from '@/store';
 import { AppRouter } from '@/router';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import ThemeProvider from '@/components/ThemeProvider';
-import ToastContainer from '@/components/ui/ToastContainer';
-import { authService } from '@/services';
-import { loginSuccess } from '@/store/slices/authSlice';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,66 +15,12 @@ const queryClient = new QueryClient({
   },
 });
 
-/**
- * On mount, tries to restore the user's session by calling POST /auth/refresh.
- * The browser automatically sends the httpOnly refresh_token cookie.
- * If the cookie is valid, the server returns a new access token + user data.
- * If not, the user stays unauthenticated (protected routes redirect to /login).
- */
-const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const dispatch = useDispatch();
-  const [initializing, setInitializing] = useState(true);
-
-  useEffect(() => {
-    const init = async () => {
-      // ── Cleanup stale localStorage keys from previous auth architecture ──
-      // The old codebase stored the JWT and user object in localStorage,
-      // making them stealable via browser DevTools. The new architecture
-      // uses httpOnly refresh cookies + in-memory access tokens instead.
-      // These keys can linger from before the migration — clean them once.
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-
-      try {
-        const data = await authService.refreshToken();
-        if (data.token && data.user) {
-          dispatch(loginSuccess({ user: data.user, token: data.token }));
-        }
-      } catch {
-        // No valid refresh token — user is not authenticated.
-        // Protected routes will redirect to /login.
-      } finally {
-        setInitializing(false);
-      }
-    };
-    init();
-  }, [dispatch]);
-
-  if (initializing) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <LoadingSpinner size="lg" />
-          <p className="text-sm text-white/55">Restoring session...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-};
-
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <Provider store={store}>
         <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <AuthInitializer>
-              <AppRouter />
-              <ToastContainer />
-            </AuthInitializer>
-          </ThemeProvider>
+          <AppRouter />
         </QueryClientProvider>
       </Provider>
     </ErrorBoundary>

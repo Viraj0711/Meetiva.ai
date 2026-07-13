@@ -29,8 +29,9 @@ export const isValidFileSize = (file: File, maxSizeInMB: number): boolean => {
 /**
  * Get file extension
  */
-export const getFileExtension = (filename: string): string =>
-  filename.split('.').pop()?.toLowerCase() ?? '';
+export const getFileExtension = (filename: string): string => {
+  return filename.slice(((filename.lastIndexOf('.') - 1) >>> 0) + 2);
+};
 
 /**
  * Check if file is audio

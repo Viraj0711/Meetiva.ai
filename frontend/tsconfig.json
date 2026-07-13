@@ -28,10 +28,9 @@
     "alwaysStrict": true,
 
     /* Paths */
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@shared": ["../backend/src/lib/schemas"],
-      "@shared/*": ["../backend/src/lib/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"],

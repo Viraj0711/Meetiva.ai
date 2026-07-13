@@ -1,5 +1,9 @@
 export enum IntegrationType {
-  CALENDAR = 'google-calendar',
+  JIRA = 'jira',
+  SLACK = 'slack',
+  CALENDAR = 'calendar',
+  TRELLO = 'trello',
+  ASANA = 'asana',
 }
 
 export interface Integration {
@@ -14,8 +18,21 @@ export interface Integration {
   updatedAt: string;
 }
 
+export interface JiraConfig {
+  domain: string;
+  email: string;
+  apiToken: string;
+  projectKey: string;
+}
+
+export interface SlackConfig {
+  workspaceId: string;
+  accessToken: string;
+  channelId: string;
+}
+
 export interface CalendarConfig {
-  provider: 'google';
+  provider: 'google' | 'outlook';
   accessToken: string;
   refreshToken: string;
 }

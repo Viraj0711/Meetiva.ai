@@ -1,358 +1,445 @@
-import React, { useEffect, useRef } from 'react';
+﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
-import {
-  ArrowRight,
-  BarChart3,
-  CalendarClock,
-  ClipboardList,
-  Globe2,
-  Mic,
-  Sparkles,
-  Workflow,
-} from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 import AnimatedBackground from '@/components/AnimatedBackground';
 import GradientOrbs from '@/components/GradientOrbs';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-
-const features = [
-  {
-    title: 'Automatic meeting capture',
-    description: 'Record, upload, or connect live calls and let the pipeline structure the work.',
-    icon: Mic,
-  },
-  {
-    title: 'Decisions and tasks, extracted',
-    description: 'AI identifies commitments, owners, deadlines, and follow-up paths in real time.',
-    icon: ClipboardList,
-  },
-  {
-    title: 'Calendar sync without friction',
-    description: 'Feed reminders and action items into the team calendar as the meeting ends.',
-    icon: CalendarClock,
-  },
-  {
-    title: 'Workspace analytics',
-    description: 'Measure completion, follow-through, and velocity across the whole team.',
-    icon: BarChart3,
-  },
-];
-
-const workflow = [
-  {
-    step: '01',
-    title: 'Capture',
-    body: 'Meetings land in the workspace from live calls, files, or manual uploads.',
-  },
-  {
-    step: '02',
-    title: 'Interpret',
-    body: 'The model turns speech into summaries, tasks, and decision records.',
-  },
-  {
-    step: '03',
-    title: 'Move forward',
-    body: 'What matters is pushed into calendars, dashboards, and shared ownership.',
-  },
-];
-
-const stats = [
-  { value: '99.9%', label: 'availability' },
-  { value: '4 min', label: 'average setup' },
-  { value: '3x', label: 'faster follow-through' },
-];
+import {
+  Mic,
+  FileText,
+  CheckCircle,
+  BarChart3,
+  Calendar,
+  Zap,
+  Shield,
+  Globe,
+  Users,
+  ArrowRight,
+  Play,
+  Star,
+  ChevronRight,
+  Menu,
+  X,
+} from 'lucide-react';
 
 const LandingPage: React.FC = () => {
-  const heroRef = useRef<HTMLDivElement | null>(null);
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ['start start', 'end start'],
-  });
-  const heroShift = useTransform(scrollYProgress, [0, 1], ['0px', '120px']);
-  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.96]);
-  const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 20 });
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    document.documentElement.style.scrollBehavior = 'smooth';
-  }, []);
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setMobileMenuOpen(false);
+    }
+  };
+
+  const features = [
+    {
+      icon: <Mic className="w-6 h-6" />,
+      title: 'AI Transcription & Speaker ID',
+      description:
+        'Accurate real-time transcription with intelligent speaker identification, handling noisy audio and technical terminology.',
+      color: 'from-blue-500 to-cyan-500',
+    },
+    {
+      icon: <CheckCircle className="w-6 h-6" />,
+      title: 'Smart Action Item Extraction',
+      description:
+        'Automatically detect and extract action items with assigned owners, deadlines, and priority levels.',
+      color: 'from-cyan-500 to-blue-600',
+    },
+    {
+      icon: <FileText className="w-6 h-6" />,
+      title: 'Intelligent Summarization',
+      description:
+        'Generate structured summaries with key points, decisions, and discussion topics automatically.',
+      color: 'from-blue-600 to-indigo-500',
+    },
+    {
+      icon: <BarChart3 className="w-6 h-6" />,
+      title: 'Analytics & Insights',
+      description:
+        'Track meeting effectiveness, task completion rates, and productivity trends to improve performance.',
+      color: 'from-indigo-500 to-purple-500',
+    },
+    {
+      icon: <Calendar className="w-6 h-6" />,
+      title: 'Seamless Integrations',
+      description:
+        'Sync with JIRA, Trello, Asana, Google Calendar, and Slack. Create tickets and notify teams automatically.',
+      color: 'from-purple-500 to-pink-500',
+    },
+    {
+      icon: <Zap className="w-6 h-6" />,
+      title: 'Real-Time Processing',
+      description:
+        'Lightning-fast AI processing ensures your meetings are analyzed and actionable within minutes.',
+      color: 'from-amber-500 to-orange-500',
+    },
+  ];
+
+  const stats = [
+    { value: '10,000+', label: 'Meetings Processed' },
+    { value: '50,000+', label: 'Action Items Tracked' },
+    { value: '99.9%', label: 'Uptime' },
+    { value: '4.9/5', label: 'User Rating' },
+  ];
+
+
+  const faqs = [
+    {
+      question: 'How accurate is the transcription?',
+      answer: 'Our AI-powered transcription achieves 95%+ accuracy, even with accents, background noise, and technical terminology. Speaker identification is also highly accurate.',
+    },
+    {
+      question: 'What file formats are supported?',
+      answer: 'We support MP3, WAV, M4A, AAC, MP4, MPEG, MOV, and AVI formats up to 500MB. Longer files can be processed with our enterprise plan.',
+    },
+    {
+      question: 'How secure is my data?',
+      answer: 'We use AES-256 encryption at rest and TLS 1.3 in transit. All data is GDPR-compliant with role-based access control and regular security audits.',
+    },
+    {
+      question: 'Can I try it before purchasing?',
+      answer: 'Yes! We offer a 14-day free trial with full access to all features. No credit card required.',
+    },
+    {
+      question: 'Do you integrate with our existing tools?',
+      answer: 'Yes, we integrate with JIRA, Trello, Asana, Linear, Google Calendar, Outlook, Slack, and Microsoft Teams. Custom integrations are available for enterprise customers.',
+    },
+  ];
 
   return (
-    <div className="scene-shell relative min-h-screen overflow-hidden bg-background text-foreground">
+    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 overflow-hidden">
       <AnimatedBackground />
       <GradientOrbs />
 
-      <motion.div
-        className="fixed left-0 top-0 z-50 h-1 origin-left bg-gradient-primary"
-        style={{ scaleX: progress }}
-      />
-
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/55 backdrop-blur-2xl">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
-          <Link to="/" className="group flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(124,92,255,0.35)] transition duration-300 group-hover:scale-105">
-              <span className="text-sm font-bold text-white">M</span>
+      {/* Navbar */}
+      <nav className="relative z-10 container mx-auto px-6 py-4">
+        <div className="flex justify-between items-center backdrop-blur-sm bg-white/70 rounded-2xl px-6 py-4 shadow-lg border border-white/20">
+          <Link to="/" className="flex items-center space-x-3 group">
+            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+              <span className="text-white font-bold text-xl">M</span>
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-white/42">Meetiva.ai</p>
-              <p className="text-sm font-medium text-white">Meeting intelligence</p>
-            </div>
+            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              Meetiva.ai
+            </span>
           </Link>
+          <div className="hidden md:flex items-center space-x-8">
+            <button
+              onClick={() => scrollToSection('features')}
+              className="text-gray-700 hover:text-blue-600 font-medium transition-colors cursor-pointer"
+            >
+              Features
+            </button>
+            <button
+              onClick={() => scrollToSection('pricing')}
+              className="text-gray-700 hover:text-blue-600 font-medium transition-colors cursor-pointer"
+            >
+              Pricing
+            </button>
+            <Link to="/login">
+              <Button variant="ghost" className="font-medium">
+                Login
+              </Button>
+            </Link>
+            <Link to="/register">
+              <Button className="shadow-lg hover:shadow-xl transition-shadow">
+                Get Started <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </div>
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 text-gray-700 hover:text-blue-600 transition-colors"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
 
-          <nav className="hidden items-center gap-8 md:flex">
-            {['Features', 'Workflow', 'Pricing'].map((label) => (
-              <a key={label} href={`#${label.toLowerCase()}`} className="text-sm text-white/60 transition hover:text-white">
-                {label}
-              </a>
-            ))}
-          </nav>
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden mt-4 backdrop-blur-sm bg-white/70 rounded-2xl px-6 py-4 shadow-lg border border-white/20 animate-fade-in">
+            <div className="flex flex-col space-y-4">
+              <button
+                onClick={() => scrollToSection('features')}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors text-left"
+              >
+                Features
+              </button>
+              <button
+                onClick={() => scrollToSection('pricing')}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors text-left"
+              >
+                Pricing
+              </button>
+              <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="ghost" className="font-medium w-full">
+                  Login
+                </Button>
+              </Link>
+              <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
+                <Button className="shadow-lg hover:shadow-xl transition-shadow w-full">
+                  Get Started <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
+      </nav>
 
-          <div className="flex items-center gap-3">
-            <Link to="/login"><Button variant="ghost">Login</Button></Link>
-            <Link to="/register"><Button>Get started</Button></Link>
+      {/* Hero Section */}
+      <section className="relative z-10 container mx-auto px-6 py-20">
+        <div className="text-center max-w-5xl mx-auto animate-fade-in">
+          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-semibold mb-6">
+            <Star className="w-4 h-4 fill-current" />
+            Trusted by 1,000+ teams worldwide
+          </div>
+
+          <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+            Turn Meetings Into{' '}
+            <span className="bg-gradient-primary bg-clip-text text-transparent">
+              Results
+            </span>
+          </h1>
+          
+          <p className="text-xl md:text-2xl text-gray-600 mb-10 leading-relaxed max-w-3xl mx-auto">
+            Stop losing productivity to manual note-taking. Meetiva automatically transcribes,
+            summarizes, and extracts action items from your meetingsso your team can focus on
+            execution, not documentation.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            <Link to="/register">
+              <Button size="lg" className="text-lg px-8 py-6 shadow-2xl hover:shadow-3xl transition-all">
+                <Play className="w-5 h-5 mr-2" />
+                Start Free Trial
+              </Button>
+            </Link>
+          </div>
+
+          {/* Trust Indicators */}
+          <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-blue-600" />
+              <span className="font-medium">Enterprise Security</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-amber-600" />
+              <span className="font-medium">Real-Time Processing</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Globe className="w-5 h-5 text-cyan-600" />
+              <span className="font-medium">50+ Languages</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-indigo-600" />
+              <span className="font-medium">Team Collaboration</span>
+            </div>
           </div>
         </div>
-      </header>
 
-      <main className="relative z-10">
-        <section ref={heroRef} className="relative mx-auto max-w-7xl px-6 pb-16 pt-10 lg:px-8 lg:pb-24 lg:pt-16">
-          <div className="grid gap-8 xl:grid-cols-[1.02fr_0.98fr] xl:items-center">
-            <motion.div style={{ y: heroShift, scale: heroScale }} className="space-y-8">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80 backdrop-blur-xl">
-                <Sparkles className="h-3.5 w-3.5" /> AI meeting operating system
-              </div>
-
-              <div className="space-y-6">
-                <h1 className="max-w-3xl font-display text-6xl font-bold tracking-tight text-white md:text-7xl xl:text-8xl">
-                  Meetings become
-                  <span className="mt-3 block bg-gradient-to-r from-violet-200 via-white to-cyan-300 bg-clip-text text-transparent">
-                    structured momentum.
-                  </span>
-                </h1>
-                <p className="max-w-2xl text-lg leading-8 text-white/62 md:text-xl">
-                  Meetiva turns the raw noise of a call into a clean execution layer: summaries, decisions, action items, and calendar-ready follow-up.
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Link to="/register"><Button size="lg" className="w-full sm:w-auto">Start free trial<ArrowRight className="ml-2 h-4 w-4" /></Button></Link>
-                <Link to="/login"><Button size="lg" variant="outline" className="w-full sm:w-auto">See the workspace</Button></Link>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                {stats.map((item, index) => (
-                  <motion.div
-                    key={item.label}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.08 * index, duration: 0.45 }}
-                    className="rounded-[1.45rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl"
-                  >
-                    <p className="text-xs uppercase tracking-[0.24em] text-white/42">{item.label}</p>
-                    <p className="mt-2 text-3xl font-bold text-white">{item.value}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 28, rotateY: -14 }}
-              animate={{ opacity: 1, y: 0, rotateY: 0 }}
-              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-              className="relative mx-auto w-full max-w-[760px]"
+        {/* Stats Section */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-20 max-w-4xl mx-auto">
+          {stats.map((stat, index) => (
+            <div
+              key={index}
+              className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 text-center shadow-lg hover:shadow-xl transition-shadow border border-white/50"
             >
-              <div className="absolute left-[-5rem] top-16 h-48 w-48 rounded-full bg-purple-500/20 blur-3xl parallax-slow" />
-              <div className="absolute right-[-4rem] bottom-0 h-52 w-52 rounded-full bg-cyan-400/20 blur-3xl parallax-medium" />
-
-              <div className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-5 shadow-[0_40px_140px_rgba(0,0,0,0.5)] backdrop-blur-2xl lg:p-6">
-                <div className="grid gap-4 lg:grid-cols-[1.12fr_0.88fr]">
-                  <Card className="relative overflow-hidden p-5 lg:p-6">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(124,92,255,0.18),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(48,213,246,0.12),transparent_30%)]" />
-                    <div className="relative space-y-5">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.24em] text-white/42">Live meeting</p>
-                          <h2 className="text-2xl font-semibold text-white">Product review sync</h2>
-                        </div>
-                        <div className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-cyan-300">recording</div>
-                      </div>
-
-                      <div className="rounded-[1.4rem] border border-white/10 bg-black/30 p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary text-white">
-                            <Mic className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-white/45">Transcript intelligence</p>
-                            <p className="mt-1 text-sm font-medium leading-7 text-white">
-                              “Finalize launch copy by Friday and sync design changes after legal sign-off.”
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        {[
-                          ['Summary ready', '12 key bullets'],
-                          ['Tasks extracted', '6 assigned actions'],
-                          ['Calendar sync', '3 reminders created'],
-                        ].map(([label, value]) => (
-                          <div key={label} className="rounded-[1.25rem] border border-white/10 bg-white/[0.03] p-4">
-                            <p className="text-xs uppercase tracking-[0.2em] text-white/42">{label}</p>
-                            <p className="mt-2 text-sm font-medium text-white">{value}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </Card>
-
-                  <div className="space-y-4">
-                    <Card className="p-5">
-                      <div className="flex items-center gap-3">
-                        <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/[0.06] text-cyan-300"><Workflow className="h-5 w-5" /></div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.24em] text-white/42">Workflow</p>
-                          <p className="text-sm font-medium text-white">Real-time AI pipeline</p>
-                        </div>
-                      </div>
-                      <div className="mt-4 space-y-3">
-                        {[
-                          'Capture audio, video, or upload files',
-                          'AI transcribes, summarizes, and detects decisions',
-                          'Tasks and reminders flow into the team calendar',
-                        ].map((item, index) => (
-                          <div key={item} className="flex items-start gap-3 rounded-2xl bg-white/[0.03] p-3">
-                            <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-primary text-xs font-bold text-white">
-                              {index + 1}
-                            </div>
-                            <p className="text-sm text-white/70">{item}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </Card>
-
-                    <Card className="p-5">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.24em] text-white/42">Signal</p>
-                          <p className="text-sm font-medium text-white">Context surfaced instantly</p>
-                        </div>
-                        <Globe2 className="h-5 w-5 text-cyan-300" />
-                      </div>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        {['Decisions', 'Owners', 'Deadlines', 'Risks'].map((label) => (
-                          <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/72">
-                            {label}
-                          </div>
-                        ))}
-                      </div>
-                    </Card>
-                  </div>
-                </div>
+              <div className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
+                {stat.value}
               </div>
-            </motion.div>
-          </div>
-        </section>
+              <div className="text-gray-600 font-medium">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-        <section id="features" className="mx-auto max-w-7xl px-6 py-8 lg:py-12">
-          <div className="mb-10 max-w-3xl space-y-4">
-            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">Built for momentum</p>
-            <h2 className="max-w-2xl font-display text-4xl font-bold tracking-tight text-white md:text-5xl">
-              A bento layout with depth, rhythm, and enough contrast to feel new.
-            </h2>
-            <p className="max-w-2xl text-lg leading-8 text-white/60">
-              The interface leans into asymmetry, layered panels, and motion so the product feels intentional instead of generic.
-            </p>
-          </div>
+      {/* Features Section */}
+      <section id="features" className="relative z-10 container mx-auto px-6 py-20">
+        <div className="text-center mb-16">
+          <h2 className="text-5xl font-bold text-gray-900 mb-4">
+            Everything You Need for Productive Meetings
+          </h2>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Powerful features that eliminate the gap between discussion and execution
+          </p>
+        </div>
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-              return (
-                <motion.div
-                  key={feature.title}
-                  initial={{ opacity: 0, y: 18 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.2 }}
-                  transition={{ duration: 0.5, delay: index * 0.06 }}
-                  whileHover={{ y: -6 }}
-                >
-                  <Card className="h-full p-6">
-                    <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-primary text-white shadow-[0_18px_40px_rgba(124,92,255,0.35)]">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="mt-5 text-xl font-semibold text-white">{feature.title}</h3>
-                    <p className="mt-3 text-sm leading-7 text-white/60">{feature.description}</p>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </div>
-        </section>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              className="group bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-white/50 hover:-translate-y-2"
+            >
+              <div
+                className={`w-14 h-14 bg-gradient-to-br ${feature.color} rounded-xl flex items-center justify-center mb-6 text-white shadow-lg group-hover:scale-110 transition-transform`}
+              >
+                {feature.icon}
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
+              <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-        <section id="workflow" className="mx-auto max-w-7xl px-6 py-16 lg:py-20">
-          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-            <div className="space-y-6 rounded-[2rem] border border-white/10 bg-white/[0.03] p-8 backdrop-blur-xl">
-              <p className="text-xs uppercase tracking-[0.3em] text-white/45">Workflow</p>
-              <h2 className="font-display text-4xl font-bold tracking-tight text-white">From capture to execution in three steps.</h2>
-              <p className="text-lg leading-8 text-white/60">
-                The product reads as a process, not a stack of features. Each step changes the rhythm of the page as you scroll.
+{/* Pricing Section */}
+      <section id="pricing" className="relative z-10 container mx-auto px-6 py-20">
+        <div className="text-center mb-16">
+          <h2 className="text-5xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h2>
+          <p className="text-xl text-gray-600">Choose the plan that works best for your team</p>
+        </div>
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-12 md:p-16 border border-white/50 relative overflow-hidden">
+            <div className="relative z-10">
+              <h3 className="text-4xl font-bold text-gray-900 mb-6">Ready to Transform Your Meetings?</h3>
+              <p className="text-xl mb-8 text-gray-600 max-w-2xl mx-auto">
+                Start with our 14-day free trial. No credit card required. Experience the full power of AI-driven meeting intelligence.
               </p>
-              <Link to="/register"><Button size="lg">Create your workspace</Button></Link>
-            </div>
-            <div className="grid gap-4">
-              {workflow.map((item, index) => (
-                <motion.div
-                  key={item.title}
-                  initial={{ opacity: 0, y: 18 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.2 }}
-                  transition={{ duration: 0.45, delay: index * 0.06 }}
-                >
-                  <Card className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/[0.05] text-lg font-bold text-cyan-300">{item.step}</div>
-                      <div>
-                        <h3 className="text-xl font-semibold text-white">{item.title}</h3>
-                        <p className="mt-2 text-sm leading-7 text-white/60">{item.body}</p>
-                      </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="pricing" className="mx-auto max-w-7xl px-6 py-14 lg:py-16">
-          <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8 backdrop-blur-2xl lg:p-10">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-2xl space-y-4">
-                <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">Pricing</p>
-                <h2 className="font-display text-4xl font-bold tracking-tight text-white md:text-5xl">Simple plans for teams that move fast.</h2>
-                <p className="text-lg leading-8 text-white/60">
-                  The rest of the product uses the same visual language: layered glass, deep contrast, and deliberate motion.
-                </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+                <Link to="/register">
+                  <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 shadow-xl px-8 py-6 text-lg">
+                    Start Free Trial
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </Link>
+                <Link to="/pricing">
+                  <Button
+                    size="lg"
+                    className="bg-white text-black hover:bg-gray-100 shadow-xl px-8 py-6 text-lg"
+                  >
+                    View Pricing Plans
+                    <ChevronRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </Link>
               </div>
-              <Link to="/pricing"><Button variant="outline">See full pricing</Button></Link>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="mx-auto max-w-7xl px-6 py-10 lg:py-20">
-          <div className="rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.14),transparent_28%),rgba(255,255,255,0.03)] p-8 text-center backdrop-blur-2xl lg:p-12">
-            <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/70">Ready to ship</p>
-            <h2 className="mt-4 font-display text-4xl font-bold tracking-tight text-white md:text-5xl">Make meetings feel engineered, not managed.</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-white/60">
-              Start with the landing experience, then continue the same visual language through auth, upload, and the dashboard workspace.
-            </p>
-            <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-              <Link to="/register"><Button size="lg">Start free trial</Button></Link>
-              <Link to="/login"><Button size="lg" variant="outline">Sign in</Button></Link>
+      {/* FAQ Section */}
+      <section className="relative z-10 container mx-auto px-6 py-20">
+        <div className="text-center mb-16">
+          <h2 className="text-5xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
+          <p className="text-xl text-gray-600">Everything you need to know about Meetiva</p>
+        </div>
+
+        <div className="max-w-3xl mx-auto space-y-4">
+          {faqs.map((faq, index) => (
+            <div
+              key={index}
+              className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 overflow-hidden"
+            >
+              <button
+                onClick={() => setActiveFaq(activeFaq === index ? null : index)}
+                className="w-full flex items-center justify-between p-6 text-left hover:bg-blue-50/50 transition-colors"
+              >
+                <span className="font-semibold text-gray-900 text-lg">{faq.question}</span>
+                <ChevronRight
+                  className={`w-5 h-5 text-gray-600 transition-transform ${
+                    activeFaq === index ? 'rotate-90' : ''
+                  }`}
+                />
+              </button>
+              {activeFaq === index && (
+                <div className="px-6 pb-6 text-gray-600 leading-relaxed animate-fade-in">
+                  {faq.answer}
+                </div>
+              )}
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="relative z-10 container mx-auto px-6 py-20">
+        <div className="bg-gradient-primary rounded-3xl p-12 md:p-16 text-center text-white shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="relative z-10">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              Ready to Transform Your Meetings?
+            </h2>
+            <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
+              Join forward-thinking teams who have eliminated manual note-taking and turned their
+              meetings into Meetiva with AI-powered intelligence.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/register">
+                <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 shadow-xl px-8 py-6 text-lg">
+                  Start Free Trial
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+              <Link to="/contact">
+                <Button
+                  size="lg"
+                  className="bg-white text-blue-600 hover:bg-gray-100 shadow-xl px-8 py-6 text-lg"
+                >
+                  Contact Sales
+                </Button>
+              </Link>
+            </div>
+            <p className="text-sm mt-6 opacity-75">
+              No credit card required  14-day free trial  Cancel anytime
+            </p>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 container mx-auto px-6 py-12 border-t border-gray-200/50">
+        <div className="grid md:grid-cols-4 gap-8 mb-8">
+          <div>
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold">M</span>
+              </div>
+              <span className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
+                Meetiva.ai
+              </span>
+            </div>
+            <p className="text-gray-600 text-sm">
+              Turn meetings into Meetiva with AI-powered intelligence.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-gray-900 mb-4">Product</h4>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li><Link to="/features" className="hover:text-blue-600">Features</Link></li>
+              <li><Link to="/pricing" className="hover:text-blue-600">Pricing</Link></li>
+              <li><Link to="/integrations" className="hover:text-blue-600">Integrations</Link></li>
+              <li><Link to="/security" className="hover:text-blue-600">Security</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-gray-900 mb-4">Company</h4>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li><Link to="/about" className="hover:text-blue-600">About</Link></li>
+              <li><Link to="/contact" className="hover:text-blue-600">Contact</Link></li>
+              <li><Link to="/careers" className="hover:text-blue-600">Careers</Link></li>
+              <li><Link to="/blog" className="hover:text-blue-600">Blog</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-gray-900 mb-4">Legal</h4>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li><Link to="/privacy" className="hover:text-blue-600">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-blue-600">Terms of Service</Link></li>
+              <li><Link to="/cookies" className="hover:text-blue-600">Cookie Policy</Link></li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="text-center text-gray-600 text-sm pt-8 border-t border-gray-200/50">
+          <p>&copy; {new Date().getFullYear()} Meetiva.ai. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 };

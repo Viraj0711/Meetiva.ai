@@ -1,19 +1,7 @@
 // Frontend test setup
 import '@testing-library/jest-dom';
 
-// Polyfill TextEncoder/TextDecoder for jsdom (needed by react-router-dom v7)
-if (typeof globalThis.TextEncoder === 'undefined') {
-  const { TextEncoder, TextDecoder } = require('util');
-  globalThis.TextEncoder = TextEncoder;
-  globalThis.TextDecoder = TextDecoder as any;
-}
-
-// Mock api.config to avoid import.meta.env issues in Jest
-jest.mock('@/services/api.config', () => ({
-  API_BASE_URL: 'http://localhost:8000/api/v1',
-}));
-
-// Mock the auth service
+// Mock the auth service to avoid import.meta issues in tests
 jest.mock('@/services/auth.service', () => ({
   authService: {
     login: jest.fn().mockResolvedValue({ user: { id: '1', email: 'test@test.com' }, token: 'test-token' }),
