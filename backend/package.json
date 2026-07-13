@@ -5,6 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:clean": "tsx scripts/kill-port.ts 8000 && tsx watch src/index.ts",
+    "kill-port": "tsx scripts/kill-port.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "db:seed": "tsx src/scripts/seed.ts",

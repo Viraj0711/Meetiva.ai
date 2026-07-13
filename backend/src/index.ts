@@ -22,7 +22,9 @@ import { errorHandler } from './middleware/errorHandler';
 import { connectMongoose, disconnectMongoose } from './lib/mongoose';
 import { disconnectRedis } from './lib/redis';
 
-dotenv.config();
+// Load backend/.env explicitly with override:true so shell-level env vars
+// (e.g. a stale mongodb+srv:// URI) don't block the correct config.
+dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
 validateBackendEnv();
 
 const app = express();

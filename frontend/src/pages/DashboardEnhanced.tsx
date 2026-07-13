@@ -70,7 +70,7 @@ const DashboardEnhanced: React.FC = () => {
         const [meetingStats, meetings, actionItems] = await Promise.all([
           meetingService.getMeetingStats(),
           meetingService.getMeetings({ limit: 8 }),
-          actionItemService.getActionItems({ limit: 120 }),
+          actionItemService.getActionItems({ limit: 100 }),
         ]);
 
         const items: ActionItem[] = actionItems.data || [];

@@ -13,7 +13,7 @@ import { createRateLimitStore } from './redis';
  * otherwise each process tracks its own counters in-memory.
  *
  * Limiters (3):
- *   authLimiter  —  10 / 15 min  — sensitive auth endpoints
+ *   authLimiter  —  10 / 5 min  — sensitive auth endpoints
  *   apiLimiter   —  60 /  1 min  — general authenticated CRUD
  *   uploadLimiter — 10 /  1 hr   — meeting uploads + AI proxy (cost protection)
  */
@@ -30,11 +30,11 @@ const withFreshStore = <T extends object>(config: T): T => {
 
 /** Strict — sensitive auth endpoints (login, register, password reset). */
 export const authLimiter = rateLimit(withFreshStore({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 5 * 60 * 1000, // 5 minutes
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: 'Too many attempts. Please try again after 15 minutes.' },
+  message: { message: 'Too many attempts. Please try again after 5 minutes.' },
 }));
 
 /** General — read-mostly CRUD (meetings, action items, teams, workspace, profile). */

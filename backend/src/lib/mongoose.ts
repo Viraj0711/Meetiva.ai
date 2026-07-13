@@ -52,7 +52,29 @@ export const connectMongoose = async (): Promise<void> => {
     isConnected = false;
   });
 
-  await mongoose.connect(uri);
+  try {
+    await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 });
+  } catch (err: any) {
+    // Enhance error messages for common Atlas connectivity issues
+    if (err.name === 'MongooseServerSelectionError') {
+      if (err.message?.includes('ENOTFOUND') || err.message?.includes('getaddrinfo')) {
+        console.error(
+          '[mongoose] ⚠️  DNS resolution failed for the MongoDB host.\n' +
+          '   The hostname in MONGODB_URI cannot be resolved.\n' +
+          '   If using mongodb+srv://, verify the SRV hostname is correct.\n' +
+          '   Try using the direct shard connection string instead (mongodb:// format).'
+        );
+      } else if (err.message?.includes('timed out') || err.message?.includes('ETIMEDOUT')) {
+        console.error(
+          '[mongoose] ⚠️  Connection timed out. This usually means:\n' +
+          '   1) Your IP is not whitelisted in MongoDB Atlas (Network Access)\n' +
+          '   2) The cluster is paused or not running\n' +
+          '   3) A firewall is blocking outbound connections on port 27017'
+        );
+      }
+    }
+    throw err;
+  }
 };
 
 /**
