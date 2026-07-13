@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { useAppDispatch } from '@/store/hooks';
@@ -20,7 +19,13 @@ import {
   useRejectMember,
 } from '@/hooks/useTeams';
 
-import { createTeamSchema, inviteMemberSchema, updateMemberProfileSchema, zodResolver } from '@/lib/validation';
+import {
+  createTeamSchema,
+  inviteMemberSchema,
+  updateMemberProfileSchema,
+  zodResolver,
+  type SchemaOutput,
+} from '@/lib/validation';
 import './TeamsAdmin.css';
 
 interface IssuedCredentials {
@@ -44,7 +49,7 @@ export const TeamsAdmin: React.FC = () => {
     handleSubmit: handleCreateTeamSubmit,
     formState: { errors: createTeamErrors },
     reset: resetCreateTeamForm,
-  } = useForm<z.infer<typeof createTeamSchema>>({
+  } = useForm<SchemaOutput<typeof createTeamSchema>>({
     resolver: zodResolver(createTeamSchema),
     defaultValues: { name: '', description: '' },
   });
@@ -54,7 +59,7 @@ export const TeamsAdmin: React.FC = () => {
     handleSubmit: handleInviteMemberSubmit,
     formState: { errors: inviteMemberErrors },
     reset: resetInviteMemberForm,
-  } = useForm<z.infer<typeof inviteMemberSchema>>({
+  } = useForm<SchemaOutput<typeof inviteMemberSchema>>({
     resolver: zodResolver(inviteMemberSchema),
     defaultValues: { email: '' },
   });
@@ -64,7 +69,7 @@ export const TeamsAdmin: React.FC = () => {
     handleSubmit: handleEditMemberSubmit,
     formState: { errors: editMemberErrors },
     reset: resetEditMemberForm,
-  } = useForm<z.infer<typeof updateMemberProfileSchema>>({
+  } = useForm<SchemaOutput<typeof updateMemberProfileSchema>>({
     resolver: zodResolver(updateMemberProfileSchema),
     defaultValues: { name: '', email: '' },
   });
@@ -113,7 +118,7 @@ export const TeamsAdmin: React.FC = () => {
     setCurrentTeamId(null);
   };
 
-  const handleCreateTeam = async (data: z.infer<typeof createTeamSchema>) => {
+  const handleCreateTeam = async (data: SchemaOutput<typeof createTeamSchema>) => {
     await createTeamMutation.mutateAsync({
       name: data.name,
       description: data.description || undefined,
@@ -122,7 +127,7 @@ export const TeamsAdmin: React.FC = () => {
     setShowCreateTeamModal(false);
   };
 
-  const handleInviteMember = async (data: z.infer<typeof inviteMemberSchema>) => {
+  const handleInviteMember = async (data: SchemaOutput<typeof inviteMemberSchema>) => {
     if (!currentTeamId) {
       dispatch(addToast({ type: 'error', message: 'No team selected', duration: 3000 }));
       return;
@@ -173,7 +178,7 @@ export const TeamsAdmin: React.FC = () => {
     setShowEditMemberModal(true);
   };
 
-  const handleEditMember = async (data: z.infer<typeof updateMemberProfileSchema>) => {
+  const handleEditMember = async (data: SchemaOutput<typeof updateMemberProfileSchema>) => {
     if (!currentTeamId || !editingMemberId) return;
     await updateProfileMutation.mutateAsync({
       teamId: currentTeamId,

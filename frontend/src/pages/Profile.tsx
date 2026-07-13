@@ -10,8 +10,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store';
 import { loginSuccess } from '@/store/slices/authSlice';
-import { updateProfileSchema, zodResolver } from '@/lib/validation';
-import type { z } from 'zod';
+import { updateProfileSchema, zodResolver, type SchemaOutput } from '@/lib/validation';
 import {
   User,
   Mail,
@@ -51,7 +50,7 @@ const Profile: React.FC = () => {
     jobTitle: '',
   });
 
-  type ProfileFormData = z.infer<typeof updateProfileSchema>;
+  type ProfileFormData = SchemaOutput<typeof updateProfileSchema>;
 
   const {
     register: registerProfile,
@@ -620,5 +619,4 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
-
 

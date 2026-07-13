@@ -6,10 +6,9 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useLogin } from '@/hooks/useAuth';
-import { loginSchema, zodResolver } from '@/lib/validation';
-import type { z } from 'zod';
+import { loginSchema, zodResolver, type SchemaOutput } from '@/lib/validation';
 
-type LoginFormData = z.infer<typeof loginSchema>;
+type LoginFormData = SchemaOutput<typeof loginSchema>;
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -159,5 +158,4 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
-
 

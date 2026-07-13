@@ -3,22 +3,26 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, CheckCircle, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useRequestPasswordReset, useResetPassword } from '@/hooks/useAuth';
-import { passwordResetSchema, passwordResetConfirmSchema, zodResolver } from '@/lib/validation';
+import {
+  passwordResetSchema,
+  passwordResetConfirmSchema,
+  zodResolver,
+  type SchemaOutput,
+} from '@/lib/validation';
 
-type RequestFormData = z.infer<typeof passwordResetSchema>;
+type RequestFormData = SchemaOutput<typeof passwordResetSchema>;
 
 const resetFormSchema = passwordResetConfirmSchema.extend({
-  confirmPassword: z.string().min(1, 'Please confirm your password'),
+  confirmPassword: passwordResetConfirmSchema.shape.password,
 }).refine(data => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
 });
 
-type ResetFormData = z.infer<typeof resetFormSchema>;
+type ResetFormData = SchemaOutput<typeof resetFormSchema>;
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();

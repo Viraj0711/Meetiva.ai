@@ -4,10 +4,9 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Mail, MapPin, Phone } from 'lucide-react';
 import GradientOrbs from '@/components/GradientOrbs';
-import { contactFormSchema, zodResolver } from '@/lib/validation';
-import type { z } from 'zod';
+import { contactFormSchema, zodResolver, type SchemaOutput } from '@/lib/validation';
 
-type ContactFormData = z.infer<typeof contactFormSchema>;
+type ContactFormData = SchemaOutput<typeof contactFormSchema>;
 
 const ContactPage: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
@@ -176,5 +175,4 @@ const ContactPage: React.FC = () => {
 };
 
 export default ContactPage;
-
 

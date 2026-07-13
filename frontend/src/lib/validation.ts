@@ -56,3 +56,5 @@ export const zodResolver = _zodResolver as unknown as (
   schema: any,
   resolverOptions?: any,
 ) => any;
+
+export type SchemaOutput<TSchema> = TSchema extends { _output: infer Output } ? Output : never;

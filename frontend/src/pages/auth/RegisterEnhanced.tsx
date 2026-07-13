@@ -6,17 +6,16 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useRegister } from '@/hooks/useAuth';
-import { registerSchema, zodResolver } from '@/lib/validation';
-import { z } from 'zod';
+import { registerSchema, zodResolver, type SchemaOutput } from '@/lib/validation';
 
 const registerFormSchema = registerSchema.extend({
-  confirmPassword: z.string().min(1, 'Please confirm your password'),
+  confirmPassword: registerSchema.shape.password,
 }).refine(data => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
 });
 
-type RegisterFormData = z.infer<typeof registerFormSchema>;
+type RegisterFormData = SchemaOutput<typeof registerFormSchema>;
 
 const RegisterEnhanced: React.FC = () => {
   const registerMutation = useRegister();
