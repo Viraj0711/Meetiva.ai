@@ -4,7 +4,7 @@ import ExcelJS from 'exceljs';
 import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { canViewUserData } from '../middleware/authorize';
-import { analyzeTranscriptWithGrok } from '../services/grokMeetingAnalyzer';
+import { analyzeTranscriptWithGemini } from '../services/geminiAnalyzer';
 import {
   transcribeWithWhisper,
   isAudioOrVideoFile,
@@ -328,8 +328,8 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), async
     userId: new Types.ObjectId(req.userId!),
   });
 
-  // ── Step 3: Grok analysis ─────────────────────────────────────────────────
-  const analysis = await analyzeTranscriptWithGrok(transcriptText);
+  // ── Step 3: Gemini analysis ────────────────────────────────────────────────
+  const analysis = await analyzeTranscriptWithGemini(transcriptText);
 
   // ── Step 4: persist all derived data atomically ──────────────────────────
   // Note: MongoDB transactions require a replica set. For single-node deployments,
@@ -386,8 +386,8 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), async
   res.status(201).json({
     data: meeting ? { ...meeting, id: meeting._id.toString() } : null,
     message: transcribedByWhisper
-      ? 'Meeting transcribed with Whisper, summarized with Grok, and tasks extracted successfully.'
-      : 'Meeting uploaded, summarized with Grok, and tasks extracted successfully.',
+      ? 'Meeting transcribed with Groq Whisper, analyzed with Gemini, and tasks extracted successfully.'
+      : 'Meeting uploaded, analyzed with Gemini, and tasks extracted successfully.',
     transcribedByWhisper,
     actionItemsExportUrl: `/meetings/${createdMeeting._id}/action-items/export`,
     taskCount: analysis.tasks.length,

@@ -25,10 +25,10 @@ export const transcribeWithWhisper = async (
   originalname: string,
   mimeType: string
 ): Promise<string> => {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
-    throw new Error('Missing OPENAI_API_KEY in environment');
+    throw new Error('Missing GROQ_API_KEY in environment (get one at https://console.groq.com/keys)');
   }
 
   if (fileBuffer.byteLength > WHISPER_MAX_BYTES) {
@@ -52,7 +52,7 @@ export const transcribeWithWhisper = async (
 
   let response: Response;
   try {
-    response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -67,7 +67,7 @@ export const transcribeWithWhisper = async (
   const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(`Whisper API error ${response.status}: ${text}`);
+    throw new Error(`Groq Whisper API error ${response.status}: ${text}`);
   }
 
   return text.trim();

@@ -24,16 +24,12 @@ export const validateBackendEnv = (): void => {
 
   const optionalMissing: string[] = [];
 
-  if (!process.env.OPENAI_API_KEY) {
-    optionalMissing.push('OPENAI_API_KEY (required for Whisper transcription)');
+  if (!process.env.GROQ_API_KEY) {
+    optionalMissing.push('GROQ_API_KEY (required for Groq Whisper transcription — get at https://console.groq.com/keys)');
   }
 
-  if (!process.env.GROK_API_KEY && !process.env.XAI_API_KEY) {
-    optionalMissing.push('GROK_API_KEY or XAI_API_KEY (required for Grok analysis)');
-  }
-
-  if (!process.env.CEREBRAS_API_KEY) {
-    optionalMissing.push('CEREBRAS_API_KEY (required for Cerebras / Gemma 4 inference)');
+  if (!process.env.GEMINI_API_KEY) {
+    optionalMissing.push('GEMINI_API_KEY (required for Gemini analysis — get at https://aistudio.google.com/apikey)');
   }
 
   if (!process.env.REDIS_URL) {
