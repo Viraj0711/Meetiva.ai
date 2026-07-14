@@ -33,24 +33,28 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
   useEffect(() => {
     const init = async () => {
       // ── Cleanup stale localStorage keys from previous auth architecture ──
-      // The old codebase stored the JWT and user object in localStorage,
-      // making them stealable via browser DevTools. The new architecture
-      // uses httpOnly refresh cookies + in-memory access tokens instead.
-      // These keys can linger from before the migration — clean them once.
       localStorage.removeItem('token');
       localStorage.removeItem('user');
 
-      try {
-        const data = await authService.refreshToken();
-        if (data.token && data.user) {
-          dispatch(loginSuccess({ user: data.user, token: data.token }));
+      // Check for the session_exists flag cookie set by the server on login.
+      // If absent, skip the refresh call entirely — no session to restore,
+      // and the 401 would just be console noise.
+      const hasSession = document.cookie
+        .split('; ')
+        .some((c) => c.startsWith('session_exists='));
+
+      if (hasSession) {
+        try {
+          const data = await authService.refreshToken();
+          if (data.token && data.user) {
+            dispatch(loginSuccess({ user: data.user, token: data.token }));
+          }
+        } catch {
+          // Refresh failed — cookie may be stale. Fall through to unauthenticated.
         }
-      } catch {
-        // No valid refresh token — user is not authenticated.
-        // Protected routes will redirect to /login.
-      } finally {
-        setInitializing(false);
       }
+
+      setInitializing(false);
     };
     init();
   }, [dispatch]);

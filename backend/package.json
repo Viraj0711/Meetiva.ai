@@ -39,7 +39,6 @@
     "lodash": "^4.17.24",
     "fast-csv": "5.0.7",
     "tmp": "0.2.7",
-    "path-to-regexp": "0.1.13",
     "qs": "^6.15.2"
   },
   "devDependencies": {

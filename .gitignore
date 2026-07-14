@@ -73,12 +73,6 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# ─── Prisma ───────────────────────────────────────────────────────────────────
-backend/prisma/migrations/
-*.db
-*.sqlite
-*.sqlite3
-
 # ─── Docker ───────────────────────────────────────────────────────────────────
 .dockerignore
 

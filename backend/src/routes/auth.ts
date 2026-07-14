@@ -32,6 +32,7 @@ const router = Router();
 const OAUTH_STATE_COOKIE = 'google_oauth_state';
 const OAUTH_UID_COOKIE = 'google_oauth_uid';
 const REFRESH_COOKIE = 'refresh_token';
+const SESSION_COOKIE = 'session_exists';
 
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_DAYS = 7;
@@ -114,6 +115,16 @@ const createAndSetRefreshToken = async (
     path: '/',
     maxAge: REFRESH_TOKEN_MAX_AGE,
   });
+
+  // Set a non-httpOnly flag cookie so the frontend can detect session presence
+  // without making a 401-generating refresh call on every page load.
+  res.cookie(SESSION_COOKIE, 'true', {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: REFRESH_TOKEN_MAX_AGE,
+  });
 };
 
 /**
@@ -140,6 +151,7 @@ const validateAndRotateRefreshToken = async (
       await RefreshToken.deleteOne({ tokenHash });
     }
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
     return null;
   }
 
@@ -310,6 +322,7 @@ router.post('/logout', apiLimiter, asyncHandler(async (req: Request, res: Respon
     await RefreshToken.deleteMany({ tokenHash });
   }
   res.clearCookie(REFRESH_COOKIE, { path: '/' });
+  res.clearCookie(SESSION_COOKIE, { path: '/' });
   res.json({ message: 'Logged out successfully' });
 }));
 
@@ -328,9 +341,9 @@ router.post('/refresh', authLimiter, asyncHandler(async (req: Request, res: Resp
     .lean();
   if (!user) {
     return res.status(401).json({ message: 'User not found' });
-  }
-  if (!user.isActive) {
+  }    if (!user.isActive) {
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
     return res.status(403).json({ message: 'Account is inactive' });
   }
 
@@ -427,6 +440,7 @@ router.post('/password-reset/confirm',
     // Invalidate all existing refresh tokens (password changed — force re-login)
     await RefreshToken.deleteMany({ userId: userId as any });
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
 
     return res.json({ message: 'Password updated successfully. Please log in again.' });
   })

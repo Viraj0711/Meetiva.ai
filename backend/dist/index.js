@@ -103,7 +103,7 @@ app.use('/auth', auth_1.default);
 app.use('/calendar', calendar_1.default);
 const frontendPath = path_1.default.join(__dirname, '../../frontend/dist');
 app.use(express_1.default.static(frontendPath));
-app.get('*', spaRateLimit, (req, res) => {
+app.get('{*path}', spaRateLimit, (req, res) => {
     res.sendFile(path_1.default.join(frontendPath, 'index.html'));
 });
 // Global error handler — catches errors from asyncHandler wrappers in routes
@@ -118,7 +118,7 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
     (0, refreshTokenCleanup_1.startRefreshTokenCleanup)();
 });
 // ── Graceful shutdown ───────────────────────────────────────────────────────
-// Close the HTTP server and disconnect Prisma on termination signals.
+// Close the HTTP server and disconnect Mongoose on termination signals.
 // This prevents connection pool leaks and allows in-flight requests to finish.
 const gracefulShutdown = async (signal) => {
     console.log(`\n${signal} received — shutting down gracefully...`);
