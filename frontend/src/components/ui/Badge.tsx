@@ -13,11 +13,25 @@ const colorMap: Record<BadgeColor, string> = {
 interface BadgeProps {
   children: React.ReactNode;
   color?: BadgeColor;
+  variant?: string;
+  className?: string;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ children, color = 'purple' }) => {
+const statusColorMap: Record<string, BadgeColor> = {
+  completed: 'green',
+  'in-progress': 'purple',
+  pending: 'amber',
+  cancelled: 'gray',
+  live: 'green',
+  high: 'rose',
+  medium: 'amber',
+  low: 'gray',
+};
+
+export const Badge: React.FC<BadgeProps> = ({ children, color, variant, className = '' }) => {
+  const resolved = color || (variant ? (statusColorMap[variant] || 'purple') : 'purple');
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide ${colorMap[color]}`}>
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide ${colorMap[resolved]} ${className}`}>
       {children}
     </span>
   );

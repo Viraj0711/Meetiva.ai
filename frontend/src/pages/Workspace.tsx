@@ -356,6 +356,8 @@ const Workspace: React.FC = () => {
           </div>
         </>
       )}
+        </div>
+      </div>
     </div>
   );
 };

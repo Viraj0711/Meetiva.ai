@@ -5,13 +5,10 @@ import { configureStore } from '@reduxjs/toolkit';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LoginEnhanced from '../pages/auth/LoginEnhanced';
 import authReducer from '@/store/slices/authSlice';
-import meetingReducer from '@/store/slices/meetingSlice';
-
 // Create a test store matching the real app's store shape
 const createTestStore = () => configureStore({
   reducer: {
     auth: authReducer,
-    meetings: meetingReducer,
   },
 });
 

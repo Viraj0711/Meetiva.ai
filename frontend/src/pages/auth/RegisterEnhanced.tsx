@@ -66,22 +66,22 @@ const RegisterPage: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Full name</label>
-            <Input placeholder="Jane Smith" value={name} onChange={setName} />
+            <Input placeholder="Jane Smith" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
 
           <div>
             <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Email</label>
-            <Input placeholder="you@company.com" type="email" value={email} onChange={setEmail} />
+            <Input placeholder="you@company.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Password</label>
-              <Input placeholder="Create" type="password" value={pw} onChange={setPw} />
+              <Input placeholder="Create" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Confirm</label>
-              <Input placeholder="Repeat" type="password" value={pw2} onChange={setPw2} />
+              <Input placeholder="Repeat" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
             </div>
           </div>
 

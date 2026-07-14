@@ -1,271 +1,153 @@
-﻿# Meetiva 
+﻿# Meetiva
 
-## Turn Meetings into Meetiva
+AI-powered meeting intelligence platform that automatically converts conversations into summaries, action items, and tracked tasks — so teams spend less time remembering and more time executing.
 
-**Meetiva** is an AI-powered meeting intelligence platform that automatically converts conversations into summaries, action items, and tracked tasksso teams spend less time remembering and more time executing.
-
-Meetiva listens to meetings, understands context, identifies decisions, assigns ownership, and integrates directly into your existing workflow tools like JIRA, Slack, and Google Calendar.
+Meetiva listens to meetings, understands context, identifies decisions, assigns ownership, and integrates directly into your workflow.
 
 ---
 
-##  Table of Contents
+## Features
 
-* [Problem Statement](#-problem-statement)
-* [Solution Overview](#-solution-overview)
-* [Core Features](#-core-features)
-* [Technical Architecture](#-technical-architecture)
-* [Technology Stack](#-technology-stack)
-* [How It Works](#-how-it-works)
-* [Use Cases](#-use-cases)
-* [Installation & Setup](#-installation--setup)
-* [API Documentation](#-api-documentation)
-* [Future Roadmap](#-future-roadmap)
-* [Contributing](#-contributing)
-* [License](#-license)
+### AI-Powered Transcription
+- Audio/video upload with **Groq Whisper** transcription
+- Multi-language support
+- Handles accents, noise, and technical terminology
 
----
+### Intelligent Summarization
+- Executive summary for quick review
+- Key discussion points and decisions tracked
+- Open questions and unresolved topics
 
-##  Problem Statement
+### Action Item Extraction
+- Detects tasks from natural language
+- Assigns owners and deadlines
+- Categorizes and prioritizes tasks
 
-Meetings are where decisions are madebut they are also where execution breaks down.
+### Analytics Dashboard
+- Task completion rates
+- Meeting effectiveness metrics
+- Productivity trends over time
 
-### Common Challenges
-
-* Important action items are forgotten or poorly documented
-* Manual note-taking distracts participants
-* Ownership and deadlines are unclear
-* Follow-ups require manual work across multiple tools
-* Meeting recordings go unused due to time constraints
-
-### The Result
-
-* Lost productivity
-* Missed deadlines
-* Poor accountability
-* Slower execution
-
-Modern teams need meetings to **produce outcomes**, not just conversations.
+### Security & Privacy
+- AES-256 encryption at rest, TLS 1.3 in transit
+- Role-based access (admin, editor, viewer)
+- GDPR-compliant data handling
 
 ---
 
-##  Solution Overview
-
-**Meetiva** acts as an AI meeting co-pilot that automatically:
-
-* Transcribes meetings with high accuracy
-* Identifies speakers and context
-* Generates structured summaries
-* Extracts action items with owners and deadlines
-* Assigns priority using sentiment and urgency detection
-* Syncs tasks to project management tools
-* Sends reminders and follow-ups automatically
-
-Meetiva closes the gap between **discussion and execution**.
-
----
-
-##  Core Features
-
-###  AI-Powered Transcription
-
-* Supports audio and video uploads
-* Multi-language transcription with automatic detection
-* Handles accents, noise, and technical terminology
-
-###  Intelligent Summarization
-
-* Executive summary for quick review
-* Key discussion points and decisions
-* Open questions and unresolved topics
-
-###  Action Item Extraction
-
-* Detects tasks from natural language
-* Assigns owners and deadlines
-* Categorizes and prioritizes tasks
-
-###  Priority & Sentiment Analysis
-
-* Identifies urgency using tone and repetition
-* Flags critical items automatically
-* Helps teams focus on what matters most
-
-###  Analytics Dashboard
-
-* Task completion rates
-* Meeting effectiveness metrics
-* Productivity trends over time
-
-###  Security & Privacy
-
-* AES-256 encryption at rest
-* TLS 1.3 in transit
-* Role-based access control
-* GDPR-compliant data handling
-
----
-
-##  Technical Architecture
-
-Meetiva is built as a scalable, cloud-native system.
-
-### High-Level Overview
-
-* **Frontend**: React + TypeScript
-* **Backend**: Node.js + TypeScript
-* **AI Pipeline**: Whisper, AssemblyAI, LLMs, OpenAI
-* **Async Processing**: Background workers + Redis
-* **Storage**: MongoDB + S3
-
-### Core Components
-
-* API Gateway for authentication and routing
-* AI processing pipeline for transcription and NLP
-* Queue-based background processing
-
----
-
-##  Technology Stack
-
-### Backend
-
-* Node.js + TypeScript
-* Express
-* MongoDB + Mongoose ODM
-* Redis
+## Tech Stack
 
 ### Frontend
+- **React 19** + TypeScript
+- **Tailwind CSS v4** — CSS-first config via `@import "tailwindcss"`
+- **Vite** — build tool with `@tailwindcss/vite` plugin
+- **Redux Toolkit** — global state (auth, UI)
+- **TanStack Query** — server state & caching
+- **React Router v6** — routing
+- **React Hook Form + Zod** — form validation
+- **Axios** — HTTP client
+- **Lucide React** — icons
+- **shadcn/ui** — Radix-based component primitives
+- **sonner** — toast notifications
+- **tw-animate-css** — Tailwind animation utilities
 
-* React 18
-* TypeScript
-* Tailwind CSS
-* Redux Toolkit
-* Axios
+### Backend
+- **Node.js** + TypeScript + Express
+- **MongoDB** + Mongoose ODM
+- **Redis** — caching & rate limiting
+- **JWT** — stateless auth
 
-### Infrastructure
-
-* MongoDB Atlas
-* Cloud hosting (Vercel / Railway / AWS)
-
----
-
-##  How It Works
-
-1. **Upload Meeting Content**
-   Upload an audio/video file or paste a transcript.
-
-2. **AI Processing**
-
-   * Transcription
-   * Speaker identification
-   * Summarization
-   * Action item extraction
-   * Sentiment & priority scoring
-
-3. **Results Delivered**
-
-   * Structured summary
-   * Action items dashboard
-   * Editable tasks
-
-4. **Automation & Sync**
-
-   * Create tickets in project tools
-   * Schedule calendar reminders
-   * Notify teams via Slack or Teams
-
-5. **Ongoing Tracking**
-
-   * Daily reminders
-   * Overdue alerts
-   * Weekly productivity reports
+### AI Pipeline
+- **Groq Whisper** — speech-to-text transcription
+- **Gemini 2.0 Flash** — summarization, action-item extraction, intelligence
 
 ---
 
-##  Use Cases
+## Architecture
 
-### Product Teams
-
-Sprint planning, retrospectives, roadmap discussions.
-
-### Sales Teams
-
-Client calls, discovery meetings, follow-ups.
-
-### Leadership & Executives
-
-Board meetings, strategy reviews, decision tracking.
-
-### Remote & Async Teams
-
-Recorded updates and distributed collaboration.
-
-### Customer Support & Incident Reviews
-
-Postmortems, root cause analysis, prevention planning.
+```
+frontend/          React 19 + Vite SPA
+backend/           Express API server
+  src/
+    lib/           shared utilities (env, jwt, errors, calendar client)
+    middleware/    auth, validation, error handling
+    routes/       API route handlers
+    services/     business logic (whisperTranscriber, geminiAnalyzer, calendar)
+    models/       Mongoose schemas (User, Meeting, ActionItem, Team)
+```
 
 ---
 
-##  Installation & Setup
+## How It Works
+
+1. **Upload meeting content** — audio/video file or paste a transcript
+2. **AI processing** — Groq Whisper transcribes, Gemini analyzes for summary, action items, sentiment
+3. **Results delivered** — structured summary, action items dashboard, editable tasks
+4. **Automation & sync** — create calendar events, notify teams
+5. **Ongoing tracking** — reminders, overdue alerts, weekly productivity reports
+
+---
+
+## Setup
 
 ### Prerequisites
-
-* Node.js 20+ or Bun
-* MongoDB Atlas account (or local MongoDB instance)
-* Redis 7+ (optional, for production caching)
+- Node.js 20+
+- MongoDB Atlas account (or local instance)
+- Groq API key — free at https://console.groq.com/keys
+- Gemini API key — free at https://aistudio.google.com/apikey
 
 ### Quick Start
 
 ```bash
-# 1. Clone and install backend dependencies
+# Backend
 cd backend
 npm install
 cp .env.example .env
-# Edit backend/.env with your MongoDB URI and API keys
+# Edit .env with your keys
 
-# 2. Clone and install frontend dependencies
-cd ../frontend
+# Frontend
+cd frontend
 npm install
 cp .env.example .env
 
-# 3. Start the backend (terminal 1)
+# Start backend (terminal 1)
 cd backend
 npm run dev
 
-# 4. Start the frontend (terminal 2)
+# Start frontend (terminal 2)
 cd frontend
 npm run dev
 ```
 
-Access the application:
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
 
-### Environment Variables
+### Backend Environment Variables
 
-Backend (`backend/.env`):
 ```env
 MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.xxxxx.mongodb.net/meetiva
-JWT_SECRET=your-super-secret-key-change-this-in-production-min-32-chars
-CEREBRAS_API_KEY=cerebras-your-api-key
+JWT_SECRET=your-super-secret-key-min-32-chars
+GROQ_API_KEY=gsk_your-groq-api-key
+GEMINI_API_KEY=your-gemini-api-key
 CORS_ORIGIN=http://localhost:5173
 ```
 
-Frontend (`frontend/.env`):
+### Frontend Environment Variables
+
 ```env
 VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_GROQ_API_KEY=gsk_your-groq-api-key
 ```
 
-### Google Calendar OAuth 2.0 Setup
+---
 
-1. Create OAuth credentials in Google Cloud Console.
-2. Add these redirect URIs:
-   - http://localhost:8000/auth/google/callback
-3. Add these scopes in your OAuth consent screen:
-   - https://www.googleapis.com/auth/calendar.events
-   - https://www.googleapis.com/auth/userinfo.profile
-4. Add these backend environment variables:
+## Google Calendar Integration
+
+1. Create OAuth credentials in Google Cloud Console
+2. Add redirect URI: `http://localhost:8000/auth/google/callback`
+3. Add scopes: `calendar.events`, `userinfo.profile`
+4. Set backend env vars:
 
 ```env
 GOOGLE_CLIENT_ID=your-google-client-id
@@ -275,100 +157,39 @@ GOOGLE_TOKEN_ENCRYPTION_KEY=your-32-byte-base64-or-hex-key
 FRONTEND_APP_URL=http://localhost:5173
 ```
 
-OAuth flow endpoints:
-* GET /auth/google
-* GET /auth/google/callback
+---
 
-Calendar API endpoints:
-* POST /calendar/create-event
-* GET /calendar/events
+## API Endpoints
 
-All token operations are server-side. Access and refresh tokens are encrypted before being stored.
+- `POST /api/v1/meetings/upload` — upload audio/video
+- `GET /api/v1/meetings/:id` — meeting details
+- `GET /api/v1/meetings/:id/summary` — AI summary
+- `GET /api/v1/meetings/:id/action-items` — extracted tasks
+- `GET /api/v1/analytics/dashboard` — stats & trends
 
-### Sample User Flow (End-to-End)
-
-1. Sign in to Meetiva.
-2. Go to Workspace.
-3. Click Connect Google Calendar.
-4. Complete Google OAuth consent.
-5. Return to Workspace and confirm status shows Connected.
-6. Upload meeting audio or transcript.
-7. Verify generated output:
-   - concise summary
-   - key decisions
-   - follow-up action items
-8. Create a calendar event from Workspace.
-9. Verify event appears in Google Calendar.
-10. Set an action item due within 24 hours and confirm reminder appears in Notifications.
-
-### Team Setup Recommendation
-
-For a team setup, keep all keys in a shared secret manager (for example 1Password, Bitwarden, Doppler, or Infisical) and never commit `.env` files.
-
-Startup now includes preflight checks:
-* Backend fails fast if required keys are missing (`MONGODB_URI`, `JWT_SECRET`).
-* Frontend validates `VITE_API_BASE_URL` on startup.
+Full API docs at `/docs`.
 
 ---
 
-##  API Documentation
+## Roadmap
 
-Meetiva exposes a REST API with JWT authentication.
-
-### Base URL
-
-```
-/api/v1
-```
-
-### Key Endpoints
-
-* `POST /meetings/upload`
-* `GET /meetings/{id}`
-* `GET /meetings/{id}/summary`
-* `GET /meetings/{id}/action-items`
-* `GET /analytics/dashboard`
-
-Swagger UI available at:
-
-```
-/docs
-```
+- Live meeting capture (Zoom, Meet, Teams)
+- Knowledge base auto-generation
+- Predictive deadline risk detection
+- Real-time AI meeting co-pilot
+- Enterprise compliance (SOC 2, HIPAA)
 
 ---
 
-##  Future Roadmap
-
-* Live meeting capture (Zoom, Meet, Teams)
-* Knowledge base auto-generation
-* Predictive deadline risk detection
-* Real-time AI meeting co-pilot
-* Enterprise compliance (SOC 2, HIPAA)
-
----
-
-##  Contributing
-
-Contributions are welcome.
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Commit your changes
 4. Open a Pull Request
 
-Please follow coding standards and include tests where applicable.
-
 ---
 
-##  License
+## License
 
-This project is licensed under the **MIT License**.
-
-You are free to use, modify, and distribute this software with attribution.
-See the `LICENSE` file for full details.
-
----
-
-### Meetiva exists for one reason
-
-**Meetings should create progress, not paperwork.**
+MIT License — see the `LICENSE` file.

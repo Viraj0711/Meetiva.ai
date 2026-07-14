@@ -13,14 +13,6 @@ const DOT: React.CSSProperties = {
   backgroundSize: '28px 28px',
 };
 const CS = '0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(91,63,214,0.08), inset 0 1px 0 rgba(255,255,255,0.9)';
-const CH = '0 4px 8px rgba(0,0,0,0.06), 0 24px 60px rgba(91,63,214,0.14), inset 0 1px 0 rgba(255,255,255,1)';
-
-const FEATURES = [
-  { icon: Zap, title: 'Instant summaries', desc: 'AI generates polished recaps the moment a recording lands.', color: LP },
-  { icon: Target, title: 'Task extraction', desc: 'Surface owners, due dates, and priorities automatically.', color: LA },
-  { icon: Calendar, title: 'Calendar sync', desc: 'Push follow-up actions into calendars to preserve momentum.', color: '#0EA5E9' },
-  { icon: Brain, title: 'Team intelligence', desc: 'See trends across meetings, workstreams, and velocity.', color: LS },
-];
 
 const STEPS = [
   { n: '01', title: 'Upload or connect live meetings', desc: 'Drop recordings, transcripts, or call links directly into the workspace.' },
@@ -624,7 +616,7 @@ const LandingNew: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8"
             style={{ borderTop: `1px solid ${LP}0C` }}>
-            <div className="text-xs text-[#9B97B0]">© 2025 Meetiva, Inc. All rights reserved.</div>
+            <div className="text-xs text-[#9B97B0]">© 2026 Meetiva, Inc. All rights reserved.</div>
             <div className="flex items-center gap-5">
               {['Twitter', 'GitHub', 'LinkedIn'].map(s => (
                 <button key={s}

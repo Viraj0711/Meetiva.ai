@@ -60,7 +60,7 @@ const LoginPage: React.FC = () => {
         <div className="space-y-5">
           <div>
             <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Email</label>
-            <Input placeholder="you@company.com" type="email" value={email} onChange={setEmail} />
+            <Input placeholder="you@company.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
 
           <div>
@@ -71,7 +71,7 @@ const LoginPage: React.FC = () => {
                 Forgot password?
               </button>
             </div>
-            <Input placeholder="Enter your password" type="password" value={pw} onChange={setPw} />
+            <Input placeholder="Enter your password" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
           </div>
 
           <button onClick={handleSubmit} disabled={loginMutation.isPending}
