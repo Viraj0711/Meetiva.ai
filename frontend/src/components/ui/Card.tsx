@@ -1,58 +1,31 @@
-import * as React from 'react';
-import { cn } from '@/lib/utils';
+import React from 'react';
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
+const CARD_SHADOW = '0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(91,63,214,0.07), inset 0 1px 0 rgba(255,255,255,0.95)';
+const CARD_SHADOW_HOVER = '0 2px 4px rgba(0,0,0,0.06), 0 12px 36px rgba(91,63,214,0.13), inset 0 1px 0 rgba(255,255,255,1)';
+
+interface CardProps {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+  padding?: boolean;
+}
+
+export const Card: React.FC<CardProps> = ({ children, className = '', onClick, padding = true }) => {
+  const [hov, setHov] = React.useState(false);
+  return (
     <div
-      ref={ref}
-      className={cn(
-        'rounded-[1.5rem] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-card-foreground backdrop-blur-xl shadow-[0_30px_90px_rgba(0,0,0,0.45)] transition-all duration-300 hover:-translate-y-1 hover:border-[rgba(124,92,255,0.22)]',
-        className
-      )}
-      {...props}
-    />
-  )
-);
-Card.displayName = 'Card';
-
-const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex flex-col space-y-1.5 p-6', className)} {...props} />
-  )
-);
-CardHeader.displayName = 'CardHeader';
-
-const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h3
-      ref={ref}
-      className={cn('text-2xl font-semibold leading-none tracking-tight text-white', className)}
-      {...props}
-    />
-  )
-);
-CardTitle.displayName = 'CardTitle';
-
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
-));
-CardDescription.displayName = 'CardDescription';
-
-const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('p-6 pt-0', className)} {...props} />
-  )
-);
-CardContent.displayName = 'CardContent';
-
-const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex items-center p-6 pt-0', className)} {...props} />
-  )
-);
-CardFooter.displayName = 'CardFooter';
-
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };
+      onClick={onClick}
+      onMouseEnter={() => onClick && setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      className={`bg-white rounded-3xl border overflow-hidden ${padding ? 'p-6' : ''} ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      style={{
+        borderColor: hov ? 'rgba(91,63,214,0.3)' : '#E4E0F5',
+        boxShadow: hov ? CARD_SHADOW_HOVER : CARD_SHADOW,
+        transform: hov ? 'translateY(-2px)' : 'translateY(0)',
+        transition: 'box-shadow 0.22s ease, transform 0.22s ease, border-color 0.22s ease',
+      }}
+    >
+      {children}
+    </div>
+  );
+};

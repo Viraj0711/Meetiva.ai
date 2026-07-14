@@ -1,34 +1,23 @@
-import * as React from 'react';
-import { cn } from '@/lib/utils';
+import React from 'react';
 
-interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
+const GRAD = '#4B2E83';
+const GRAD2 = '#8B5CF6';
+
+interface ProgressBarProps {
   value: number;
-  max?: number;
-  indicatorClassName?: string;
+  className?: string;
 }
 
-const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
-  ({ className, value, max = 100, indicatorClassName, ...props }, ref) => {
-    const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
-
-    return (
+const ProgressBar: React.FC<ProgressBarProps> = ({ value, className = '' }) => {
+  return (
+    <div className={`h-1.5 bg-[#EDE9FF] rounded-full overflow-hidden ${className}`}>
       <div
-        ref={ref}
-        className={cn('relative h-4 w-full overflow-hidden rounded-full bg-secondary', className)}
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={max}
-        aria-valuenow={value}
-        {...props}
-      >
-        <div
-          className={cn('h-full bg-gradient-primary transition-all duration-300', indicatorClassName)}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-    );
-  }
-);
-Progress.displayName = 'Progress';
+        className="h-full rounded-full transition-all duration-500"
+        style={{ width: `${Math.min(value, 100)}%`, background: `linear-gradient(90deg, ${GRAD}, ${GRAD2})` }}
+      />
+    </div>
+  );
+};
 
-export { Progress };
+export { ProgressBar };
+export const Progress = ProgressBar;

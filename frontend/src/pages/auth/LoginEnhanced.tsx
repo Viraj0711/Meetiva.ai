@@ -1,161 +1,118 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { useNavigate } from 'react-router-dom';
+import { ChevronRight, ArrowRight } from 'lucide-react';
 import { useLogin } from '@/hooks/useAuth';
-import { loginSchema, zodResolver, type SchemaOutput } from '@/lib/validation';
+import { Input } from '@/components/ui/Input';
+import { toast } from 'sonner';
 
-type LoginFormData = SchemaOutput<typeof loginSchema>;
+const GRAD = '#4B2E83';
+const GRAD2 = '#8B5CF6';
+
+const DOT_GRID: React.CSSProperties = {
+  backgroundImage: 'radial-gradient(circle, rgba(91,63,214,0.08) 1.5px, transparent 1.5px)',
+  backgroundSize: '26px 26px',
+};
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const loginMutation = useLogin();
-  const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState('');
+  const [email, setEmail] = useState('');
+  const [pw, setPw] = useState('');
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
-  });
-
-  const onSubmit = async (data: LoginFormData) => {
-    setServerError('');
+  const handleSubmit = async () => {
     try {
-      await loginMutation.mutateAsync(data);
+      await loginMutation.mutateAsync({ email, password: pw });
       navigate('/dashboard');
-    } catch (error: unknown) {
-      const err = error as { message?: string };
-      setServerError(err?.message || 'Invalid email or password.');
+    } catch (err) {
+      const e = err as { message?: string };
+      toast.error(e?.message || 'Invalid email or password.');
     }
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.16),transparent_26%)]" />
-      <div className="absolute inset-0 fine-grid opacity-40" />
+    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4"
+      style={{ background: '#FCFBFF' }}>
+      <div className="absolute inset-0 pointer-events-none" style={DOT_GRID} />
+      <div className="absolute -top-32 left-1/4 w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{ background: `radial-gradient(circle, ${GRAD}0C 0%, transparent 60%)`, filter: 'blur(60px)' }} />
+      <div className="absolute -bottom-32 right-1/4 w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(244,114,182,0.07) 0%, transparent 60%)', filter: 'blur(60px)' }} />
 
-      <Link to="/" className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 backdrop-blur-xl transition hover:bg-white/[0.08] hover:text-white">
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </Link>
+      <div className="relative w-full max-w-[420px] mb-8">
+        <button onClick={() => navigate('/')}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold mb-5 transition-colors"
+          style={{ color: '#64607A' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = GRAD; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64607A'; }}>
+          <ChevronRight size={13} className="rotate-180" /> Back to home
+        </button>
+        <div className="flex items-center gap-3">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg" style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>M</div>
+          <span className="font-bold text-[#1D1B22] text-xl tracking-tight">Meetiva</span>
+        </div>
+      </div>
 
-      <div className="relative z-10 grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="hidden flex-col justify-between p-10 lg:flex">
-          <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80 backdrop-blur-xl">
-              <Sparkles className="h-3.5 w-3.5" />
-              Secure access
-            </div>
-            <div className="max-w-xl space-y-5">
-              <h1 className="font-display text-6xl font-bold leading-[0.92] tracking-tight text-white xl:text-7xl">Welcome back to the meeting engine.</h1>
-              <p className="max-w-lg text-lg leading-8 text-white/60">
-                Sign in to continue the flow of summaries, tasks, and calendar sync without breaking the visual rhythm.
-              </p>
-            </div>
+      <div className="relative w-full max-w-[420px] bg-white rounded-[24px] px-8 py-8"
+        style={{ border: '1px solid rgba(91,63,214,0.12)', boxShadow: '0 4px 6px rgba(0,0,0,0.03), 0 16px 48px rgba(91,63,214,0.10), inset 0 1px 0 rgba(255,255,255,1)' }}>
+        <h1 className="text-[26px] font-bold text-[#1D1B22] tracking-tight mb-1">Welcome back</h1>
+        <p className="text-sm text-[#64607A] mb-7">Sign in to your AI meeting workspace.</p>
+
+        <div className="space-y-5">
+          <div>
+            <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Email</label>
+            <Input placeholder="you@company.com" type="email" value={email} onChange={setEmail} />
           </div>
 
-          <div className="grid max-w-xl gap-4 md:grid-cols-3">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest">Password</label>
+              <button onClick={() => navigate('/reset-password')}
+                className="text-[11px] font-semibold hover:underline transition-all" style={{ color: GRAD }}>
+                Forgot password?
+              </button>
+            </div>
+            <Input placeholder="Enter your password" type="password" value={pw} onChange={setPw} />
+          </div>
+
+          <button onClick={handleSubmit} disabled={loginMutation.isPending}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 8px 28px rgba(91,63,214,0.38)` }}>
+            {loginMutation.isPending ? 'Signing in...' : 'Sign in'} <ArrowRight size={15} />
+          </button>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-[#E4E0F5]" />
+            <span className="text-[11px] text-[#64607A]">or</span>
+            <div className="flex-1 h-px bg-[#E4E0F5]" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             {[
-              ['Live summaries', 'Delivered in seconds'],
-              ['Task tracking', 'Owners and deadlines'],
-              ['Calendar sync', 'Follow-ups keep moving'],
-            ].map(([title, description]) => (
-              <div key={title} className="glass-panel rounded-[1.5rem] p-5">
-                <p className="text-sm font-semibold text-white">{title}</p>
-                <p className="mt-2 text-sm text-white/55">{description}</p>
-              </div>
+              { name: 'Google', color: '#4285F4', letter: 'G' },
+              { name: 'GitHub', color: '#24292F', letter: 'GH' },
+            ].map(p => (
+              <button key={p.name}
+                onClick={() => toast.info(`${p.name} sign-in coming soon.`)}
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all bg-white text-[#1D1B22]"
+                style={{ borderColor: 'rgba(91,63,214,0.14)' }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.28)'; el.style.background = '#EDE9FF'; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.14)'; el.style.background = 'white'; }}>
+                <span className="rounded-full flex items-center justify-center text-[8px] font-black text-white flex-shrink-0" style={{ background: p.color, width: 18, height: 18 }}>{p.letter}</span>
+                {p.name}
+              </button>
             ))}
           </div>
         </div>
 
-        <div className="flex items-center justify-center px-6 py-20 lg:justify-end lg:px-10">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-slate-950/75 p-8 shadow-[0_40px_120px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
-          >
-            <div className="mb-8 space-y-3 text-center">
-              <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(124,92,255,0.35)]">
-                <ShieldCheck className="h-7 w-7 text-white" />
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight text-white">Sign in</h2>
-              <p className="text-sm text-white/55">Access your AI meeting workspace.</p>
-            </div>
-
-            {serverError && <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{serverError}</div>}
-
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-white/75">Email address</label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-                  <Input
-                    type="email"
-                    id="login-email"
-                    error={errors.email?.message}
-                    className="pl-11"
-                    placeholder="you@company.com"
-                    {...register('email')}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-white/75">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    id="login-password"
-                    error={errors.password?.message}
-                    className="pl-11 pr-11"
-                    placeholder="Enter your password"
-                    {...register('password')}
-                  />
-                  <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/35 transition hover:text-white">
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-sm text-white/55">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" className="rounded border-white/20 bg-white/5 text-cyan-400 focus:ring-cyan-400" />
-                  Remember me
-                </label>
-                <Link to="/reset-password" className="text-cyan-300 transition hover:text-white">Forgot password?</Link>
-              </div>
-
-              <Button type="submit" size="lg" className="w-full" isLoading={isSubmitting}>
-                {isSubmitting ? 'Signing in' : 'Enter workspace'}
-                {!isSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
-            </form>
-
-            <div className="my-8 border-t border-white/10" />
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Button variant="outline" className="w-full">Google</Button>
-              <Button variant="outline" className="w-full">GitHub</Button>
-            </div>
-
-            <p className="mt-6 text-center text-sm text-white/55">
-              New here? <Link to="/register" className="font-medium text-cyan-300 transition hover:text-white">Create an account</Link>
-            </p>
-          </motion.div>
-        </div>
+        <p className="mt-7 text-center text-sm text-[#64607A]">
+          No account?{' '}
+          <button onClick={() => navigate('/register')} className="font-bold hover:underline" style={{ color: GRAD }}>
+            Create one free
+          </button>
+        </p>
       </div>
     </div>
   );
 };
 
 export default LoginPage;
-

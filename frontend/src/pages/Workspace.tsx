@@ -170,10 +170,13 @@ const Workspace: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="rounded-2xl bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.14),transparent_26%),rgba(255,255,255,0.03)] p-6 text-white shadow-lg">
-        <h1 className="text-3xl font-bold tracking-tight text-white">Team Workspace</h1>
-        <p className="mt-2 text-white/65">
+    <div className="flex-1 overflow-y-auto"
+      style={{ background: 'radial-gradient(ellipse 70% 50% at 15% 5%, rgba(91,63,214,0.07) 0%, transparent 55%),radial-gradient(ellipse 50% 40% at 90% 90%, rgba(244,114,182,0.05) 0%, transparent 55%),#FCFBFF' }}>
+      <div className="max-w-5xl mx-auto p-7">
+        <div className="space-y-6">
+          <div className="rounded-2xl bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.14),transparent_26%),rgba(255,255,255,0.03)] p-6 text-white shadow-lg">
+            <h1 className="text-3xl font-bold tracking-tight text-white">Team Workspace</h1>
+            <p className="mt-2 text-white/65">
           Shared execution center for project momentum, deadlines, and calendar coordination.
         </p>
       </div>

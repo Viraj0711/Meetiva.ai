@@ -1,9 +1,13 @@
-export { Button, buttonVariants } from './Button';
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from './Card';
+export { Button } from './Button';
+export { Card } from './Card';
 export { Input } from './Input';
 export { Textarea } from './Textarea';
-export { Badge, badgeVariants } from './Badge';
-export { Progress } from './Progress';
+export { Badge, StatusBadge } from './Badge';
+export { Avatar } from './Avatar';
+export { EmptyState } from './EmptyState';
+export { Select } from './Select';
+export { Tabs } from './Tabs';
+export { ProgressBar, ProgressBar as Progress } from './Progress';
 export { default as Toast } from './Toast';
 export { default as ToastContainer } from './ToastContainer';
 export { default as LoadingSpinner } from './LoadingSpinner';

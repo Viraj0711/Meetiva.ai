@@ -5,7 +5,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAppSelector } from '@/store/hooks';
 
 const Landing = React.lazy(() => import('@/pages/LandingNew'));
-const Home = React.lazy(() => import('@/pages/home/RoleHome'));
+const Home = React.lazy(() => import('@/pages/dashboard/Home'));
 const Login = React.lazy(() => import('@/pages/auth/LoginEnhanced'));
 const Register = React.lazy(() => import('@/pages/auth/RegisterEnhanced'));
 const ResetPassword = React.lazy(() => import('@/pages/auth/ResetPassword'));
@@ -21,6 +21,8 @@ const Workspace = React.lazy(() => import('@/pages/Workspace'));
 const Profile = React.lazy(() => import('@/pages/Profile'));
 const Settings = React.lazy(() => import('@/pages/Settings'));
 const SubscriptionUpgrade = React.lazy(() => import('@/pages/SubscriptionUpgrade'));
+const DashboardMinutes = React.lazy(() => import('@/pages/dashboard/Minutes'));
+const DashboardReports = React.lazy(() => import('@/pages/dashboard/Reports'));
 const Pricing = React.lazy(() => import('@/pages/Pricing'));
 const Contact = React.lazy(() => import('@/pages/Contact'));
 const Terms = React.lazy(() => import('@/pages/Terms'));
@@ -203,6 +205,22 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LoadingSpinner />}>
             <Settings />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'minutes',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <DashboardMinutes />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <DashboardReports />
           </Suspense>
         ),
       },

@@ -64,9 +64,12 @@ const Meetings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="flex-1 overflow-y-auto"
+      style={{ background: 'radial-gradient(ellipse 70% 50% at 15% 5%, rgba(91,63,214,0.07) 0%, transparent 55%),radial-gradient(ellipse 50% 40% at 90% 90%, rgba(244,114,182,0.05) 0%, transparent 55%),#FCFBFF' }}>
+      <div className="max-w-5xl mx-auto p-7">
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Meetings</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-300">
@@ -293,6 +296,8 @@ const Meetings: React.FC = () => {
           </Button>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 };

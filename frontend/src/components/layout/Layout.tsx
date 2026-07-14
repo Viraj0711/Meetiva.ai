@@ -1,17 +1,22 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import Navbar from './Navbar';
+import TopBar from './Navbar';
+
+const MESH_BG: React.CSSProperties = {
+  background:
+    'radial-gradient(ellipse 70% 50% at 15% 5%, rgba(91,63,214,0.07) 0%, transparent 55%),' +
+    'radial-gradient(ellipse 50% 40% at 90% 90%, rgba(244,114,182,0.05) 0%, transparent 55%),' +
+    '#FCFBFF',
+};
 
 const Layout: React.FC = () => {
   return (
-    <div className="relative flex min-h-screen overflow-hidden bg-background text-foreground">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(48,213,246,0.12),transparent_25%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_30%)]" />
-      <div className="absolute inset-0 opacity-40 fine-grid pointer-events-none" />
+    <div className="h-screen flex" style={MESH_BG}>
       <Sidebar />
-      <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
-        <Navbar />
-        <main className="flex-1 overflow-y-auto px-4 pb-8 pt-4 md:px-6 lg:px-8">
+      <div className="flex-1 flex flex-col min-w-0">
+        <TopBar />
+        <main className="flex-1 min-w-0 relative">
           <Outlet />
         </main>
       </div>
