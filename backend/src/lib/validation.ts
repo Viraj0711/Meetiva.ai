@@ -73,8 +73,14 @@ export const validate = <T>(schema: ZodSchema<T>, source: 'body' | 'query' | 'pa
       res.status(400).json({ message: 'Validation failed', errors });
       return;
     }
-    // Replace the source with the parsed (coerced/transformed) data
-    (req as any)[source] = result.data;
+    // Replace the source with the parsed (coerced/transformed) data.
+    // Use defineProperty because `req.query` and `req.params` may be
+    // read-only getters in Express's IncomingMessage type.
+    Object.defineProperty(req, source, {
+      value: result.data,
+      writable: true,
+      configurable: true,
+    });
     next();
   };
 
