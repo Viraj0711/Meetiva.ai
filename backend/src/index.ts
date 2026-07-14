@@ -111,7 +111,7 @@ app.use('/calendar', calendarRoutes);
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendPath));
 
-app.get('*', spaRateLimit, (req, res) => {
+app.get('{*path}', spaRateLimit, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
@@ -130,7 +130,7 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
 });
 
 // ── Graceful shutdown ───────────────────────────────────────────────────────
-// Close the HTTP server and disconnect Prisma on termination signals.
+// Close the HTTP server and disconnect Mongoose on termination signals.
 // This prevents connection pool leaks and allows in-flight requests to finish.
 const gracefulShutdown = async (signal: string) => {
   console.log(`\n${signal} received — shutting down gracefully...`);

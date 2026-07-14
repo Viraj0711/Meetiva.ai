@@ -32,6 +32,10 @@ export const validateBackendEnv = (): void => {
     optionalMissing.push('GROK_API_KEY or XAI_API_KEY (required for Grok analysis)');
   }
 
+  if (!process.env.CEREBRAS_API_KEY) {
+    optionalMissing.push('CEREBRAS_API_KEY (required for Cerebras / Gemma 4 inference)');
+  }
+
   if (!process.env.REDIS_URL) {
     optionalMissing.push('REDIS_URL (rate limits use in-memory store when missing — add for multi-process deployments)');
   }

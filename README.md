@@ -115,7 +115,7 @@ Meetiva is built as a scalable, cloud-native system.
 * **Backend**: Node.js + TypeScript
 * **AI Pipeline**: Whisper, AssemblyAI, LLMs, OpenAI
 * **Async Processing**: Background workers + Redis
-* **Storage**: PostgreSQL + S3
+* **Storage**: MongoDB + S3
 
 ### Core Components
 
@@ -131,8 +131,7 @@ Meetiva is built as a scalable, cloud-native system.
 
 * Node.js + TypeScript
 * Express
-* PostgreSQL
-* Prisma ORM
+* MongoDB + Mongoose ODM
 * Redis
 
 ### Frontend
@@ -145,7 +144,7 @@ Meetiva is built as a scalable, cloud-native system.
 
 ### Infrastructure
 
-* Supabase (PostgreSQL + Authentication + Storage)
+* MongoDB Atlas
 * Cloud hosting (Vercel / Railway / AWS)
 
 ---
@@ -211,106 +210,51 @@ Postmortems, root cause analysis, prevention planning.
 
 ### Prerequisites
 
-* Node.js 20+
-* Supabase account (free tier available at https://supabase.com)
+* Node.js 20+ or Bun
+* MongoDB Atlas account (or local MongoDB instance)
 * Redis 7+ (optional, for production caching)
 
-### Quick Start with Supabase
-
-The recommended way to get started:
+### Quick Start
 
 ```bash
-# 1. Create a Supabase project
-# Go to https://app.supabase.com
-# Click "New Project" and note your database password
-# Get your connection string from Project Settings > Database
-
-# 2. Install all dependencies
-npm install
-
-# 3. Set up environment
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-# Edit backend/.env with your Supabase connection details:
-# DATABASE_URL and DIRECT_URL from Supabase dashboard
-# Edit frontend/.env with your Supabase API values.
-
-# 4. Initialize database with Prisma
+# 1. Clone and install backend dependencies
 cd backend
-npx prisma db push
-npx prisma generate
-cd ..
+npm install
+cp .env.example .env
+# Edit backend/.env with your MongoDB URI and API keys
 
-# 5. Start both frontend and backend
+# 2. Clone and install frontend dependencies
+cd ../frontend
+npm install
+cp .env.example .env
+
+# 3. Start the backend (terminal 1)
+cd backend
+npm run dev
+
+# 4. Start the frontend (terminal 2)
+cd frontend
 npm run dev
 ```
 
 Access the application:
-- **Frontend**: http://localhost:3000
+- **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
 
-### Run Services Individually
-
-```bash
-# Frontend only
-npm run dev:frontend-only
-
-# Backend only
-npm run dev:backend-only
-```
-
-#### Backend Setup
-
-```bash
-cd backend
-
-# Install dependencies
-npm install
-
-# Set up Supabase connection
-# 1. Copy .env.example to .env
-cp .env.example .env
-
-# 2. Add your Supabase credentials to .env
-# Get connection strings from: Supabase Dashboard > Project Settings > Database
-# Copy both "Connection string" (for DATABASE_URL) and "Direct connection" (for DIRECT_URL)
-
-# Initialize database with Prisma
-npx prisma db push
-npx prisma generate
-
-# Run backend
-npm run dev
-
-# Backend API: http://localhost:8000
-# API Docs: http://localhost:8000/docs
-```
-
-#### Frontend Setup
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
 ### Environment Variables
 
-Backend (.env):
+Backend (`backend/.env`):
 ```env
-# Get these from Supabase Dashboard > Project Settings > Database
-DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?pgbouncer=true
-DIRECT_URL=postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
-JWT_SECRET=your-super-secret-key-change-this-in-production
-CORS_ORIGIN=http://localhost:3000,http://localhost:5173
+MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.xxxxx.mongodb.net/meetiva
+JWT_SECRET=your-super-secret-key-change-this-in-production-min-32-chars
+CEREBRAS_API_KEY=cerebras-your-api-key
+CORS_ORIGIN=http://localhost:5173
 ```
 
-Frontend (.env):
+Frontend (`frontend/.env`):
 ```env
 VITE_API_BASE_URL=http://localhost:8000/api/v1
-VITE_SUPABASE_URL=https://[YOUR-PROJECT-REF].supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
 ### Google Calendar OAuth 2.0 Setup
@@ -362,8 +306,8 @@ All token operations are server-side. Access and refresh tokens are encrypted be
 For a team setup, keep all keys in a shared secret manager (for example 1Password, Bitwarden, Doppler, or Infisical) and never commit `.env` files.
 
 Startup now includes preflight checks:
-* Backend fails fast if required keys are missing (`DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`).
-* Frontend fails fast if required keys are missing (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
+* Backend fails fast if required keys are missing (`MONGODB_URI`, `JWT_SECRET`).
+* Frontend validates `VITE_API_BASE_URL` on startup.
 
 ---
 

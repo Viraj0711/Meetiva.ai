@@ -43,7 +43,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
  *   router.param('id',     validateUuidParam('id'));
  *   router.param('teamId', validateUuidParam('teamId'));
  *
- * This catches malformed UUIDs before they reach Prisma (which would return
+ * This catches malformed UUIDs before they reach the database (which would return
  * a 500 instead of a 400 for invalid UUID strings).
  */
 export const validateUuidParam = (paramName: string) =>

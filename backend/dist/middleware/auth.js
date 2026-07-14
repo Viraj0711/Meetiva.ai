@@ -48,7 +48,7 @@ const TeamMember_1 = __importDefault(require("../models/TeamMember"));
  * demotions, team removals) take effect immediately, not after the 15-minute
  * JWT expiry window.
  *
- * The trade-off is one extra indexed Prisma query per authenticated request.
+ * The trade-off is one extra indexed database query per authenticated request.
  * In a high-traffic scenario this can be mitigated by a short-lived cache
  * (e.g. Redis with 30-second TTL), but for most applications the direct DB
  * query on a PK index is negligible (< 1 ms).
