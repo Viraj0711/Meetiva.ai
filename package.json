@@ -7,7 +7,15 @@
     "frontend"
   ],
   "scripts": {
-    "dev": "echo 'Run cd backend && bun run dev or cd frontend && bun run dev'"
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "npx concurrently -n frontend,backend -c cyan,green \"npm run dev:frontend\" \"npm run dev:backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
   },
   "engines": {
     "node": ">=20.0.0",
