@@ -223,11 +223,11 @@ const Workspace: React.FC = () => {
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Calendar Integration</h2>
                 {!connection.connected ? (
-                  <Button onClick={() => handleConnectGoogle(false)} isLoading={isConnecting}>
+                  <Button className="rounded-full" onClick={() => handleConnectGoogle(false)} isLoading={isConnecting}>
                     Connect Google Calendar
                   </Button>
                 ) : (
-                  <Button variant="outline" onClick={() => handleConnectGoogle(true)} isLoading={isConnecting}>
+                  <Button variant="outline" className="rounded-full" onClick={() => handleConnectGoogle(true)} isLoading={isConnecting}>
                     Reconnect Google Calendar
                   </Button>
                 )}
@@ -281,7 +281,7 @@ const Workspace: React.FC = () => {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full rounded-full"
                   isLoading={isCreatingEvent}
                   disabled={!connection.connected || isCreatingEvent}
                 >

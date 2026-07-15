@@ -167,21 +167,21 @@ const Upload: React.FC = () => {
   const formats = ['MP4', 'MP3', 'M4A', 'WAV', 'TXT', 'PDF', 'MOV', 'AVI'];
 
   return (
-    <div className="flex-1 overflow-y-auto" style={MESH_BG}>
-      <div className="max-w-5xl mx-auto p-7">
+    <div className="h-full flex flex-col min-h-0" style={MESH_BG}>
+      <div className="max-w-5xl mx-auto w-full p-7 pb-0 flex flex-col min-h-0">
         <ConfirmDialog isOpen={showCancelDialog} title="Cancel Upload?"
           message="Upload is in progress. Are you sure you want to cancel? All progress will be lost."
           confirmText="Yes, Cancel" cancelText="Continue Upload" variant="warning"
           onConfirm={clearFile} onCancel={() => setShowCancelDialog(false)} />
 
-        <div className="mb-6">
+        <div className="mb-4">
           <h1 className="text-xl font-bold text-[#1D1B22] tracking-tight">Upload Meeting</h1>
           <p className="text-sm font-normal text-[#64607A] mt-1">Drop a recording or paste a call link to start extracting insights.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Left column: input + drop zone */}
-          <div className="lg:col-span-3 space-y-4">
+        <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
+          {/* Left column: input + drop zone — stays completely fixed */}
+          <div className="lg:w-3/5 space-y-4">
             {/* Meeting title */}
             <div className="bg-white rounded-2xl border border-[#E4E0F5] p-5" style={{ boxShadow: CARD_SHADOW }}>
               <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Meeting title</label>
@@ -221,7 +221,7 @@ const Upload: React.FC = () => {
                     ))}
                   </div>
                   <button onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-2 px-6 py-3 text-sm rounded-2xl font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.015] active:scale-[0.985] cursor-pointer select-none"
+                    className="inline-flex items-center gap-2 px-6 py-3 text-sm rounded-full font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.015] active:scale-[0.985] cursor-pointer select-none"
                     style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}>
                     Select file
                   </button>
@@ -237,7 +237,7 @@ const Upload: React.FC = () => {
                   <div className="text-sm text-[#64607A]">{formatFileSize(uploadState.file.size)} &bull; {getFileCategory(uploadState.file)} file</div>
                   {!uploadState.uploading && (
                     <button onClick={(e) => { e.stopPropagation(); clearFile(); }}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-xs rounded-2xl font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
+                      className="inline-flex items-center gap-2 px-4 py-2 text-xs rounded-full font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
                       style={{ color: GRAD }}
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#EDE9FF'; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'white'; }}>
@@ -270,9 +270,8 @@ const Upload: React.FC = () => {
             {duplicateMeeting && (
               <div className="bg-white rounded-2xl border border-amber-200 p-5" style={{ boxShadow: CARD_SHADOW }}>
                 <p className="text-sm font-semibold text-[#1D1B22]">This meeting already exists.</p>
-                <p className="text-sm text-[#64607A] mt-1">Existing meeting: {duplicateMeeting.title}</p>
-                <button onClick={() => navigate(`/dashboard/meetings/${duplicateMeeting.id}`)}
-                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-xs rounded-2xl font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
+                <p className="text-sm text-[#64607A] mt-1">Existing meeting: {duplicateMeeting.title}</p>                  <button onClick={() => navigate(`/dashboard/meetings/${duplicateMeeting.id}`)}
+                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-xs rounded-full font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
                   style={{ color: GRAD }}>Open existing meeting</button>
               </div>
             )}
@@ -301,17 +300,17 @@ const Upload: React.FC = () => {
                     <p className="text-sm text-[#64607A] mt-1">What would you like to do with this meeting?</p>
                     <div className="flex flex-wrap gap-3 mt-5">
                       <button onClick={() => processMeeting('tasks')}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-bold text-white transition-all duration-150 hover:opacity-90 cursor-pointer select-none"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-full font-bold text-white transition-all duration-150 hover:opacity-90 cursor-pointer select-none"
                         style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}>
                         <FileDown size={13} /> Extract Tasks
                       </button>
                       <button onClick={() => processMeeting('minutes')}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-full font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
                         style={{ color: GRAD }}>
                         <BookOpen size={13} /> Generate Minutes
                       </button>
                       <button onClick={() => processMeeting('both')}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-semibold border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-full font-semibold border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
                         style={{ color: '#64607A' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = GRAD; }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64607A'; }}>
@@ -339,12 +338,12 @@ const Upload: React.FC = () => {
                     </p>
                     <div className="flex flex-wrap gap-3 mt-5">
                       <button onClick={() => navigate(`/dashboard/meetings/${uploadState.meetingId}`)}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-bold text-white transition-all duration-150 hover:opacity-90 cursor-pointer select-none"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-full font-bold text-white transition-all duration-150 hover:opacity-90 cursor-pointer select-none"
                         style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}>
                         Open meeting
                       </button>
                       <button onClick={() => navigate('/dashboard/minutes')}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-full font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
                         style={{ color: GRAD }}>
                         View minutes
                       </button>
@@ -358,7 +357,7 @@ const Upload: React.FC = () => {
             {uploadState.file && !uploadState.uploading && !uploadState.exportUrl && !uploadState.meetingId && (
               <div className="flex justify-center pt-2">
                 <button onClick={handleUpload}
-                  className="inline-flex items-center gap-2 px-8 py-3 text-sm rounded-2xl font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.015] active:scale-[0.985] cursor-pointer select-none"
+                  className="inline-flex items-center gap-2 px-8 py-3 text-sm rounded-full font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.015] active:scale-[0.985] cursor-pointer select-none"
                   style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}>
                   <ArrowRight size={15} /> Upload &amp; process
                 </button>
@@ -366,8 +365,8 @@ const Upload: React.FC = () => {
             )}
           </div>
 
-          {/* Right column: what happens next + formats + credits */}
-          <div className="lg:col-span-2 space-y-4">
+          {/* Right column: scrolls independently */}
+          <div className="lg:w-2/5 space-y-4 overflow-y-auto min-h-0 pl-1">
             {/* What happens next */}
             <div className="bg-white rounded-2xl border border-[#E4E0F5] p-5" style={{ boxShadow: CARD_SHADOW }}>
               <div className="text-sm font-bold text-[#1D1B22] mb-5">What happens next</div>
@@ -430,7 +429,7 @@ const Upload: React.FC = () => {
                   </div>
                   <p className="text-xs text-[#64607A] mt-1">{subscription.meetingCountThisMonth} of {subscription.monthlyLimit} used</p>
                   <button onClick={() => navigate('/dashboard/upgrade')}
-                    className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-semibold border border-[#E4E0F5] bg-white transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
+                    className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs rounded-full font-semibold border border-[#E4E0F5] bg-white transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
                     style={{ color: GRAD }}>
                     Upgrade to PRO
                   </button>

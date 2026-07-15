@@ -77,7 +77,7 @@ const Meetings: React.FC = () => {
           </p>
         </div>
         <Link to="/dashboard/upload">
-          <Button>Upload Meeting</Button>
+          <Button className="rounded-full">Upload Meeting</Button>
         </Link>
       </div>
 
@@ -169,7 +169,7 @@ const Meetings: React.FC = () => {
           </p>
           {!searchQuery && (
             <Link to="/dashboard/upload">
-              <Button>Upload Meeting</Button>
+              <Button className="rounded-full">Upload Meeting</Button>
             </Link>
           )}
         </Card>
@@ -223,7 +223,7 @@ const Meetings: React.FC = () => {
 
                   <div className="flex gap-2">
                     <Link to={`/dashboard/meetings/${meeting.id}`}>
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" className="rounded-full">
                         View Details
                       </Button>
                     </Link>

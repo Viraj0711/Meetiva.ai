@@ -287,8 +287,8 @@ const Settings: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <Button variant="outline" onClick={handleProfileCancel}>Cancel</Button>
-              <Button onClick={handleProfileSave} disabled={savingProfile}>
+              <Button variant="outline" className="rounded-full" onClick={handleProfileCancel}>Cancel</Button>
+              <Button className="rounded-full" onClick={handleProfileSave} disabled={savingProfile}>
                 {savingProfile ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
@@ -311,7 +311,7 @@ const Settings: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end mt-6">
-              <Button disabled title="Password change API endpoint coming soon">Update Password</Button>
+              <Button className="rounded-full" disabled title="Password change API endpoint coming soon">Update Password</Button>
             </div>
           </Card>
         </div>
@@ -359,7 +359,7 @@ const Settings: React.FC = () => {
                 <p className="text-sm text-white/50 max-w-sm mx-auto mb-6">
                   Connect Google Calendar to sync your meetings, set reminders, and manage your schedule directly from Meetiva.
                 </p>
-                <Button onClick={() => handleToggleIntegration('google-calendar')}>
+                <Button className="rounded-full" onClick={() => handleToggleIntegration('google-calendar')}>
                   Connect Google Calendar
                 </Button>
               </Card>
@@ -391,7 +391,7 @@ const Settings: React.FC = () => {
                           variant={integration.connected ? 'outline' : 'default'}
                           size="sm"
                           onClick={() => handleToggleIntegration(integration.id)}
-                          className="w-full"
+                          className="w-full rounded-full"
                         >
                           {integration.connected ? 'Disconnect' : 'Connect'}
                         </Button>
@@ -502,7 +502,7 @@ const Settings: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end mt-6">
-              <Button onClick={handleSavePreferences} disabled={savingPrefs}>
+              <Button className="rounded-full" onClick={handleSavePreferences} disabled={savingPrefs}>
                 {savingPrefs ? 'Saving...' : 'Save Preferences'}
               </Button>
             </div>
@@ -541,7 +541,7 @@ const Settings: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end mt-6">
-              <Button onClick={handleSavePreferences} disabled={savingPrefs}>
+              <Button className="rounded-full" onClick={handleSavePreferences} disabled={savingPrefs}>
                 {savingPrefs ? 'Saving...' : 'Save Preferences'}
               </Button>
             </div>
