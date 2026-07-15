@@ -65,8 +65,8 @@ export const meetingService = {
     description?: string,
     participants?: string[],
     onProgress?: (progress: number) => void
-  ): Promise<{ data: Meeting; actionItemsExportUrl: string }> => {
-    if (onProgress) onProgress(0); // Initialize progress
+  ): Promise<{ data: Meeting }> => {
+    if (onProgress) onProgress(0);
     const formData = new FormData();
     formData.append('file', file);
     if (title) formData.append('title', title);
@@ -74,7 +74,7 @@ export const meetingService = {
     if (participants) formData.append('participants', JSON.stringify(participants));
 
     const token = getAccessToken();
-    
+
     const response = await fetch(`${API_BASE_URL}/meetings/upload`, {
       method: 'POST',
       headers: {
@@ -96,7 +96,7 @@ export const meetingService = {
     }
 
     const result = await response.json();
-    return { data: result.data, actionItemsExportUrl: result.actionItemsExportUrl || '' };
+    return { data: result.data };
   },
 
   /**

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Upload as UploadIcon, FileText, CheckCircle2, Mic, Video, ArrowRight } from 'lucide-react';
+import { Upload as UploadIcon, FileText, CheckCircle2, Mic, Video, ArrowRight, FileDown, BookOpen, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Progress } from '@/components/ui/Progress';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -45,8 +45,10 @@ const Upload: React.FC = () => {
   });
   const [drag, setDrag] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [downloading, setDownloading] = useState(false);
   const [duplicateMeeting, setDuplicateMeeting] = useState<DuplicateMeetingInfo | null>(null);
+  const [processingMode, setProcessingMode] = useState<'tasks' | 'minutes' | 'both' | null>(null);
+  const [completedMode, setCompletedMode] = useState<'tasks' | 'minutes' | 'both' | null>(null);
+  const [processing, setProcessing] = useState(false);
   const lastNudgedCount = useRef<number | null>(null);
 
   const acceptedExtensions = '.mp3,.wav,.m4a,.aac,.mp4,.mpeg,.mov,.avi,.txt';
@@ -93,10 +95,36 @@ const Upload: React.FC = () => {
     if (!meetingTitle) setMeetingTitle(file.name.replace(/\.[^/.]+$/, ''));
   };
 
+  const processMeeting = async (mode: 'tasks' | 'minutes' | 'both') => {
+    setProcessingMode(mode);
+    setProcessing(true);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API_BASE_URL}/meetings/${uploadState.meetingId}/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mode }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setCompletedMode(mode);
+        setUploadState(prev => ({ ...prev, exportUrl: mode === 'minutes' ? result.minutesExportUrl : result.actionItemsExportUrl }));
+      } else {
+        setUploadState(prev => ({ ...prev, error: result.message || 'Processing failed' }));
+      }
+    } catch {
+      setUploadState(prev => ({ ...prev, error: 'Processing failed' }));
+    } finally {
+      setProcessing(false);
+      setProcessingMode(null);
+    }
+  };
+
   const handleUpload = async () => {
     if (!uploadState.file) return;
     try {
       setDuplicateMeeting(null);
+      setCompletedMode(null);
       setUploadState((prev) => ({ ...prev, uploading: true, error: null, exportUrl: null, meetingId: null }));
       const result = await retryWithBackoff(() =>
         meetingService.uploadMeetingFile(uploadState.file!, meetingTitle || uploadState.file!.name,
@@ -104,11 +132,8 @@ const Upload: React.FC = () => {
           (progress) => setUploadState((prev) => ({ ...prev, progress }))),
         { maxAttempts: 3 }
       );
-      setUploadState((prev) => ({ ...prev, uploading: false, progress: 100, exportUrl: result.actionItemsExportUrl, meetingId: result.data.id }));
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['meetings'] }),
-        queryClient.invalidateQueries({ queryKey: ['user', 'subscription'] }),
-      ]);
+      setUploadState((prev) => ({ ...prev, uploading: false, progress: 100, meetingId: result.data.id }));
+      await queryClient.invalidateQueries({ queryKey: ['meetings'] });
     } catch (error) {
       if ((error as UploadDuplicateError)?.code === 'MEETING_DUPLICATE') {
         setUploadState((prev) => ({ ...prev, uploading: false, error: null }));
@@ -126,26 +151,9 @@ const Upload: React.FC = () => {
     if (uploadState.uploading) { setShowCancelDialog(true); return; }
     setUploadState({ file: null, uploading: false, progress: 0, error: null, exportUrl: null, meetingId: null });
     setDuplicateMeeting(null);
+    setCompletedMode(null);
     setMeetingTitle('');
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleExcelDownload = async (exportUrl: string, title?: string) => {
-    setDownloading(true);
-    try {
-      const token = getAccessToken();
-      const response = await fetch(`${API_BASE_URL}${exportUrl}`, { headers: { Authorization: `Bearer ${token}` } });
-      if (!response.ok) throw new Error('Download failed');
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${(title || 'meeting').replace(/[^a-z0-9-_]+/gi, '_')}_tasks.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } finally { setDownloading(false); }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -226,7 +234,7 @@ const Upload: React.FC = () => {
                      <FileText size={22} className="text-[#5B3FD6]" />}
                   </div>
                   <div className="text-base font-bold text-[#1D1B22]">{uploadState.file.name}</div>
-                  <div className="text-sm text-[#64607A]">{formatFileSize(uploadState.file.size)} • {getFileCategory(uploadState.file)} file</div>
+                  <div className="text-sm text-[#64607A]">{formatFileSize(uploadState.file.size)} &bull; {getFileCategory(uploadState.file)} file</div>
                   {!uploadState.uploading && (
                     <button onClick={(e) => { e.stopPropagation(); clearFile(); }}
                       className="inline-flex items-center gap-2 px-4 py-2 text-xs rounded-2xl font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
@@ -269,31 +277,76 @@ const Upload: React.FC = () => {
               </div>
             )}
 
-            {/* Success state */}
-            {uploadState.exportUrl && uploadState.meetingId && (
+            {/* Processing state */}
+            {processing && (
+              <div className="bg-white rounded-2xl border border-[#E4E0F5] p-5" style={{ boxShadow: CARD_SHADOW }}>
+                <div className="flex items-center justify-center gap-3 text-sm">
+                  <Loader2 size={16} className="animate-spin text-[#5B3FD6]" />
+                  <span className="text-[#1D1B22] font-semibold">
+                    {processingMode === 'tasks' ? 'Extracting tasks...' : processingMode === 'minutes' ? 'Generating minutes...' : 'Processing meeting...'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Choice state — after upload, ask what to do */}
+            {uploadState.meetingId && !processing && !uploadState.exportUrl && (
               <div className="bg-white rounded-3xl border border-[#E4E0F5] p-6" style={{ boxShadow: CARD_SHADOW }}>
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(5,150,105,0.10)' }}>
                     <CheckCircle2 size={22} className="text-[#059669]" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-base font-bold text-[#1D1B22]">Meeting processed successfully</h3>
-                    <p className="text-sm text-[#64607A] mt-1">Your transcript, summary, decisions, and action items are ready.</p>
+                    <h3 className="text-base font-bold text-[#1D1B22]">Meeting uploaded successfully</h3>
+                    <p className="text-sm text-[#64607A] mt-1">What would you like to do with this meeting?</p>
                     <div className="flex flex-wrap gap-3 mt-5">
-                      <button onClick={() => handleExcelDownload(uploadState.exportUrl!, meetingTitle)}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.015] active:scale-[0.985] cursor-pointer select-none"
+                      <button onClick={() => processMeeting('tasks')}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-bold text-white transition-all duration-150 hover:opacity-90 cursor-pointer select-none"
                         style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}>
-                        {downloading ? 'Downloading...' : 'Download tasks'}
+                        <FileDown size={13} /> Extract Tasks
                       </button>
-                      <button onClick={() => navigate(`/dashboard/meetings/${uploadState.meetingId}`)}
+                      <button onClick={() => processMeeting('minutes')}
                         className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
-                        style={{ color: GRAD }}>Open meeting</button>
-                      <button onClick={() => navigate('/dashboard')}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-semibold transition-all duration-150 cursor-pointer select-none"
+                        style={{ color: GRAD }}>
+                        <BookOpen size={13} /> Generate Minutes
+                      </button>
+                      <button onClick={() => processMeeting('both')}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-semibold border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
                         style={{ color: '#64607A' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = GRAD; }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64607A'; }}>
-                        Go to dashboard
+                        Do Both
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Success state after processing */}
+            {uploadState.exportUrl && uploadState.meetingId && !processing && (
+              <div className="bg-white rounded-3xl border border-[#E4E0F5] p-6" style={{ boxShadow: CARD_SHADOW }}>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(5,150,105,0.10)' }}>
+                    <CheckCircle2 size={22} className="text-[#059669]" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-bold text-[#1D1B22]">Done!</h3>
+                    <p className="text-sm text-[#64607A] mt-1">
+                      {completedMode === 'tasks' ? 'Tasks extracted successfully.' :
+                       completedMode === 'minutes' ? 'Minutes generated successfully.' :
+                       'Tasks extracted and minutes generated successfully.'}
+                    </p>
+                    <div className="flex flex-wrap gap-3 mt-5">
+                      <button onClick={() => navigate(`/dashboard/meetings/${uploadState.meetingId}`)}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-bold text-white transition-all duration-150 hover:opacity-90 cursor-pointer select-none"
+                        style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}>
+                        Open meeting
+                      </button>
+                      <button onClick={() => navigate('/dashboard/minutes')}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
+                        style={{ color: GRAD }}>
+                        View minutes
                       </button>
                     </div>
                   </div>
@@ -302,12 +355,12 @@ const Upload: React.FC = () => {
             )}
 
             {/* Upload button */}
-            {uploadState.file && !uploadState.uploading && !uploadState.exportUrl && (
+            {uploadState.file && !uploadState.uploading && !uploadState.exportUrl && !uploadState.meetingId && (
               <div className="flex justify-center pt-2">
                 <button onClick={handleUpload}
                   className="inline-flex items-center gap-2 px-8 py-3 text-sm rounded-2xl font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.015] active:scale-[0.985] cursor-pointer select-none"
                   style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}>
-                  <ArrowRight size={15} /> Upload & process
+                  <ArrowRight size={15} /> Upload &amp; process
                 </button>
               </div>
             )}
@@ -360,7 +413,7 @@ const Upload: React.FC = () => {
                 <>
                   <div className="rounded-2xl p-4 text-center" style={{ background: 'rgba(91,63,214,0.08)' }}>
                     <p className="text-2xl font-bold text-[#1D1B22]">Unlimited</p>
-                    <p className="mt-1 text-sm text-[#5B3FD6]">You're on the {subscription.tier} plan</p>
+                    <p className="mt-1 text-sm text-[#5B3FD6]">You&apos;re on the {subscription.tier} plan</p>
                   </div>
                   <p className="mt-3 text-xs text-[#64607A] text-center">No meeting limits — upload as many as you need.</p>
                 </>

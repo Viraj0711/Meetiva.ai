@@ -22,7 +22,6 @@ const Profile = React.lazy(() => import('@/pages/Profile'));
 const Settings = React.lazy(() => import('@/pages/Settings'));
 const SubscriptionUpgrade = React.lazy(() => import('@/pages/SubscriptionUpgrade'));
 const DashboardMinutes = React.lazy(() => import('@/pages/dashboard/Minutes'));
-const DashboardReports = React.lazy(() => import('@/pages/dashboard/Reports'));
 const Pricing = React.lazy(() => import('@/pages/Pricing'));
 const Contact = React.lazy(() => import('@/pages/Contact'));
 const Terms = React.lazy(() => import('@/pages/Terms'));
@@ -216,14 +215,7 @@ const router = createBrowserRouter([
           </Suspense>
         ),
       },
-      {
-        path: 'reports',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <DashboardReports />
-          </Suspense>
-        ),
-      },
+
       {
         path: 'upgrade',
         element: (

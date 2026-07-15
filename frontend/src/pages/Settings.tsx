@@ -465,7 +465,7 @@ const Settings: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-2">Default Meeting Language</label>
                 <select
-                  className="w-full px-3 py-2 border border-white/10 rounded-md bg-white/[0.04] text-white"
+                  className="w-full px-3 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22]"
                   value={generalPrefs.language}
                   onChange={(e) => handlePrefsChange('language', e.target.value)}
                 >
@@ -478,7 +478,7 @@ const Settings: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-2">Time Zone</label>
                 <select
-                  className="w-full px-3 py-2 border border-white/10 rounded-md bg-white/[0.04] text-white"
+                  className="w-full px-3 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22]"
                   value={generalPrefs.timezone}
                   onChange={(e) => handlePrefsChange('timezone', e.target.value)}
                 >
@@ -491,7 +491,7 @@ const Settings: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-2">Date Format</label>
                 <select
-                  className="w-full px-3 py-2 border border-white/10 rounded-md bg-white/[0.04] text-white"
+                  className="w-full px-3 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22]"
                   value={generalPrefs.dateFormat}
                   onChange={(e) => handlePrefsChange('dateFormat', e.target.value)}
                 >
@@ -514,7 +514,7 @@ const Settings: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-2">Summary Length</label>
                 <select
-                  className="w-full px-3 py-2 border border-white/10 rounded-md bg-white/[0.04] text-white"
+                  className="w-full px-3 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22]"
                   value={generalPrefs.summaryLength}
                   onChange={(e) => handlePrefsChange('summaryLength', e.target.value)}
                 >
@@ -527,7 +527,7 @@ const Settings: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-2">Action Item Sensitivity</label>
                 <select
-                  className="w-full px-3 py-2 border border-white/10 rounded-md bg-white/[0.04] text-white"
+                  className="w-full px-3 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22]"
                   value={generalPrefs.actionItemSensitivity}
                   onChange={(e) => handlePrefsChange('actionItemSensitivity', e.target.value)}
                 >

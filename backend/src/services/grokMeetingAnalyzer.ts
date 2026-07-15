@@ -1,3 +1,5 @@
+import { TASK_EXTRACTION_PROMPT } from '../prompts';
+
 type GrokRole = 'system' | 'user' | 'assistant';
 
 interface GrokMessage {
@@ -111,8 +113,7 @@ export const analyzeTranscriptWithGrok = async (transcript: string): Promise<Gro
   const messages: GrokMessage[] = [
     {
       role: 'system',
-      content:
-        'You are an expert meeting analyst. Return ONLY valid JSON with keys: executiveSummary (string), keyPoints (string[]), decisions (string[]), openQuestions (string[]), sentiment (positive|neutral|negative), tasks (array). Each task must include title, optional description, optional assignee, optional dueDate in ISO date yyyy-mm-dd when explicit, priority (low|medium|high|urgent), status (pending|in_progress|completed|cancelled), and optional tags string[]. Do not wrap in markdown.'
+      content: TASK_EXTRACTION_PROMPT
     },
     {
       role: 'user',
