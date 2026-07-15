@@ -51,14 +51,25 @@ export async function retryWithBackoff<T>(
  * Check if error is a network error
  */
 export function isNetworkError(error: unknown): boolean {
-  const err = error as { message?: string; code?: string };
+  const err = error as { message?: string; code?: string; name?: string };
   return (
+    err?.name === 'TypeError' ||
     err?.message?.includes('network') ||
     err?.message?.includes('fetch') ||
     err?.code === 'ECONNREFUSED' ||
     err?.code === 'ENOTFOUND' ||
     !navigator.onLine
   );
+}
+
+/**
+ * Get a human-readable string for a network error
+ */
+export function describeNetworkError(error: unknown): string {
+  if (!navigator.onLine) return 'Your browser is offline. Check your internet connection.';
+  const msg = (error as { message?: string }).message || '';
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) return 'Cannot reach the server. Make sure the backend is running on port 8000.';
+  return msg || 'Unknown network error.';
 }
 
 /**

@@ -1,10 +1,10 @@
-import { Router, Response } from 'express';
+import { Router, Response, NextFunction, Request } from 'express';
 import multer from 'multer';
 import ExcelJS from 'exceljs';
 import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { canViewUserData } from '../middleware/authorize';
-import { analyzeTranscriptWithGemini } from '../services/geminiAnalyzer';
+import { analyzeTranscriptWithLLM } from '../services/llmRouter';
 import {
   transcribeWithWhisper,
   isAudioOrVideoFile,
@@ -43,6 +43,16 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: WHISPER_MAX_BYTES },
 });
+
+const handleMulterError = (err: any, _req: Request, _res: Response, next: NextFunction) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return next(new AppError(413, 'File exceeds the 25 MB limit. Please compress and try again.'));
+    }
+    return next(new AppError(400, `Upload error: ${err.message}`));
+  }
+  next(err);
+};
 
 // Helper to get the appropriate filter based on user's role
 const getMeetingsFilter = async (req: AuthRequest): Promise<Record<string, any>> => {
@@ -195,7 +205,7 @@ router.get('/:id', apiLimiter, authenticate, asyncHandler(async (req: AuthReques
   res.json({ ...meeting, id: meeting._id.toString() });
 }));
 
-router.post('/upload', uploadLimiter, authenticate, upload.single('file'), asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handleMulterError, asyncHandler(async (req: AuthRequest, res: Response) => {
   // Apply XSS sanitization to user-supplied text fields (the multer/
   // multipart path bypasses the Zod validation pipeline).
   const title = typeof req.body.title === 'string' && req.body.title.trim().length > 0
@@ -329,7 +339,7 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), async
   });
 
   // ── Step 3: Gemini analysis ────────────────────────────────────────────────
-  const analysis = await analyzeTranscriptWithGemini(transcriptText);
+  const analysis = await analyzeTranscriptWithLLM(transcriptText);
 
   // ── Step 4: persist all derived data atomically ──────────────────────────
   // Note: MongoDB transactions require a replica set. For single-node deployments,

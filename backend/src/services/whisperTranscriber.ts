@@ -1,3 +1,5 @@
+import { AppError } from '../lib/errors';
+
 // Whisper API hard limit is 25 MB.
 export const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
 
@@ -28,11 +30,11 @@ export const transcribeWithWhisper = async (
   const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
-    throw new Error('Missing GROQ_API_KEY in environment (get one at https://console.groq.com/keys)');
+    throw new AppError(502, 'Missing GROQ_API_KEY in environment (get one at https://console.groq.com/keys)');
   }
 
   if (fileBuffer.byteLength > WHISPER_MAX_BYTES) {
-    throw new Error(
+    throw new AppError(413,
       `File is ${(fileBuffer.byteLength / 1024 / 1024).toFixed(1)} MB. ` +
         `Whisper API accepts a maximum of 25 MB per file.`
     );
@@ -67,7 +69,7 @@ export const transcribeWithWhisper = async (
   const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(`Groq Whisper API error ${response.status}: ${text}`);
+    throw new AppError(502, `Groq Whisper API error ${response.status}: ${text}`);
   }
 
   return text.trim();

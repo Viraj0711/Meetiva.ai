@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AppError } from '../lib/errors';
 
 interface ExtractedTask {
   title: string;
@@ -10,7 +10,7 @@ interface ExtractedTask {
   tags?: string[];
 }
 
-interface GeminiAnalysisResult {
+interface GroqAnalysisResult {
   executiveSummary: string;
   keyPoints: string[];
   decisions: string[];
@@ -35,10 +35,10 @@ const normalizeStatus = (status?: string): 'pending' | 'in_progress' | 'complete
   return 'pending';
 };
 
-const parseJsonResponse = (rawContent: string): GeminiAnalysisResult | null => {
+const parseJsonResponse = (rawContent: string): GroqAnalysisResult | null => {
   const direct = rawContent.trim();
   try {
-    return JSON.parse(direct) as GeminiAnalysisResult;
+    return JSON.parse(direct) as GroqAnalysisResult;
   } catch {
     // Continue to fenced JSON fallback.
   }
@@ -47,13 +47,13 @@ const parseJsonResponse = (rawContent: string): GeminiAnalysisResult | null => {
     return null;
   }
   try {
-    return JSON.parse(match[1].trim()) as GeminiAnalysisResult;
+    return JSON.parse(match[1].trim()) as GroqAnalysisResult;
   } catch {
     return null;
   }
 };
 
-const fallbackFromTranscript = (transcript: string): GeminiAnalysisResult => {
+const fallbackFromTranscript = (transcript: string): GroqAnalysisResult => {
   const shortText = transcript.slice(0, 600);
   return {
     executiveSummary: shortText || 'Transcript was provided but model output could not be parsed.',
@@ -65,23 +65,20 @@ const fallbackFromTranscript = (transcript: string): GeminiAnalysisResult => {
   };
 };
 
-/** Default timeout for Gemini API calls in milliseconds (60s). */
-const GEMINI_FETCH_TIMEOUT_MS = parseInt(process.env.GEMINI_FETCH_TIMEOUT_MS || '60000', 10);
+const GROQ_API_BASE = 'https://api.groq.com/openai/v1';
 
-export const analyzeTranscriptWithGemini = async (transcript: string): Promise<GeminiAnalysisResult> => {
-  const apiKey = process.env.GEMINI_API_KEY;
+const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+
+const GROQ_FETCH_TIMEOUT_MS = parseInt(process.env.GROQ_FETCH_TIMEOUT_MS || '60000', 10);
+
+export const analyzeTranscriptWithGroq = async (transcript: string): Promise<GroqAnalysisResult> => {
+  const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
-    throw new Error('Missing GEMINI_API_KEY in environment (get one at https://aistudio.google.com/apikey)');
+    throw new AppError(502, 'Missing GROQ_API_KEY in environment (get one at https://console.groq.com/keys)');
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    generationConfig: {
-      temperature: 0.2,
-    },
-  });
+  const model = process.env.LLM_MODEL || DEFAULT_MODEL;
 
   const prompt = `You are an expert meeting analyst. Return ONLY valid JSON with keys: executiveSummary (string), keyPoints (string[]), decisions (string[]), openQuestions (string[]), sentiment (positive|neutral|negative), tasks (array). Each task must include title, optional description, optional assignee, optional dueDate in ISO date yyyy-mm-dd when explicit, priority (low|medium|high|urgent), status (pending|in_progress|completed|cancelled), and optional tags string[]. Do not wrap in markdown.
 
@@ -90,21 +87,46 @@ Analyze this meeting transcript and produce structured output:
 ${transcript}`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), GEMINI_FETCH_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), GROQ_FETCH_TIMEOUT_MS);
 
   let content: string;
   try {
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    }, { signal: controller.signal });
-    content = result.response.text();
-  } catch (error: any) {
-    if (error?.message?.includes('AbortError') || error?.name === 'AbortError') {
-      throw new Error('Gemini API request timed out after 60s');
+    const response = await fetch(`${GROQ_API_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: 'You are an expert meeting analyst that produces structured JSON output.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      if (response.status === 429 || body.includes('rate_limit') || body.includes('quota')) {
+        throw new AppError(429, `Groq LLM quota exceeded (${model}). Free tier allows ~200 requests/day. Try again later or check your plan at https://console.groq.com/usage.`);
+      }
+      throw new AppError(502, `Groq LLM API error ${response.status}: ${body.slice(0, 500)}`);
     }
-    const errorMessage = error instanceof Error ? error.message : 'Unknown Gemini API error';
-    console.error('Gemini API error:', errorMessage);
-    throw new Error(`Gemini API error: ${errorMessage}`);
+
+    const data = await response.json() as { choices: { message: { content: string } }[] };
+    content = data.choices?.[0]?.message?.content || '';
+  } catch (error: any) {
+    if (error instanceof AppError) throw error;
+    if (error?.message?.includes('AbortError') || error?.name === 'AbortError') {
+      throw new AppError(504, `Groq LLM request timed out after ${GROQ_FETCH_TIMEOUT_MS / 1000}s`);
+    }
+    const errorMessage = error instanceof Error ? error.message : 'Unknown Groq LLM API error';
+    console.error('Groq LLM API error:', errorMessage);
+    throw new AppError(502, `Groq LLM API error: ${errorMessage}`);
   } finally {
     clearTimeout(timeoutId);
   }
@@ -121,7 +143,7 @@ ${transcript}`;
     decisions: Array.isArray(parsed.decisions) ? parsed.decisions.filter(Boolean) : [],
     openQuestions: Array.isArray(parsed.openQuestions) ? parsed.openQuestions.filter(Boolean) : [],
     sentiment:
-      parsed.sentiment === 'positive' || parsed.sentiment === 'negative' || parsed.sentiment === 'neutral'
+      parsed.sentiment === 'positive' || parsed.sentiment === 'neutral' || parsed.sentiment === 'negative'
         ? parsed.sentiment
         : 'neutral',
     tasks: Array.isArray(parsed.tasks)

@@ -11,7 +11,7 @@ import { useAppDispatch } from '@/store/hooks';
 import { addToast } from '@/store/slices/uiSlice';
 import { API_BASE_URL } from '@/services/api.config';
 import { getAccessToken } from '@/services/api.client';
-import { retryWithBackoff, isRetryableError } from '@/utils/retry.utils';
+import { retryWithBackoff, isNetworkError, describeNetworkError } from '@/utils/retry.utils';
 
 const GRAD = '#5B3FD6';
 const GRAD2 = '#8B5CF6';
@@ -115,8 +115,8 @@ const Upload: React.FC = () => {
         setDuplicateMeeting((error as UploadDuplicateError).existingMeeting);
         return;
       }
-      const errorMessage = isRetryableError(error)
-        ? 'Upload failed due to network issues. Please try again.'
+      const errorMessage = isNetworkError(error)
+        ? `Upload failed — ${describeNetworkError(error)}`
         : (error instanceof Error ? error.message : 'Failed to upload file.');
       setUploadState((prev) => ({ ...prev, uploading: false, error: errorMessage }));
     }

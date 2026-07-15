@@ -1,3 +1,4 @@
+import { AppError } from './errors';
 import User from '../models/User';
 import { Types } from 'mongoose';
 
@@ -42,7 +43,7 @@ export const ensureMeetingCountReset = async (userId: string): Promise<{
     .lean();
 
   if (!user) {
-    throw new Error('User not found');
+    throw new AppError(404, 'User not found');
   }
 
   const now = new Date();
@@ -64,7 +65,7 @@ export const ensureMeetingCountReset = async (userId: string): Promise<{
       .select('meetingCountThisMonth subscriptionTier subscriptionExpiresAt')
       .lean();
 
-    if (!updated) throw new Error('User not found after update');
+    if (!updated) throw new AppError(404, 'User not found after update');
 
     return {
       meetingCountThisMonth: updated.meetingCountThisMonth,
@@ -92,13 +93,9 @@ export const checkMeetingCredits = async (userId: string): Promise<void> => {
   const isSubscribed = hasActiveSubscription(subscriptionTier, subscriptionExpiresAt);
 
   if (!isSubscribed && meetingCountThisMonth >= limit) {
-    // Using (error as any) pattern to match existing callers
-    const error = new Error(
+    throw new AppError(403,
       `You've used all ${limit} free meetings this month. Upgrade to PRO for unlimited meetings.`
     );
-    (error as any).statusCode = 403;
-    (error as any).code = 'MEETING_LIMIT_REACHED';
-    throw error;
   }
 };
 
@@ -123,17 +120,12 @@ export const requireSubscription = async (userId: string): Promise<void> => {
     .lean();
 
   if (!user) {
-    const error = new Error('User not found');
-    (error as any).statusCode = 404;
-    throw error;
+    throw new AppError(404, 'User not found');
   }
 
   if (!hasActiveSubscription(user.subscriptionTier, user.subscriptionExpiresAt)) {
-    const error = new Error(
+    throw new AppError(403,
       'A paid subscription is required for this action. Upgrade to PRO or TEAM.'
     );
-    (error as any).statusCode = 403;
-    (error as any).code = 'SUBSCRIPTION_REQUIRED';
-    throw error;
   }
 };

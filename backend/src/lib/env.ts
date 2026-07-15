@@ -28,12 +28,12 @@ export const validateBackendEnv = (): void => {
     optionalMissing.push('GROQ_API_KEY (required for Groq Whisper transcription — get at https://console.groq.com/keys)');
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    optionalMissing.push('GEMINI_API_KEY (required for Gemini analysis — get at https://aistudio.google.com/apikey)');
-  }
-
   if (!process.env.REDIS_URL) {
     optionalMissing.push('REDIS_URL (rate limits use in-memory store when missing — add for multi-process deployments)');
+  }
+
+  if (!process.env.LLM_MODEL) {
+    optionalMissing.push('LLM_MODEL (set Groq model name e.g. "llama-3.3-70b-versatile"; defaults to the provider default)');
   }
 
   if (optionalMissing.length > 0) {
