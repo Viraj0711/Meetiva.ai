@@ -52,10 +52,8 @@ const MeetingDetail: React.FC = () => {
       setSummary(summaryData);
       setActionItems(actionItemsData);
 
-      if (meetingData.status === 'completed') {
-        const transcriptData = await meetingService.getMeetingTranscript(id).catch(() => null);
-        setTranscript(transcriptData);
-      }
+      const transcriptData = await meetingService.getMeetingTranscript(id).catch(() => null);
+      setTranscript(transcriptData);
     } catch (error) {
       console.error('Failed to load meeting details:', error);
     } finally {
@@ -148,7 +146,7 @@ const MeetingDetail: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="px-6 py-8 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex-1">
@@ -235,7 +233,7 @@ const MeetingDetail: React.FC = () => {
             }`}
             onClick={() => setActiveTab('actions')}
           >
-            Action Items ({actionItems.length})
+            Tasks ({actionItems.length})
           </button>
         </div>
       </div>
@@ -244,64 +242,71 @@ const MeetingDetail: React.FC = () => {
       {activeTab === 'summary' && (
         <div className="space-y-6">
           {summary ? (
-            <>
-              <Card className="p-6">
-                <h2 className="text-xl font-bold mb-4">Executive Summary</h2>
-                <p className="text-muted-foreground leading-relaxed">
-                  {summary.executiveSummary || 'No executive summary available yet.'}
-                </p>
-              </Card>
-
-              {summary.keyPoints && summary.keyPoints.length > 0 && (
-                <Card className="p-6">
-                  <h2 className="text-xl font-bold mb-4">Key Discussion Points</h2>
-                  <ul className="space-y-3">
-                    {summary.keyPoints.map((point, index) => (
-                      <li key={index} className="flex items-start">
-                        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold mr-3 flex-shrink-0 mt-0.5">
-                          {index + 1}
-                        </span>
-                        <span className="text-muted-foreground">{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              )}
-
-              {summary.decisions && summary.decisions.length > 0 && (
-                <Card className="p-6">
-                  <h2 className="text-xl font-bold mb-4">Decisions Made</h2>
-                  <ul className="space-y-3">
-                    {summary.decisions.map((decision, index) => (
-                      <li key={index} className="flex items-start p-4 bg-white/[0.03] rounded-lg border border-white/10">
-                        <svg className="w-5 h-5 text-cyan-300 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="text-muted-foreground">{decision}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              )}
-
-              {meeting.participants && meeting.participants.length > 0 && (
-                <Card className="p-6">
-                  <h2 className="text-xl font-bold mb-4">Participants</h2>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {meeting.participants.map((participant, index) => (
-                      <div key={index} className="flex items-center p-3 rounded-lg border">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
-                          <span className="font-semibold text-primary">
-                            {participant.charAt(0).toUpperCase()}
-                          </span>
+            <Card className="p-6">
+              {/* ponytail: render fullSummary as markdown if available, fall back to executiveSummary */}
+              {summary.fullSummary ? (
+                <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed">
+                  {summary.fullSummary.split('\n').map((line: string, i: number) => {
+                    if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mt-6 mb-3 text-foreground">{line.slice(2)}</h1>;
+                    if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mt-5 mb-2 text-foreground">{line.slice(3)}</h2>;
+                    if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-semibold mt-4 mb-2 text-foreground">{line.slice(4)}</h3>;
+                    if (line.startsWith('| ') && line.includes('|')) {
+                      // Simple table row rendering
+                      const cells = line.split('|').filter((c: string) => c.trim()).map((c: string) => c.trim());
+                      if (cells.every((c: string) => c.match(/^-+$/))) return null; // skip separator rows
+                      return (
+                        <div key={i} className="grid gap-2 py-1.5 border-b border-white/5 text-sm" style={{ gridTemplateColumns: `repeat(${cells.length}, 1fr)` }}>
+                          {cells.map((cell: string, ci: number) => <span key={ci}>{cell}</span>)}
                         </div>
-                        <span className="font-medium">{participant}</span>
-                      </div>
-                    ))}
+                      );
+                    }
+                    if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc">{line.slice(2)}</li>;
+                    if (line.match(/^\d+\. /)) return <li key={i} className="ml-4 list-decimal">{line.replace(/^\d+\. /, '')}</li>;
+                    if (line.trim() === '') return <div key={i} className="h-2" />;
+                    return <p key={i} className="mb-1">{line}</p>;
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-bold mb-4">Executive Summary</h2>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {summary.executiveSummary || 'No executive summary available yet.'}
+                    </p>
                   </div>
-                </Card>
+                  {summary.keyPoints && summary.keyPoints.length > 0 && (
+                    <div>
+                      <h2 className="text-xl font-bold mb-4">Key Discussion Points</h2>
+                      <ul className="space-y-3">
+                        {summary.keyPoints.map((point: string, index: number) => (
+                          <li key={index} className="flex items-start">
+                            <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold mr-3 flex-shrink-0 mt-0.5">
+                              {index + 1}
+                            </span>
+                            <span className="text-muted-foreground">{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {summary.decisions && summary.decisions.length > 0 && (
+                    <div>
+                      <h2 className="text-xl font-bold mb-4">Decisions Made</h2>
+                      <ul className="space-y-3">
+                        {summary.decisions.map((decision: string, index: number) => (
+                          <li key={index} className="flex items-start p-4 bg-white/[0.03] rounded-lg border border-white/10">
+                            <svg className="w-5 h-5 text-cyan-300 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-muted-foreground">{decision}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               )}
-            </>
+            </Card>
           ) : (
             <Card className="p-12 text-center">
               <p className="text-muted-foreground">
@@ -355,13 +360,13 @@ const MeetingDetail: React.FC = () => {
         </div>
       )}
 
-      {/* Action Items Tab */}
+      {/* Tasks Tab */}
       {activeTab === 'actions' && (
         <div className="space-y-4">
           {/* Inline Edit Form */}
           {editingItem && (
             <Card className="p-6 border-2 border-primary/30">
-              <h3 className="text-lg font-bold mb-4">Edit Action Item</h3>
+              <h3 className="text-lg font-bold mb-4">Edit Task</h3>
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium mb-1">Title</label>
@@ -499,8 +504,8 @@ const MeetingDetail: React.FC = () => {
             <Card className="p-12 text-center">
               <p className="text-muted-foreground">
                 {meeting.status === 'processing'
-                  ? 'Action items are being extracted...'
-                  : 'No action items found in this meeting.'}
+                  ? 'Tasks are being extracted...'
+                  : 'No tasks found in this meeting.'}
               </p>
             </Card>
           )}

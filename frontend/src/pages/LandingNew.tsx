@@ -16,12 +16,12 @@ const CS = '0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(91,63,214,0.08), inset 0
 
 const STEPS = [
   { n: '01', title: 'Upload or connect live meetings', desc: 'Drop recordings, transcripts, or call links directly into the workspace.' },
-  { n: '02', title: 'AI extracts the signal', desc: 'Summaries, action items, decisions, and priorities appear automatically.' },
+  { n: '02', title: 'AI extracts the signal', desc: 'Summaries, tasks, decisions, and priorities appear automatically.' },
   { n: '03', title: 'Momentum keeps moving', desc: 'Calendar sync, reminders, and ownership keep the entire team aligned.' },
 ];
 
 const TESTIMONIALS = [
-  { quote: 'Meetiva cut our post-meeting admin time in half. Summaries are accurate and action items sync directly into our calendar.', name: 'Sarah K.', role: 'Head of Product, Vercel', initials: 'SK', color: LP },
+  { quote: 'Meetiva cut our post-meeting admin time in half. Summaries are accurate and tasks sync directly into our calendar.', name: 'Sarah K.', role: 'Head of Product, Vercel', initials: 'SK', color: LP },
   { quote: 'The AI extracts exactly the right signal. Our team spends zero time writing recaps and 100% time executing.', name: 'James L.', role: 'Engineering Lead, Linear', initials: 'JL', color: LA },
   { quote: 'It feels like having an executive assistant in every meeting. The quality of decisions we capture has improved dramatically.', name: 'Priya M.', role: 'COO, Notion', initials: 'PM', color: LS },
 ];
@@ -29,7 +29,7 @@ const TESTIMONIALS = [
 const PRICING = [
   {
     name: 'Starter', price: 'Free', period: '', desc: 'Perfect for individuals and small teams getting started.',
-    features: ['5 meetings / month', 'AI summaries', 'Action item extraction', '7-day history'],
+    features: ['5 meetings / month', 'AI summaries', 'Task extraction', '7-day history'],
     cta: 'Get started free', highlight: false,
   },
   {
@@ -166,7 +166,7 @@ const LandingNew: React.FC = () => {
               </h1>
 
               <p className="mb-6" style={{ fontSize: 18, color: '#64607A', lineHeight: 1.72, maxWidth: 440 }}>
-                Meetiva listens, extracts the signal, and hands your team summaries, action items, and calendar sync — before you close the tab.
+                Meetiva listens, extracts the signal, and hands your team summaries, tasks, and calendar sync — before you close the tab.
               </p>
 
               <div className="flex flex-wrap gap-3 mb-7">
@@ -228,7 +228,7 @@ const LandingNew: React.FC = () => {
                       <p className="text-[12px] leading-relaxed text-[#0F0A1E]">Aligned on dashboard revisions. Sarah to finalize token system by Friday. James to review API endpoints before Thursday deploy.</p>
                     </div>
                     <div className="flex gap-1.5 flex-wrap">
-                      {['3 action items','2 decisions','Calendar synced'].map(t => (
+                      {['3 tasks','2 decisions','Calendar synced'].map(t => (
                         <span key={t} className="px-2.5 py-1 rounded-full text-[10px] font-semibold"
                           style={{ background: `${LP}0D`, color: LP, border: `1px solid ${LP}14` }}>{t}</span>
                       ))}
@@ -544,7 +544,7 @@ const LandingNew: React.FC = () => {
               <div className="text-[11px] font-bold uppercase tracking-widest mb-5" style={{ color: 'rgba(255,255,255,0.28)' }}>Ready to ship</div>
               <h2 className="text-[48px] font-bold text-white tracking-tight mb-5 leading-tight">Make every meeting count.</h2>
               <p className="text-[17px] mb-7 max-w-md mx-auto leading-relaxed" style={{ color: 'rgba(255,255,255,0.42)' }}>
-                Join 10,000+ teams who've replaced messy notes and forgotten action items with Meetiva's AI workspace.
+                Join 10,000+ teams who've replaced messy notes and forgotten tasks with Meetiva's AI workspace.
               </p>
               <div className="flex items-center justify-center gap-4 flex-wrap">
                 <button onClick={() => navigate('/register')}

@@ -37,6 +37,8 @@ export interface MeetingSummary {
   id: string;
   meetingId: string;
   executiveSummary: string;
+  fullSummary?: string;
+  minutesContent?: string;
   keyPoints: string[];
   decisions: string[];
   openQuestions: string[];

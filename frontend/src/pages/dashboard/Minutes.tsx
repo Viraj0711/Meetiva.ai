@@ -168,48 +168,64 @@ const DashboardMinutes: React.FC = () => {
                       <div className="pt-4 text-center text-sm text-[#64607A]">Loading summary...</div>
                     ) : summary ? (
                       <>
-                        <div className="pt-4">
-                          <p className="text-[11px] font-bold uppercase tracking-widest text-[#64607A] mb-2">Executive Summary</p>
-                          <p className="text-sm text-[#1D1B22] leading-relaxed">{summary.executiveSummary}</p>
-                        </div>
-
-                        {summary.keyPoints && summary.keyPoints.length > 0 && (
-                          <div>
-                            <p className="text-[11px] font-bold uppercase tracking-widest text-[#64607A] mb-2">Topics Discussed</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {summary.keyPoints.map((point, i) => (
-                                <span key={i} className="px-2.5 py-1 rounded-full text-[11px] font-semibold text-[#5B3FD6]" style={{ background: 'rgba(91,63,214,0.08)' }}>{point}</span>
-                              ))}
+                        {/* ponytail: render minutesContent as markdown if available, fall back to structured fields */}
+                        {summary.minutesContent ? (
+                          <div className="pt-4 text-sm text-[#1D1B22] leading-relaxed">
+                            {summary.minutesContent.split('\n').map((line: string, i: number) => {
+                              if (line.startsWith('# ')) return <h2 key={i} className="text-lg font-bold mt-4 mb-2">{line.slice(2)}</h2>;
+                              if (line.startsWith('## ')) return <h3 key={i} className="text-base font-bold mt-3 mb-1.5">{line.slice(3)}</h3>;
+                              if (line.startsWith('### ')) return <h4 key={i} className="text-sm font-semibold mt-2 mb-1">{line.slice(4)}</h4>;
+                              if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc">{line.slice(2)}</li>;
+                              if (line.trim() === '') return <div key={i} className="h-1.5" />;
+                              return <p key={i} className="mb-1">{line}</p>;
+                            })}
+                          </div>
+                        ) : (
+                          <>
+                            <div className="pt-4">
+                              <p className="text-[11px] font-bold uppercase tracking-widest text-[#64607A] mb-2">Executive Summary</p>
+                              <p className="text-sm text-[#1D1B22] leading-relaxed">{summary.executiveSummary}</p>
                             </div>
-                          </div>
-                        )}
 
-                        {summary.decisions && summary.decisions.length > 0 && (
-                          <div>
-                            <p className="text-[11px] font-bold uppercase tracking-widest text-[#64607A] mb-2">Key Decisions</p>
-                            <ul className="space-y-1.5">
-                              {summary.decisions.map((d, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm text-[#1D1B22]">
-                                  <CheckSquare size={14} className="flex-shrink-0 mt-0.5" style={{ color }} />{d}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {m.participants && m.participants.length > 0 && (
-                          <div>
-                            <p className="text-[11px] font-bold uppercase tracking-widest text-[#64607A] mb-2">Attendees</p>
-                            <div className="flex items-center gap-1.5">
-                              {m.participants.map((p, i) => (
-                                <div key={i} className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white"
-                                  style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, marginLeft: i > 0 ? -8 : 0 }}>
-                                  {p.split(' ').map(x => x[0]).join('')}
+                            {summary.keyPoints && summary.keyPoints.length > 0 && (
+                              <div>
+                                <p className="text-[11px] font-bold uppercase tracking-widest text-[#64607A] mb-2">Topics Discussed</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {summary.keyPoints.map((point, i) => (
+                                    <span key={i} className="px-2.5 py-1 rounded-full text-[11px] font-semibold text-[#5B3FD6]" style={{ background: 'rgba(91,63,214,0.08)' }}>{point}</span>
+                                  ))}
                                 </div>
-                              ))}
-                              <span className="text-xs text-[#64607A] ml-2">{m.participants.join(', ')}</span>
-                            </div>
-                          </div>
+                              </div>
+                            )}
+
+                            {summary.decisions && summary.decisions.length > 0 && (
+                              <div>
+                                <p className="text-[11px] font-bold uppercase tracking-widest text-[#64607A] mb-2">Key Decisions</p>
+                                <ul className="space-y-1.5">
+                                  {summary.decisions.map((d, i) => (
+                                    <li key={i} className="flex items-start gap-2 text-sm text-[#1D1B22]">
+                                      <CheckSquare size={14} className="flex-shrink-0 mt-0.5" style={{ color }} />{d}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {m.participants && m.participants.length > 0 && (
+                              <div>
+                                <p className="text-[11px] font-bold uppercase tracking-widest text-[#64607A] mb-2">Attendees</p>
+                                <div className="flex items-center gap-1.5">
+                                  {m.participants.map((p, i) => (
+                                    <div key={i} className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white"
+                                      style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, marginLeft: i > 0 ? -8 : 0 }}>
+                                      {p.split(' ').map(x => x[0]).join('')}
+                                    </div>
+                                  ))}
+                                  <span className="text-xs text-[#64607A] ml-2">{m.participants.join(', ')}</span>
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
                       </>
                     ) : (
@@ -218,7 +234,7 @@ const DashboardMinutes: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Bottom actions — Download PDF shows only when expanded */}
+                    {/* Bottom actions */}
                     <div className="flex items-center justify-between pt-1">
                       <button onClick={() => navigate(`/dashboard/meetings/${m.id}`)}
                         className="text-[11px] font-semibold text-[#5B3FD6] hover:underline">
