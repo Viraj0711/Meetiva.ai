@@ -46,9 +46,9 @@ const buildWeekData = (meetings: Meeting[]) => {
 
 type WeekDay = { day: string; meetings: number; mins: number };
 
-function MiniBarChart({ data, metric }: { data: WeekDay[]; metric: string }) {
+function MiniBarChart({ data, metric }: { data: WeekDay[]; metric: 'meetings' | 'mins' }) {
   const [hovered, setHovered] = React.useState<number | null>(null);
-  const values = data.map((d) => (d as any)[metric] as number);
+  const values = data.map((d) => d[metric]);
   const max = Math.max(...values, 1);
 
   return (
@@ -63,7 +63,7 @@ function MiniBarChart({ data, metric }: { data: WeekDay[]; metric: string }) {
       </svg>
       <div className="absolute inset-0 flex items-end gap-1 px-7 pb-6 pt-2">
         {data.map((d, i) => {
-          const val = (d as any)[metric] as number;
+          const val = d[metric];
           const pct = max > 0 ? val / max : 0;
           return (
             <div key={d.day} className="flex-1 flex flex-col items-center justify-end gap-1 cursor-default"
@@ -107,7 +107,7 @@ function Tabs({ tabs, active, onChange }: { tabs: { id: string; label: string }[
 
 const DashboardHome: React.FC = () => {
   const navigate = useNavigate();
-  const [chartMetric, setChartMetric] = useState('meetings');
+  const [chartMetric, setChartMetric] = useState<'meetings' | 'mins'>('meetings');
   const { data: subscription } = useSubscription();
   const { data: meetingStats, isLoading: statsLoading } = useMeetingStats();
   const { data: meetingsData } = useMeetings({ page: 1, limit: 50 });
@@ -253,7 +253,7 @@ const DashboardHome: React.FC = () => {
               <div className="text-sm font-bold text-[#1D1B22]">Meeting activity</div>
               <div className="text-xs text-[#64607A] mt-0.5">Last 7 days</div>
             </div>
-            <Tabs tabs={[{ id: 'meetings', label: 'Count' }, { id: 'mins', label: 'Duration' }]} active={chartMetric} onChange={setChartMetric} />
+            <Tabs tabs={[{ id: 'meetings', label: 'Count' }, { id: 'mins', label: 'Duration' }]} active={chartMetric} onChange={(id) => setChartMetric(id as 'meetings' | 'mins')} />
           </div>
           <MiniBarChart data={weekData} metric={chartMetric} />
           {weekData.every(d => d.meetings === 0) && meetings.length === 0 && (

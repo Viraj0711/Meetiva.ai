@@ -30,7 +30,9 @@
     /* Paths */
     "paths": {
       "@/*": ["./src/*"],
-      "@shared": ["../backend/src/lib/schemas"],
+      "@meetiva/shared-types": ["../shared/dist/index.d.ts"],
+      "@meetiva/shared-types/*": ["../shared/dist/*"],
+      "@shared/schemas": ["../backend/src/lib/schemas.ts"],
       "@shared/*": ["../backend/src/lib/*"]
     }
   },

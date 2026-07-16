@@ -13,6 +13,7 @@ import {
   updateMemberProfileSchema,
   chatMessageSchema,
 } from '../lib/validation';
+import type { NotificationType } from '../lib/shared';
 import { asyncHandler } from '../lib/errors';
 import { requireSubscription } from '../lib/subscription';
 import User from '../models/User';
@@ -619,7 +620,7 @@ router.post(
       await Notification.insertMany(
         leadMembers.map((lead) => ({
           userId: lead.userId,
-          type: 'SYSTEM' as const,
+          type: 'SYSTEM' as const satisfies NotificationType,
           title: 'Pending member approval',
           message: `${currentUser.name} (${currentUser.email}) accepted their invitation to join your team and is awaiting your approval.`,
         }))

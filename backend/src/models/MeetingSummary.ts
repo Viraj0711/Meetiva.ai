@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
+import type { Sentiment } from '../lib/shared';
 
 export interface IMeetingSummary extends Document {
   meetingId: Types.ObjectId;
@@ -6,7 +7,7 @@ export interface IMeetingSummary extends Document {
   keyPoints: string[];
   decisions: string[];
   openQuestions: string[];
-  sentiment: 'positive' | 'neutral' | 'negative';
+  sentiment: Sentiment;
   createdAt: Date;
 }
 

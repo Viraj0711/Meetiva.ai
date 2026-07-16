@@ -1,3 +1,4 @@
+import type { ActionItemStatus } from '../lib/shared';
 import { Router, Response } from 'express';
 import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
@@ -78,7 +79,7 @@ router.get('/',
     const { page, limit, status } = req.query as unknown as {
       page: number;
       limit: number;
-      status?: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+      status?: ActionItemStatus;
     };
     const skip = (page - 1) * limit;
 

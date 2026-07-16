@@ -1,38 +1,23 @@
-export type TeamRole = 'MANAGER' | 'LEAD' | 'MEMBER';
+// Re-export shared team types
+export type {
+  Team,
+  TeamMember,
+  TeamInvitation,
+  TeamChatMessage,
+  CreateTeamRequest,
+  AddTeamMemberRequest,
+  UpdateTeamMemberRequest,
+  TeamMemberProfileUpdate,
+  TeamMemberCredentialsResetResult,
+  InviteRequest,
+} from '@meetiva/shared-types';
 
-export interface TeamMember {
-  userId: string;
-  name: string;
-  email: string;
-  role: TeamRole;
-  joinedAt: string;
-  userCreatedAt?: string;
-}
+// Re-export shared enums
+export type { TeamRole, InvitationStatus } from '@meetiva/shared-types';
 
-export interface Team {
-  id: string;
-  name: string;
-  description: string | null;
-  role?: TeamRole; // User's role in this team
-  members?: TeamMember[];
-  createdAt: string;
-  updatedAt: string;
-  joinedAt?: string;
-}
+import type { Team, TeamMember } from '@meetiva/shared-types';
 
-export interface CreateTeamRequest {
-  name: string;
-  description?: string;
-}
-
-export interface AddTeamMemberRequest {
-  email: string;
-  role: 'LEAD' | 'MEMBER';
-}
-
-export interface UpdateTeamMemberRequest {
-  role: 'LEAD' | 'MEMBER';
-}
+// ─── Frontend-only State Types ──────────────────────────────────────────────
 
 export interface TeamsState {
   teams: Team[];

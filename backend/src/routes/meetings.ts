@@ -1,3 +1,4 @@
+import type { ActionItemStatus, MeetingPriority } from '../lib/shared';
 import { Router, Response, NextFunction, Request } from 'express';
 import multer from 'multer';
 import ExcelJS from 'exceljs';
@@ -429,8 +430,8 @@ router.post('/:id/process', apiLimiter, authenticate, validate(processSchema), a
             description: task.description,
             assignee: task.assignee,
             dueDate: task.dueDate ? new Date(task.dueDate) : null,
-            priority: (task.priority as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
-            status: (task.status as 'pending' | 'in_progress' | 'completed' | 'cancelled') || 'pending',
+            priority: (task.priority as MeetingPriority) || 'medium',
+            status: (task.status as ActionItemStatus) || 'pending',
             tags: task.tags || [],
           }))
         );
@@ -542,7 +543,7 @@ router.get('/:id/action-items', apiLimiter, authenticate, asyncHandler(async (re
       .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limitNumber)
-      .select('title description assignee dueDate priority status tags createdAt updatedAt completedAt')
+      .select('meetingId title description assignee dueDate priority status tags createdAt updatedAt completedAt')
       .lean(),
     ActionItem.countDocuments({ meetingId: meeting._id }),
   ]);

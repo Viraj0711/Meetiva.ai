@@ -1,13 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
 import TeamMember from '../models/TeamMember';
+import type { TeamRole, TeamInfo } from '../lib/shared';
 
-export type TeamRole = 'MANAGER' | 'LEAD' | 'MEMBER';
-
-export interface TeamInfo {
-  teamId: string;
-  role: TeamRole;
-}
+export type { TeamRole, TeamInfo };
 
 export interface AuthRequest extends Request {
   userId?: string;

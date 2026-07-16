@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
+import type { ActionItemStatus, MeetingPriority } from '../lib/shared';
 
 export interface IActionItem extends Document {
   meetingId: Types.ObjectId;
@@ -7,8 +8,8 @@ export interface IActionItem extends Document {
   description?: string | null;
   assignee?: string | null;
   dueDate?: Date | null;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  priority: MeetingPriority;
+  status: ActionItemStatus;
   tags: string[];
   reminderSentAt?: Date | null;
   completedAt?: Date | null;

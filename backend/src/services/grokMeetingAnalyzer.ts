@@ -1,3 +1,4 @@
+import type { Sentiment, ActionItemStatus, MeetingPriority } from '../lib/shared';
 import { TASK_EXTRACTION_PROMPT } from '../prompts';
 
 type GrokRole = 'system' | 'user' | 'assistant';
@@ -30,11 +31,11 @@ interface GrokAnalysisResult {
   keyPoints: string[];
   decisions: string[];
   openQuestions: string[];
-  sentiment: 'positive' | 'neutral' | 'negative';
+  sentiment: Sentiment;
   tasks: ExtractedTask[];
 }
 
-const normalizePriority = (priority?: string): 'low' | 'medium' | 'high' | 'urgent' => {
+const normalizePriority = (priority?: string): MeetingPriority => {
   const value = (priority || 'medium').toLowerCase();
 
   if (value === 'low' || value === 'medium' || value === 'high' || value === 'urgent') {
@@ -44,7 +45,7 @@ const normalizePriority = (priority?: string): 'low' | 'medium' | 'high' | 'urge
   return 'medium';
 };
 
-const normalizeStatus = (status?: string): 'pending' | 'in_progress' | 'completed' | 'cancelled' => {
+const normalizeStatus = (status?: string): ActionItemStatus => {
   const value = (status || 'pending').toLowerCase();
 
   if (value === 'pending' || value === 'in_progress' || value === 'completed' || value === 'cancelled') {

@@ -15,7 +15,10 @@ describe('Button Component', () => {
 
   it('shows loading state', () => {
     render(<Button isLoading>Loading Button</Button>);
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    // The Button renders children alongside the spinner; the text is preserved
+    expect(screen.getByText('Loading Button')).toBeInTheDocument();
+    // Spinner SVG should also be present
+    expect(document.querySelector('svg.animate-spin')).toBeTruthy();
   });
 
   it('applies variant classes', () => {
@@ -27,6 +30,7 @@ describe('Button Component', () => {
   it('applies size classes', () => {
     render(<Button size="lg">Large Button</Button>);
     const button = screen.getByText('Large Button');
-    expect(button).toHaveClass('h-12');
+    // lg size uses text-base; the button should have that class
+    expect(button).toHaveClass('text-base');
   });
 });

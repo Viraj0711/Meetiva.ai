@@ -23,7 +23,7 @@ import {
   Shield,
   AlertCircle,
 } from 'lucide-react';
-import { IntegrationType } from '@/types/integration.types';
+
 
 interface LocalIntegration {
   id: string;
@@ -81,7 +81,7 @@ const Profile: React.FC = () => {
       // Check Google Calendar status directly via the calendar endpoint
       const status = await integrationService.getGoogleCalendarStatus();
       const allIntegrations: LocalIntegration[] = [{
-        id: IntegrationType.CALENDAR,
+        id: 'google-calendar',
         name: 'Google Calendar',
         description: 'Schedule meetings and set reminders',
         icon: '',

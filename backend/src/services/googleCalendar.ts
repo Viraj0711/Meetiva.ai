@@ -109,6 +109,7 @@ export const upsertGoogleTokens = async (
     expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date) : (existing?.expiryDate || null),
     tokenType: tokens.token_type || existing?.tokenType || 'Bearer',
     scope: tokens.scope || existing?.scope || GOOGLE_SCOPES.join(' '),
+    integrationType: 'google-calendar' as const,
   };
 
   await GoogleCalendarAuth.findOneAndUpdate(

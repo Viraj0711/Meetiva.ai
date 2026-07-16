@@ -20,7 +20,7 @@ const Analytics: React.FC = () => {
 
   const { data: meetingStats, isLoading: statsLoading } = useMeetingStats();
   const { data: meetingsData } = useMeetings({ page: 1, limit: 100 });
-  const { data: actionItemsData } = useActionItems({ page: 1, limit: 1000 });
+  const { data: actionItemsData } = useActionItems({ page: 1, limit: 100 });
 
   const meetings: Meeting[] = meetingsData?.data || [];
   const allActionItems = actionItemsData?.data || [];
