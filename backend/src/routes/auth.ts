@@ -371,7 +371,9 @@ const sendPasswordResetEmail = async (email: string, token: string): Promise<voi
   const smtpUser = process.env.SMTP_USER;
   const smtpPassword = process.env.SMTP_PASSWORD;
   const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
-  const frontendUrl = process.env.FRONTEND_APP_URL || 'http://localhost:5173';
+  // Production default points to backend-served frontend (port 8000).
+  // In development, set FRONTEND_APP_URL=http://localhost:5173 in backend/.env.
+  const frontendUrl = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
   const resetLink = `${frontendUrl}/reset-password?token=${token}`;
 
   if (smtpHost && smtpUser && smtpPassword) {
@@ -582,7 +584,7 @@ router.get('/google/callback', authLimiter, asyncHandler(async (req: Request, re
   res.clearCookie(OAUTH_STATE_COOKIE);
   res.clearCookie(OAUTH_UID_COOKIE);
 
-  const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:3000';
+  const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
   return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=1`);
 }));
 

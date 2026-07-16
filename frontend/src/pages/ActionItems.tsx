@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -41,9 +41,27 @@ const ActionItems: React.FC = () => {
   });
   const [createError, setCreateError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadActionItems();
+  const loadActionItems = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await actionItemService.getActionItems({
+        page: currentPage,
+        limit: 20,
+        status: filterStatus === 'all' ? undefined : filterStatus,
+        priority: filterPriority === 'all' ? undefined : filterPriority,
+      });
+      setActionItems(response.data || []);
+    } catch (error) {
+      console.error('Failed to load action items:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [currentPage, filterStatus, filterPriority, showTeamItems]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard data-fetching pattern called from effect
+    loadActionItems();
+  }, [loadActionItems]);
 
   // Fetch meetings for the create modal meeting selector
   useEffect(() => {
@@ -61,23 +79,6 @@ const ActionItems: React.FC = () => {
     };
     fetchMeetings();
   }, [showCreateModal]);
-
-  const loadActionItems = async () => {
-    try {
-      setLoading(true);
-      const response = await actionItemService.getActionItems({
-        page: currentPage,
-        limit: 20,
-        status: filterStatus === 'all' ? undefined : filterStatus,
-        priority: filterPriority === 'all' ? undefined : filterPriority,
-      });
-      setActionItems(response.data || []);
-    } catch (error) {
-      console.error('Failed to load action items:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCreateFormChange = (field: keyof typeof createForm, value: string) => {
     setCreateForm((prev) => ({ ...prev, [field]: value }));
@@ -123,8 +124,8 @@ const ActionItems: React.FC = () => {
       setShowCreateModal(false);
       resetCreateForm();
       loadActionItems();
-    } catch (error: any) {
-      setCreateError(error?.message || 'Failed to create task.');
+    } catch (error: unknown) {
+      setCreateError(error instanceof Error ? error.message : 'Failed to create task.');
     } finally {
       setCreating(false);
     }
@@ -190,7 +191,7 @@ const ActionItems: React.FC = () => {
     }
   };
 
-  const isOverdue = (dueDate?: string) => {
+  const isOverdue = (dueDate?: string | null) => {
     if (!dueDate) return false;
     return new Date(dueDate) < new Date();
   };

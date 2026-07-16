@@ -52,9 +52,9 @@ import { zodResolver as _zodResolver } from '@hookform/resolvers/zod';
  * satisfies ZodType<any,any,any> as a generic constraint).
  * Runtime behaviour is identical.
  */
-export const zodResolver = _zodResolver as unknown as (
-  schema: any,
-  resolverOptions?: any,
-) => any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- intentional type-level workaround
+type ZodResolver = (schema: any, resolverOptions?: any) => any;
+
+export const zodResolver = _zodResolver as unknown as ZodResolver;
 
 export type SchemaOutput<TSchema> = TSchema extends { _output: infer Output } ? Output : never;

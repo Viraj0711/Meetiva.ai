@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import type { SubscriptionTier } from '../lib/shared';
 import Meeting from './Meeting';
 import ActionItem from './ActionItem';
 import TeamMember from './TeamMember';
@@ -14,7 +15,7 @@ export interface IUser extends Document {
   hashedPassword: string;
   isActive: boolean;
   isVerified: boolean;
-  subscriptionTier: 'FREE' | 'PRO' | 'TEAM';
+  subscriptionTier: SubscriptionTier;
   meetingCountThisMonth: number;
   meetingCountResetAt: Date | null;
   subscriptionExpiresAt: Date | null;

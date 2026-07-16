@@ -1,36 +1,17 @@
-export enum IntegrationType {
-  CALENDAR = 'google-calendar',
-}
+// Re-export shared integration types
+export type {
+  Integration,
+  CalendarConfig,
+  CreateIntegrationRequest,
+  UpdateIntegrationRequest,
+} from '@meetiva/shared-types';
 
-export interface Integration {
-  id: string;
-  type: IntegrationType;
-  name: string;
-  isConnected: boolean;
-  isEnabled: boolean;
-  config: Record<string, unknown>;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// Re-export shared enums (type-only — now a type alias, not a runtime enum)
+export type { IntegrationType } from '@meetiva/shared-types';
 
-export interface CalendarConfig {
-  provider: 'google';
-  accessToken: string;
-  refreshToken: string;
-}
+import type { Integration } from '@meetiva/shared-types';
 
-export interface CreateIntegrationRequest {
-  type: IntegrationType;
-  name: string;
-  config: Record<string, unknown>;
-}
-
-export interface UpdateIntegrationRequest {
-  name?: string;
-  isEnabled?: boolean;
-  config?: Record<string, unknown>;
-}
+// ─── Frontend-only State Types ──────────────────────────────────────────────
 
 export interface IntegrationsState {
   integrations: Integration[];

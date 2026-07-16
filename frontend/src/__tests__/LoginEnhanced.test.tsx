@@ -1,4 +1,5 @@
-﻿import { render, screen, fireEvent } from '@testing-library/react';
+﻿import React from 'react';
+import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -45,8 +46,9 @@ describe('LoginEnhanced Component', () => {
       </TestWrapper>
     );
 
-    // Just verify the component mounts without error
-    expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument();
+    // The heading is "Welcome back" (the sign-in CTA is a button label)
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
   it('accepts user input', () => {
@@ -61,18 +63,23 @@ describe('LoginEnhanced Component', () => {
     expect(inputs.length).toBeGreaterThan(0);
   });
 
-  it('shows remember me checkbox', () => {
+  it('renders all form elements', () => {
     render(
       <TestWrapper>
         <LoginEnhanced />
       </TestWrapper>
     );
 
-    const checkbox = screen.getByLabelText('Remember me');
-    expect(checkbox).toBeInTheDocument();
-    expect(checkbox).not.toBeChecked();
+    // Email and password inputs should be present
+    expect(screen.getByPlaceholderText('you@company.com')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Enter your password')).toBeInTheDocument();
 
-    fireEvent.click(checkbox);
-    expect(checkbox).toBeChecked();
+    // Google and GitHub SSO buttons
+    expect(screen.getByText('Google')).toBeInTheDocument();
+    expect(screen.getByText('GitHub')).toBeInTheDocument();
+
+    // Links to register and reset password
+    expect(screen.getByText('Create one free')).toBeInTheDocument();
+    expect(screen.getByText('Forgot password?')).toBeInTheDocument();
   });
 });

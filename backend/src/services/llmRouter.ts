@@ -1,3 +1,4 @@
+import type { Sentiment } from '../lib/shared';
 import { analyzeTranscriptWithGroq } from './groqAnalyzer';
 
 export type AnalysisResult = {
@@ -5,7 +6,7 @@ export type AnalysisResult = {
   keyPoints: string[];
   decisions: string[];
   openQuestions: string[];
-  sentiment: 'positive' | 'neutral' | 'negative';
+  sentiment: Sentiment;
   tasks: Array<{
     title: string;
     description?: string;

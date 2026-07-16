@@ -444,10 +444,12 @@ async function run(): Promise<void> {
       encryptedAccessToken: 'encrypted_token_123',
       encryptedRefreshToken: 'encrypted_refresh_456',
       tokenType: 'Bearer',
+      integrationType: 'google-calendar',
     });
 
     assert(calAuth.encryptedAccessToken === 'encrypted_token_123', 'GoogleCalendarAuth created');
     assert(calAuth.userId.toString() === user._id.toString(), 'CalendarAuth linked to user');
+    assert(calAuth.integrationType === 'google-calendar', 'CalendarAuth has expected integration type');
 
     await Notification.findByIdAndDelete(notif._id);
     await GoogleCalendarAuth.findByIdAndDelete(calAuth._id);

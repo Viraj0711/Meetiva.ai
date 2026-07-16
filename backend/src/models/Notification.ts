@@ -1,9 +1,10 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
+import type { NotificationType } from '../lib/shared';
 
 export interface INotification extends Document {
   userId: Types.ObjectId;
   actionItemId?: Types.ObjectId | null;
-  type: 'DEADLINE_REMINDER' | 'SYSTEM';
+  type: NotificationType;
   title: string;
   message: string;
   channel: string;

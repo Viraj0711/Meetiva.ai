@@ -1,3 +1,4 @@
+import type { IntegrationType } from '../lib/shared';
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IGoogleCalendarAuth extends Document {
@@ -7,6 +8,7 @@ export interface IGoogleCalendarAuth extends Document {
   tokenType: string;
   scope?: string | null;
   expiryDate?: Date | null;
+  integrationType: IntegrationType;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +21,11 @@ const googleCalendarAuthSchema = new Schema<IGoogleCalendarAuth>(
     tokenType: { type: String, default: 'Bearer' },
     scope: { type: String, default: null },
     expiryDate: { type: Date, default: null },
+    integrationType: {
+      type: String,
+      enum: ['google-calendar'],
+      default: 'google-calendar',
+    },
   },
   { timestamps: true, collection: 'google_calendar_auth' }
 );

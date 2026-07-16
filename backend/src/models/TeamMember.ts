@@ -1,7 +1,8 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
+import type { TeamRole, InvitationStatus } from '../lib/shared';
 
-export type TeamRole = 'MANAGER' | 'LEAD' | 'MEMBER';
-export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED';
+// Re-export for backward compatibility (other files import these from TeamMember)
+export type { TeamRole, InvitationStatus };
 
 export interface ITeamMember extends Document {
   userId: Types.ObjectId;

@@ -93,7 +93,7 @@ const DashboardMinutes: React.FC = () => {
     (m.participants || []).some(p => p.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const formatDuration = (seconds?: number) => {
+  const formatDuration = (seconds?: number | null) => {
     if (!seconds) return null;
     const mins = Math.round(seconds / 60);
     if (mins >= 60) return `${Math.floor(mins / 60)}h ${mins % 60}m`;

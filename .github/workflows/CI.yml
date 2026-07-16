@@ -38,6 +38,13 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Build shared types package
+        run: |
+          cd ../shared
+          npm install
+          npx tsc --noEmit
+          npx tsc
+
       - name: Install dependencies
         run: npm ci
 
@@ -49,6 +56,9 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Lint
+        run: npx eslint . --ext ts,tsx --max-warnings 5
 
   backend:
     name: Backend — typecheck & build
@@ -65,6 +75,13 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
+
+      - name: Build shared types package
+        run: |
+          cd ../shared
+          npm install
+          npx tsc --noEmit
+          npx tsc
 
       - name: Install dependencies
         run: npm ci

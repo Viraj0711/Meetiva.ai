@@ -1,3 +1,4 @@
+import type { MeetingStatus, MeetingPriority } from '../lib/shared';
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import MeetingSummary from './MeetingSummary';
 import Transcript from './Transcript';
@@ -6,8 +7,8 @@ import ActionItem from './ActionItem';
 export interface IMeeting extends Document {
   title: string;
   description?: string | null;
-  status: 'pending' | 'uploading' | 'processing' | 'transcribing' | 'analyzing' | 'completed' | 'failed';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: MeetingStatus;
+  priority: MeetingPriority;
   audioUrl?: string | null;
   videoUrl?: string | null;
   duration?: number | null;

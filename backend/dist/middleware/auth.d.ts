@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-export type TeamRole = 'MANAGER' | 'LEAD' | 'MEMBER';
-export interface TeamInfo {
-    teamId: string;
-    role: TeamRole;
-}
+import type { TeamRole, TeamInfo } from '../lib/shared';
+export type { TeamRole, TeamInfo };
 export interface AuthRequest extends Request {
     userId?: string;
     userTeams?: TeamInfo[];

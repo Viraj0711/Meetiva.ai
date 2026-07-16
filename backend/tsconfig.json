@@ -7,7 +7,9 @@
     "rootDir": "./src",
 
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@meetiva/shared-types": ["../shared/dist/index.d.ts"],
+      "@meetiva/shared-types/*": ["../shared/dist/*"]
     },
     "strict": true,
     "esModuleInterop": true,

@@ -27,6 +27,7 @@ dist-ssr/
 build/
 frontend/dist/
 backend/dist/
+shared/dist/
 
 # ─── Logs ─────────────────────────────────────────────────────────────────────
 logs/

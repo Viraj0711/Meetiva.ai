@@ -1,3 +1,4 @@
+import type { NotificationType } from '../lib/shared';
 import ActionItem from '../models/ActionItem';
 import Notification from '../models/Notification';
 import mongoose from 'mongoose';
@@ -30,7 +31,7 @@ const createInAppReminderNotifications = async () => {
     dueSoonItems.map((item) => ({
       userId: item.userId._id || item.userId,
       actionItemId: item._id,
-      type: 'DEADLINE_REMINDER' as const,
+      type: 'DEADLINE_REMINDER' as const satisfies NotificationType,
       channel: 'in_app',
       title: 'Deadline approaching in 24 hours',
       message: `${item.title} from meeting "${(item.meetingId as any)?.title || 'Unknown'}" is due by ${item.dueDate ? item.dueDate.toISOString() : 'soon'}.`,

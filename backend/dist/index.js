@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
@@ -102,9 +103,17 @@ app.use(`${API_PREFIX}/workspace`, workspace_1.default);
 app.use('/auth', auth_1.default);
 app.use('/calendar', calendar_1.default);
 const frontendPath = path_1.default.join(__dirname, '../../frontend/dist');
-app.use(express_1.default.static(frontendPath));
+const indexPath = path_1.default.join(frontendPath, 'index.html');
+if (fs_1.default.existsSync(frontendPath)) {
+    app.use(express_1.default.static(frontendPath));
+}
 app.get('{*path}', spaRateLimit, (req, res) => {
-    res.sendFile(path_1.default.join(frontendPath, 'index.html'));
+    if (fs_1.default.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    }
+    else {
+        res.status(404).json({ message: 'Frontend not built. Run: cd frontend && npm run build' });
+    }
 });
 // Global error handler — catches errors from asyncHandler wrappers in routes
 app.use(errorHandler_1.errorHandler);
@@ -145,4 +154,6 @@ const gracefulShutdown = async (signal) => {
 };
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+// SIGBREAK is the Windows equivalent of SIGTERM (Ctrl+Break / PM2 shutdown)
+process.on('SIGBREAK', () => gracefulShutdown('SIGBREAK'));
 //# sourceMappingURL=index.js.map

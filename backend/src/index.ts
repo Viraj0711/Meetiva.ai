@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -109,10 +110,18 @@ app.use('/auth', authRoutes);
 app.use('/calendar', calendarRoutes);
 
 const frontendPath = path.join(__dirname, '../../frontend/dist');
-app.use(express.static(frontendPath));
+const indexPath = path.join(frontendPath, 'index.html');
+
+if (fs.existsSync(frontendPath)) {
+  app.use(express.static(frontendPath));
+}
 
 app.get('{*path}', spaRateLimit, (req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).json({ message: 'Frontend not built. Run: cd frontend && npm run build' });
+  }
 });
 
 // Global error handler — catches errors from asyncHandler wrappers in routes
@@ -161,3 +170,5 @@ const gracefulShutdown = async (signal: string) => {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+// SIGBREAK is the Windows equivalent of SIGTERM (Ctrl+Break / PM2 shutdown)
+process.on('SIGBREAK', () => gracefulShutdown('SIGBREAK'));

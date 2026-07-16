@@ -22,6 +22,7 @@ const router = (0, express_1.Router)();
 const OAUTH_STATE_COOKIE = 'google_oauth_state';
 const OAUTH_UID_COOKIE = 'google_oauth_uid';
 const REFRESH_COOKIE = 'refresh_token';
+const SESSION_COOKIE = 'session_exists';
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_DAYS = 7;
 const REFRESH_TOKEN_MAX_AGE = REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000; // 7 days in ms
@@ -86,6 +87,15 @@ const createAndSetRefreshToken = async (res, userId) => {
         path: '/',
         maxAge: REFRESH_TOKEN_MAX_AGE,
     });
+    // Set a non-httpOnly flag cookie so the frontend can detect session presence
+    // without making a 401-generating refresh call on every page load.
+    res.cookie(SESSION_COOKIE, 'true', {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: REFRESH_TOKEN_MAX_AGE,
+    });
 };
 /**
  * Verify a refresh token from the cookie, look it up in the database,
@@ -106,6 +116,7 @@ const validateAndRotateRefreshToken = async (req, res) => {
             await RefreshToken_1.default.deleteOne({ tokenHash });
         }
         res.clearCookie(REFRESH_COOKIE, { path: '/' });
+        res.clearCookie(SESSION_COOKIE, { path: '/' });
         return null;
     }
     // ── Token rotation ─────────────────────────────────────────────────────
@@ -229,6 +240,7 @@ router.post('/logout', rateLimiters_1.apiLimiter, (0, errors_1.asyncHandler)(asy
         await RefreshToken_1.default.deleteMany({ tokenHash });
     }
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
     res.json({ message: 'Logged out successfully' });
 }));
 // ── Refresh token ──────────────────────────────────────────────────────────
@@ -248,6 +260,7 @@ router.post('/refresh', rateLimiters_1.authLimiter, (0, errors_1.asyncHandler)(a
     }
     if (!user.isActive) {
         res.clearCookie(REFRESH_COOKIE, { path: '/' });
+        res.clearCookie(SESSION_COOKIE, { path: '/' });
         return res.status(403).json({ message: 'Account is inactive' });
     }
     const accessToken = await createAccessToken(userId, user.email);
@@ -271,7 +284,9 @@ const sendPasswordResetEmail = async (email, token) => {
     const smtpUser = process.env.SMTP_USER;
     const smtpPassword = process.env.SMTP_PASSWORD;
     const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
-    const frontendUrl = process.env.FRONTEND_APP_URL || 'http://localhost:5173';
+    // Production default points to backend-served frontend (port 8000).
+    // In development, set FRONTEND_APP_URL=http://localhost:5173 in backend/.env.
+    const frontendUrl = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
     const resetLink = `${frontendUrl}/reset-password?token=${token}`;
     if (smtpHost && smtpUser && smtpPassword) {
         const transporter = nodemailer_1.default.createTransport({
@@ -322,6 +337,7 @@ router.post('/password-reset/confirm', rateLimiters_1.authLimiter, (0, validatio
     // Invalidate all existing refresh tokens (password changed — force re-login)
     await RefreshToken_1.default.deleteMany({ userId: userId });
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
     return res.json({ message: 'Password updated successfully. Please log in again.' });
 }));
 // ── Admin: upgrade user subscription tier ──────────────────────────────
@@ -428,7 +444,7 @@ router.get('/google/callback', rateLimiters_1.authLimiter, (0, errors_1.asyncHan
     });
     res.clearCookie(OAUTH_STATE_COOKIE);
     res.clearCookie(OAUTH_UID_COOKIE);
-    const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:3000';
+    const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
     return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=1`);
 }));
 exports.default = router;
