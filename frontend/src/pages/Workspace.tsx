@@ -174,40 +174,40 @@ const Workspace: React.FC = () => {
       style={{ background: 'radial-gradient(ellipse 70% 50% at 15% 5%, rgba(91,63,214,0.07) 0%, transparent 55%),radial-gradient(ellipse 50% 40% at 90% 90%, rgba(244,114,182,0.05) 0%, transparent 55%),#FCFBFF' }}>
       <div className="max-w-5xl mx-auto p-7">
         <div className="space-y-6">
-          <div className="rounded-2xl bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.14),transparent_26%),rgba(255,255,255,0.03)] p-6 text-white shadow-lg">
-            <h1 className="text-3xl font-bold tracking-tight text-white">Team Workspace</h1>
-            <p className="mt-2 text-white/65">
+          <div className="rounded-2xl bg-white border border-[#E4E0F5] p-6" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(91,63,214,0.07), inset 0 1px 0 rgba(255,255,255,0.95)' }}>
+            <h1 className="text-3xl font-bold tracking-tight text-[#1D1B22]">Team Workspace</h1>
+            <p className="mt-2 text-[#64607A]">
           Shared execution center for project momentum, deadlines, and calendar coordination.
         </p>
       </div>
 
       {loading ? (
         <div className="flex h-48 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-cyan-300" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#5B3FD6]" />
         </div>
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="p-5 text-cyan-300">
-              <p className="text-sm text-muted-foreground">Team Members</p>
-              <div className="mt-2 flex items-center gap-2 text-3xl font-bold text-cyan-300">
-                <Users className="h-7 w-7" />
+            <Card className="p-5">
+              <p className="text-sm text-[#64607A]">Team Members</p>
+              <div className="mt-2 flex items-center gap-2 text-3xl font-bold text-[#1D1B22]">
+                <Users className="h-7 w-7 text-[#5B3FD6]" />
                 {overview.teamSize}
               </div>
             </Card>
             <Card className="p-5">
-              <p className="text-sm text-muted-foreground">Cumulative Velocity</p>
-              <div className="mt-2 flex items-center gap-2 text-3xl font-bold text-white">
-                <Rocket className="h-7 w-7" />
+              <p className="text-sm text-[#64607A]">Cumulative Velocity</p>
+              <div className="mt-2 flex items-center gap-2 text-3xl font-bold text-[#1D1B22]">
+                <Rocket className="h-7 w-7 text-[#5B3FD6]" />
                 {overview.cumulativeVelocity}/week
               </div>
             </Card>
-            <Card className="p-5 text-cyan-300">
-              <p className="text-sm text-muted-foreground">Google Calendar</p>
-              <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
+            <Card className="p-5">
+              <p className="text-sm text-[#64607A]">Google Calendar</p>
+              <div className="mt-2 flex items-center gap-2 text-lg font-semibold text-[#1D1B22]">
                 {connection.connected ? (
                   <>
-                    <CheckCircle2 className="h-5 w-5 text-cyan-300" /> Connected
+                    <CheckCircle2 className="h-5 w-5 text-green-600" /> Connected
                   </>
                 ) : (
                   <>
@@ -223,11 +223,11 @@ const Workspace: React.FC = () => {
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Calendar Integration</h2>
                 {!connection.connected ? (
-                  <Button onClick={() => handleConnectGoogle(false)} isLoading={isConnecting}>
+                  <Button className="rounded-full" onClick={() => handleConnectGoogle(false)} isLoading={isConnecting}>
                     Connect Google Calendar
                   </Button>
                 ) : (
-                  <Button variant="outline" onClick={() => handleConnectGoogle(true)} isLoading={isConnecting}>
+                  <Button variant="outline" className="rounded-full" onClick={() => handleConnectGoogle(true)} isLoading={isConnecting}>
                     Reconnect Google Calendar
                   </Button>
                 )}
@@ -281,7 +281,7 @@ const Workspace: React.FC = () => {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full rounded-full"
                   isLoading={isCreatingEvent}
                   disabled={!connection.connected || isCreatingEvent}
                 >
@@ -300,10 +300,10 @@ const Workspace: React.FC = () => {
                   events.map((event) => (
                     <div
                       key={event.id}
-                      className="rounded-lg border border-white/10 bg-white/[0.03] p-3 transition hover:translate-x-1"
+                      className="rounded-lg border border-[#E4E0F5] bg-white p-3 transition hover:translate-x-1"
                     >
-                      <p className="font-medium text-white">{event.summary || 'Untitled event'}</p>
-                      <p className="text-xs text-white/55">
+                      <p className="font-medium text-[#1D1B22]">{event.summary || 'Untitled event'}</p>
+                      <p className="text-xs text-[#64607A]">
                         {event.start?.dateTime || event.start?.date || '-'}
                       </p>
                     </div>
@@ -340,9 +340,9 @@ const Workspace: React.FC = () => {
                   <p className="text-sm text-muted-foreground">No upcoming deadlines in your shared workspace.</p>
                 ) : (
                   upcomingDeadlines.map((item: WorkspaceDeadline) => (
-                    <div key={item.id} className="rounded-lg border p-3">
-                      <div className="flex items-center gap-2 font-medium">
-                        <CalendarClock className="h-4 w-4 text-cyan-300" />
+                    <div key={item.id} className="rounded-lg border border-[#E4E0F5] p-3">
+                      <div className="flex items-center gap-2 font-medium text-[#1D1B22]">
+                        <CalendarClock className="h-4 w-4 text-[#5B3FD6]" />
                         {item.title}
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">
