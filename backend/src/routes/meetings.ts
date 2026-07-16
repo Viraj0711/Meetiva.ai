@@ -27,6 +27,7 @@ import Transcript from '../models/Transcript';
 import ActionItem from '../models/ActionItem';
 import TeamMember from '../models/TeamMember';
 import mongoose, { Types } from 'mongoose';
+import PDFDocument from 'pdfkit';
 
 const router = Router();
 
@@ -338,12 +339,7 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
     userId: new Types.ObjectId(req.userId!),
   });
 
-  // ── Step 3: Gemini analysis ────────────────────────────────────────────────
-  const analysis = await analyzeTranscriptWithLLM(transcriptText);
-
-  // ── Step 4: persist all derived data atomically ──────────────────────────
-  // Note: MongoDB transactions require a replica set. For single-node deployments,
-  // we use sequential writes. If any fail, manually clean up.
+  // ── Step 3: persist transcript only (no analysis yet — user chooses later) ──
   try {
     await Transcript.create({
       meetingId: createdMeeting._id,
@@ -351,44 +347,13 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
       segments: [],
     });
 
-    await MeetingSummary.create({
-      meetingId: createdMeeting._id,
-      executiveSummary: analysis.executiveSummary,
-      keyPoints: analysis.keyPoints,
-      decisions: analysis.decisions,
-      openQuestions: analysis.openQuestions,
-      sentiment: analysis.sentiment,
-    });
-
-    if (analysis.tasks.length > 0) {
-      await ActionItem.insertMany(
-        analysis.tasks.map((task) => ({
-          meetingId: createdMeeting._id,
-          userId: new Types.ObjectId(req.userId!),
-          title: task.title,
-          description: task.description,
-          assignee: task.assignee,
-          dueDate: task.dueDate ? new Date(task.dueDate) : null,
-          priority: (task.priority as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
-          status: (task.status as 'pending' | 'in_progress' | 'completed' | 'cancelled') || 'pending',
-          tags: task.tags || [],
-        }))
-      );
-    }
-
-    await Meeting.findByIdAndUpdate(createdMeeting._id, { processingProgress: 100 });
+    await Meeting.findByIdAndUpdate(createdMeeting._id, { status: 'completed', processingProgress: 100, completedAt: new Date() });
   } catch (err) {
-    // Cleanup on failure: remove the meeting and any partial data
-    await Promise.all([
-      Meeting.findByIdAndDelete(createdMeeting._id),
-      Transcript.deleteMany({ meetingId: createdMeeting._id }),
-      MeetingSummary.deleteMany({ meetingId: createdMeeting._id }),
-      ActionItem.deleteMany({ meetingId: createdMeeting._id }),
-    ]);
+    await Meeting.findByIdAndDelete(createdMeeting._id);
     throw err;
   }
 
-  // ── Step 5: increment meeting counter ────────────────────────────────────
+  // ── Step 4: increment meeting counter ────────────────────────────────────
   await incrementMeetingCount(req.userId!);
 
   const meeting = await Meeting.findById(createdMeeting._id).lean();
@@ -396,11 +361,100 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
   res.status(201).json({
     data: meeting ? { ...meeting, id: meeting._id.toString() } : null,
     message: transcribedByWhisper
-      ? 'Meeting transcribed with Groq Whisper, analyzed with Gemini, and tasks extracted successfully.'
-      : 'Meeting uploaded, analyzed with Gemini, and tasks extracted successfully.',
+      ? 'Meeting transcribed successfully.'
+      : 'Meeting uploaded successfully.',
     transcribedByWhisper,
-    actionItemsExportUrl: `/meetings/${createdMeeting._id}/action-items/export`,
+    minutesExportUrl: `/meetings/${createdMeeting._id}/minutes/export`,
+    meetingId: createdMeeting._id.toString(),
+  });
+}));
+
+// ── POST /meetings/:id/process — analyze meeting (tasks, minutes, or both) ──
+const processSchema = z.object({
+  mode: z.enum(['tasks', 'minutes', 'both']),
+});
+
+router.post('/:id/process', apiLimiter, authenticate, validate(processSchema), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const meeting = await Meeting.findById(req.params.id).lean();
+  if (!meeting) {
+    return res.status(404).json({ message: 'Meeting not found' });
+  }
+  if (meeting.userId.toString() !== req.userId!) {
+    return res.status(403).json({ message: 'You do not have permission to process this meeting' });
+  }
+
+  const transcript = await Transcript.findOne({ meetingId: meeting._id }).lean();
+  if (!transcript?.fullText) {
+    return res.status(400).json({ message: 'No transcript found for this meeting' });
+  }
+
+  const { mode } = req.body as z.infer<typeof processSchema>;
+
+  await Meeting.findByIdAndUpdate(meeting._id, { status: 'analyzing' });
+
+  let analysis;
+  try {
+    analysis = await analyzeTranscriptWithLLM(transcript.fullText);
+  } catch (err: any) {
+    await Meeting.findByIdAndUpdate(meeting._id, { status: 'failed' });
+    throw err;
+  }
+
+  try {
+    if (mode === 'minutes' || mode === 'both') {
+      // Upsert: one summary per meeting
+      await MeetingSummary.findOneAndUpdate(
+        { meetingId: meeting._id },
+        {
+          meetingId: meeting._id,
+          executiveSummary: analysis.executiveSummary,
+          keyPoints: analysis.keyPoints,
+          decisions: analysis.decisions,
+          openQuestions: analysis.openQuestions,
+          sentiment: analysis.sentiment,
+        },
+        { upsert: true },
+      );
+    }
+
+    if (mode === 'tasks' || mode === 'both') {
+      // Replace all action items for this meeting
+      await ActionItem.deleteMany({ meetingId: meeting._id });
+      if (analysis.tasks.length > 0) {
+        await ActionItem.insertMany(
+          analysis.tasks.map((task) => ({
+            meetingId: meeting._id,
+            userId: new Types.ObjectId(req.userId!),
+            title: task.title,
+            description: task.description,
+            assignee: task.assignee,
+            dueDate: task.dueDate ? new Date(task.dueDate) : null,
+            priority: (task.priority as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
+            status: (task.status as 'pending' | 'in_progress' | 'completed' | 'cancelled') || 'pending',
+            tags: task.tags || [],
+          }))
+        );
+      }
+    }
+
+    await Meeting.findByIdAndUpdate(meeting._id, { status: 'completed', processingProgress: 100, completedAt: new Date() });
+  } catch (err) {
+    await Meeting.findByIdAndUpdate(meeting._id, { status: 'failed' });
+    throw err;
+  }
+
+  const updated = await Meeting.findById(meeting._id).lean();
+
+  res.json({
+    data: updated ? { ...updated, id: updated._id.toString() } : null,
+    message: mode === 'both'
+      ? 'Tasks extracted and minutes generated successfully.'
+      : mode === 'tasks'
+        ? 'Tasks extracted successfully.'
+        : 'Meeting minutes generated successfully.',
     taskCount: analysis.tasks.length,
+    actionItemsExportUrl: `/meetings/${meeting._id}/action-items/export`,
+    minutesExportUrl: `/meetings/${meeting._id}/minutes/export`,
   });
 }));
 
@@ -560,6 +614,120 @@ router.get('/:id/action-items/export', apiLimiter, authenticate, asyncHandler(as
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send(fileBuffer);
+}));
+
+router.get('/:id/minutes/export', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const meeting = await Meeting.findById(req.params.id)
+    .select('title description duration participants userId createdAt')
+    .lean();
+
+  if (!meeting) {
+    return res.status(404).json({ message: 'Meeting not found' });
+  }
+
+  if (!(await canViewUserData(req.userId!, meeting.userId.toString(), req.userTeams || []))) {
+    return res.status(403).json({ message: 'You do not have permission to export this meeting' });
+  }
+
+  const [summary, actionItems] = await Promise.all([
+    MeetingSummary.findOne({ meetingId: meeting._id }).lean(),
+    ActionItem.find({ meetingId: meeting._id })
+      .sort({ createdAt: 1 })
+      .select('title description assignee dueDate priority status')
+      .lean(),
+  ]);
+
+  const safeTitle = meeting.title.replace(/[^a-z0-9-_]+/gi, '_').slice(0, 60);
+  const filename = `${safeTitle || 'meeting'}_minutes.pdf`;
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+  const doc = new PDFDocument({ size: 'A4', margins: { top: 50, bottom: 50, left: 50, right: 50 } });
+  doc.pipe(res);
+
+  // Helper
+  const section = (title: string) => {
+    doc.moveDown(0.5).fontSize(14).font('Helvetica-Bold').fillColor('#1D1B22').text(title);
+    doc.moveDown(0.3);
+  };
+  const body = () => doc.fontSize(10).font('Helvetica').fillColor('#333');
+
+  // Title
+  doc.fontSize(20).font('Helvetica-Bold').fillColor('#1D1B22').text(meeting.title || 'Meeting Minutes', { align: 'center' });
+  doc.moveDown(0.5);
+
+  // Date & Time
+  const dateStr = meeting.createdAt
+    ? new Date(meeting.createdAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    : 'Not specified';
+  const durationStr = meeting.duration ? `${Math.round(meeting.duration / 60)} minutes` : 'Not specified';
+  doc.fontSize(9).font('Helvetica').fillColor('#888').text(`Date: ${dateStr}  |  Duration: ${durationStr}`, { align: 'center' });
+  doc.moveDown(1.5);
+
+  // Divider
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#E0E0E0').stroke();
+  doc.moveDown(1);
+
+  // Attendees
+  if (meeting.participants && meeting.participants.length > 0) {
+    section('Attendees');
+    body().text(meeting.participants.join(', '));
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+  }
+
+  // Executive Summary
+  if (summary?.executiveSummary) {
+    section('Executive Summary');
+    body().text(summary.executiveSummary, { lineGap: 4 });
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+  }
+
+  // Key Discussion Points
+  if (summary?.keyPoints && summary.keyPoints.length > 0) {
+    section('Key Discussion Points');
+    summary.keyPoints.forEach((point, i) => {
+      doc.fontSize(10).font('Helvetica').fillColor('#333').text(`${i + 1}. ${point}`, { indent: 10, lineGap: 3 });
+    });
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+  }
+
+  // Decisions Made
+  if (summary?.decisions && summary.decisions.length > 0) {
+    section('Decisions Made');
+    summary.decisions.forEach((decision) => {
+      doc.fontSize(10).font('Helvetica').fillColor('#333').text(`✓  ${decision}`, { indent: 10, lineGap: 3 });
+    });
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+  }
+
+  // Action Items
+  if (actionItems.length > 0) {
+    section('Action Items');
+    actionItems.forEach((item, i) => {
+      const assignee = item.assignee || 'Unassigned';
+      const due = item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not specified';
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#1D1B22').text(`${i + 1}. ${item.title}`);
+      doc.fontSize(9).font('Helvetica').fillColor('#666')
+        .text(`   Owner: ${assignee}  |  Deadline: ${due}  |  Priority: ${item.priority || 'medium'}  |  Status: ${item.status || 'pending'}`);
+      if (item.description) {
+        doc.fontSize(9).font('Helvetica-Oblique').fillColor('#888').text(`   ${item.description}`);
+      }
+      doc.moveDown(0.3);
+    });
+  }
+
+  // Footer
+  doc.moveDown(1);
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#E0E0E0').stroke();
+  doc.moveDown(0.5);
+  doc.fontSize(8).font('Helvetica').fillColor('#AAA').text('Generated by Meetiva.ai', { align: 'center' });
+
+  doc.end();
 }));
 
 router.post('/', apiLimiter, authenticate, validate(createMeetingSchema), asyncHandler(async (req: AuthRequest, res: Response) => {

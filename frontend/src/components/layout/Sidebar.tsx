@@ -22,7 +22,7 @@ const NAV = [
   { id: 'meetings',   label: 'My Meetings',    icon: FileText,    path: '/dashboard/meetings' },
   { id: 'minutes',    label: 'Minutes',        icon: ScrollText,  path: '/dashboard/minutes' },
   { id: 'actions',    label: 'Tasks',          icon: Target,      path: '/dashboard/action-items' },
-  { id: 'reports',    label: 'Reports',        icon: BarChart2,   path: '/dashboard/reports' },
+  { id: 'analytics', label: 'Analytics',       icon: BarChart2,   path: '/dashboard/analytics' },
   { id: 'upload',     label: 'Upload',         icon: Upload,      path: '/dashboard/upload' },
   { id: 'workspaces', label: 'Workspaces',     icon: Layout,      path: '/dashboard/workspace' },
 ];

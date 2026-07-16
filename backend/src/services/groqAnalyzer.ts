@@ -1,4 +1,5 @@
 import { AppError } from '../lib/errors';
+import { TASK_EXTRACTION_PROMPT } from '../prompts';
 
 interface ExtractedTask {
   title: string;
@@ -80,7 +81,7 @@ export const analyzeTranscriptWithGroq = async (transcript: string): Promise<Gro
 
   const model = process.env.LLM_MODEL || DEFAULT_MODEL;
 
-  const prompt = `You are an expert meeting analyst. Return ONLY valid JSON with keys: executiveSummary (string), keyPoints (string[]), decisions (string[]), openQuestions (string[]), sentiment (positive|neutral|negative), tasks (array). Each task must include title, optional description, optional assignee, optional dueDate in ISO date yyyy-mm-dd when explicit, priority (low|medium|high|urgent), status (pending|in_progress|completed|cancelled), and optional tags string[]. Do not wrap in markdown.
+  const prompt = `${TASK_EXTRACTION_PROMPT}
 
 Analyze this meeting transcript and produce structured output:
 

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Check, Clock, Calendar, Upload } from 'lucide-react';
-import { meetingService, actionItemService } from '@/services';
-import { ActionItem } from '@/types';
+import { ActionItem, Meeting } from '@/types';
 import { useSubscription } from '@/hooks/useAuth';
+import { useMeetings, useMeetingStats, useActionItems } from '@/hooks/useMeetings';
+
 
 const GRAD = '#5B3FD6';
 const GRAD2 = '#8B5CF6';
@@ -21,17 +22,31 @@ const MESH_BG: React.CSSProperties = {
     '#FCFBFF',
 };
 
-const weekData = [
-  { day: 'Mon', meetings: 3, mins: 145 },
-  { day: 'Tue', meetings: 5, mins: 210 },
-  { day: 'Wed', meetings: 2, mins: 90 },
-  { day: 'Thu', meetings: 7, mins: 320 },
-  { day: 'Fri', meetings: 4, mins: 175 },
-  { day: 'Sat', meetings: 1, mins: 42 },
-  { day: 'Sun', meetings: 0, mins: 0 },
-];
+// Build last-7-days chart data from meetings array
+const buildWeekData = (meetings: Meeting[]) => {
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const result = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    d.setHours(0, 0, 0, 0);
+    const next = new Date(d); next.setDate(d.getDate() + 1);
+    const dayMeetings = meetings.filter(m => {
+      const t = new Date(m.createdAt);
+      return t >= d && t < next;
+    });
+    result.push({
+      day: days[d.getDay()],
+      meetings: dayMeetings.length,
+      mins: Math.round(dayMeetings.reduce((s, m) => s + (m.duration || 0), 0) / 60),
+    });
+  }
+  return result;
+};
 
-function MiniBarChart({ data, metric }: { data: typeof weekData; metric: string }) {
+type WeekDay = { day: string; meetings: number; mins: number };
+
+function MiniBarChart({ data, metric }: { data: WeekDay[]; metric: string }) {
   const [hovered, setHovered] = React.useState<number | null>(null);
   const values = data.map((d) => (d as any)[metric] as number);
   const max = Math.max(...values, 1);
@@ -94,38 +109,25 @@ const DashboardHome: React.FC = () => {
   const navigate = useNavigate();
   const [chartMetric, setChartMetric] = useState('meetings');
   const { data: subscription } = useSubscription();
-  const [stats, setStats] = useState({ totalMeetings: 0, completedActions: 0, averageDuration: 0, upcomingMeetings: 0 });
-  const [loading, setLoading] = useState(true);
+  const { data: meetingStats, isLoading: statsLoading } = useMeetingStats();
+  const { data: meetingsData } = useMeetings({ page: 1, limit: 50 });
+  const { data: actionItemsData } = useActionItems({ page: 1, limit: 100 });
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const [meetingStats, actionItems] = await Promise.all([
-          meetingService.getMeetingStats(),
-          actionItemService.getActionItems({ limit: 100 }),
-        ]);
-        const items: ActionItem[] = actionItems.data || [];
-        setStats({
-          totalMeetings: meetingStats.total || 0,
-          completedActions: items.filter((item: ActionItem) => item.status === 'completed').length,
-          averageDuration: meetingStats.avgDuration || 0,
-          upcomingMeetings: meetingStats.processingMeetings || 0,
-        });
-      } catch {
-        // Use defaults
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+  const loading = statsLoading;
+  const meetings: Meeting[] = meetingsData?.data || [];
+  const allActionItems: ActionItem[] = actionItemsData?.data || [];
+  const completedActions = allActionItems.filter((item: ActionItem) => item.status === 'completed').length;
+  const totalActionItems = allActionItems.length;
+  const processingMeetings = meetingStats?.processingMeetings || 0;
+  const avgDuration = meetingStats?.avgDuration || meetingStats?.averageDuration || 0;
+  const totalMeetings = meetingStats?.totalMeetings || meetingStats?.total || 0;
+  const weekData = useMemo(() => buildWeekData(meetings), [meetings]);
 
   const metricTiles = [
-    { l: 'Total meetings',  v: String(stats.totalMeetings || 0), sub: '+3 this week', icon: FileText, accent: GRAD, glow: 'rgba(91,63,214,0.12)' },
-    { l: 'Completed tasks', v: String(stats.completedActions || 0), sub: '+12 this week', icon: Check, accent: '#059669', glow: 'rgba(5,150,105,0.10)' },
-    { l: 'Avg. duration',   v: stats.averageDuration ? `${Math.round(stats.averageDuration)}m` : '0m', sub: '-4m vs last week', icon: Clock, accent: '#F472B6', glow: 'rgba(244,114,182,0.12)' },
-    { l: 'Upcoming',        v: String(stats.upcomingMeetings || 0), sub: '2 sessions tomorrow', icon: Calendar, accent: '#9A6130', glow: 'rgba(244,177,131,0.15)' },
+    { l: 'Total meetings',  v: String(totalMeetings), sub: totalMeetings > 0 ? `${totalMeetings} total in workspace` : 'No meetings yet', icon: FileText, accent: GRAD, glow: 'rgba(91,63,214,0.12)' },
+    { l: 'Completed tasks', v: String(completedActions), sub: totalActionItems > 0 ? `${completedActions}/${totalActionItems} tasks done` : 'No tasks yet', icon: Check, accent: '#059669', glow: 'rgba(5,150,105,0.10)' },
+    { l: 'Avg. duration',   v: avgDuration ? `${Math.round(avgDuration)}m` : '0m', sub: totalMeetings > 0 ? `Across ${totalMeetings} meetings` : 'No duration data', icon: Clock, accent: '#F472B6', glow: 'rgba(244,114,182,0.12)' },
+    { l: 'Processing',      v: String(processingMeetings), sub: processingMeetings > 0 ? 'Meetings in queue' : 'All caught up', icon: Calendar, accent: '#9A6130', glow: 'rgba(244,177,131,0.15)' },
   ];
 
   return (
@@ -153,9 +155,9 @@ const DashboardHome: React.FC = () => {
 
               <div className="flex items-center gap-8 mb-7 pb-7 border-b border-[#E4E0F5]">
                 {[
-                  { l: 'Signal',     v: 'Live',  accent: '#F472B6' },
+                  { l: 'Status',     v: totalMeetings > 0 ? 'Active' : 'Standby',  accent: totalMeetings > 0 ? '#10B981' : '#F472B6' },
                   { l: 'Completion', v: subscription?.isSubscribed ? 'Pro' : 'Free', accent: GRAD },
-                  { l: 'Open queue', v: String(stats.upcomingMeetings), accent: '#1D1B22' },
+                  { l: 'Open queue', v: String(processingMeetings), accent: '#1D1B22' },
                 ].map((s) => (
                   <div key={s.l}>
                     <div className="text-[10px] font-bold uppercase tracking-widest mb-1 text-[#64607A]">{s.l}</div>
@@ -184,16 +186,16 @@ const DashboardHome: React.FC = () => {
               <div className="p-6 flex-1">
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-xs font-bold uppercase tracking-widest text-[#1D1B22]">Live Summary</div>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${totalMeetings > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${totalMeetings > 0 ? 'bg-emerald-500' : 'bg-gray-400'}`} /> {totalMeetings > 0 ? 'Active' : 'Standby'}
                   </span>
                 </div>
                 <div className="text-sm font-semibold text-[#1D1B22] mb-3">What the workspace is doing</div>
                 <div className="space-y-3">
                   {[
-                    { l: 'AI summaries', d: 'New ones generated from recent calls' },
-                    { l: 'Action queue', d: 'Priorities sorted by urgency' },
-                    { l: 'Calendar sync', d: 'Follow-ups pushed live' },
+                    { l: 'Meetings', d: totalMeetings > 0 ? `${totalMeetings} meetings in workspace` : 'No meetings yet' },
+                    { l: 'Action queue', d: totalActionItems > 0 ? `${completedActions}/${totalActionItems} tasks completed` : 'No action items yet' },
+                    { l: 'Processing', d: processingMeetings > 0 ? `${processingMeetings} meetings being processed` : 'All meetings processed' },
                   ].map((row) => (
                     <div key={row.l} className="flex gap-2.5">
                       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 bg-[#F472B6]" />
@@ -211,11 +213,11 @@ const DashboardHome: React.FC = () => {
                 <div className="text-sm font-bold text-[#1D1B22]">Current workstream</div>
                 <div className="h-1.5 bg-[#EDE9FF] rounded-full overflow-hidden mt-3">
                   <div className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(stats.completedActions > 0 ? Math.round((stats.completedActions / (stats.completedActions + stats.totalMeetings || 1)) * 100) : 0, 100)}%`, background: `linear-gradient(90deg, ${GRAD}, ${GRAD2})` }}
+                    style={{ width: `${Math.min(totalActionItems > 0 ? Math.round((completedActions / (totalActionItems + totalMeetings || 1)) * 100) : 0, 100)}%`, background: `linear-gradient(90deg, ${GRAD}, ${GRAD2})` }}
                   />
                 </div>
                 <div className="text-[10px] text-[#64607A] mt-1.5">
-                  {stats.completedActions > 0 ? Math.round((stats.completedActions / (stats.completedActions + stats.totalMeetings || 1)) * 100) : 0}% complete
+                  {totalActionItems > 0 ? `${completedActions}/${totalActionItems} tasks completed` : 'No tasks yet'}
                 </div>
               </div>
             </div>
@@ -254,6 +256,11 @@ const DashboardHome: React.FC = () => {
             <Tabs tabs={[{ id: 'meetings', label: 'Count' }, { id: 'mins', label: 'Duration' }]} active={chartMetric} onChange={setChartMetric} />
           </div>
           <MiniBarChart data={weekData} metric={chartMetric} />
+          {weekData.every(d => d.meetings === 0) && meetings.length === 0 && (
+            <div className="text-center py-4">
+              <div className="text-xs text-[#64607A]">No meeting data available yet. Upload a meeting to get started.</div>
+            </div>
+          )}
         </div>
 
       </div>

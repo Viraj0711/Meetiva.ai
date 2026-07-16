@@ -124,7 +124,7 @@ const ActionItems: React.FC = () => {
       resetCreateForm();
       loadActionItems();
     } catch (error: any) {
-      setCreateError(error?.message || 'Failed to create action item.');
+      setCreateError(error?.message || 'Failed to create task.');
     } finally {
       setCreating(false);
     }
@@ -232,14 +232,14 @@ const ActionItems: React.FC = () => {
         }}
       />
 
-      {/* Create Action Item Modal */}
+      {/* Create Task Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => { if (!creating) { setShowCreateModal(false); resetCreateForm(); } }}>
-          <div className="w-full max-w-lg mx-4 rounded-2xl border border-white/10 bg-[#0b1020] shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-              <h2 className="text-xl font-bold text-white">Create Action Item</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => { if (!creating) { setShowCreateModal(false); resetCreateForm(); } }}>
+          <div className="w-full max-w-lg mx-4 rounded-2xl border border-[#E4E0F5] bg-white shadow-2xl" onClick={(e) => e.stopPropagation()} style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 8px 32px rgba(91,63,214,0.12)' }}>
+            <div className="flex items-center justify-between border-b border-[#E4E0F5] px-6 py-4">
+              <h2 className="text-xl font-bold text-[#1D1B22]">Create Task</h2>
               <button
-                className="text-white/40 hover:text-white transition-colors"
+                className="text-[#64607A] hover:text-[#1D1B22] transition-colors"
                 onClick={() => { setShowCreateModal(false); resetCreateForm(); }}
                 disabled={creating}
               >
@@ -251,18 +251,18 @@ const ActionItems: React.FC = () => {
             <div className="space-y-4 px-6 py-5">
               {/* Error */}
               {createError && (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                   {createError}
                 </div>
               )}
 
               {/* Meeting selector */}
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">
-                  Meeting <span className="text-red-400">*</span>
+                <label className="block text-sm font-medium text-[#1D1B22] mb-1.5">
+                  Meeting <span className="text-red-500">*</span>
                 </label>
                 <select
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white outline-none transition-all focus:border-[rgba(124,92,255,0.35)] focus:bg-white/[0.06]"
+                  className="w-full rounded-xl border border-[#E4E0F5] bg-white px-4 py-2.5 text-sm text-[#1D1B22] outline-none transition-all focus:border-[#5B3FD6] focus:ring-2 focus:ring-[#5B3FD6]/20"
                   value={createForm.meetingId}
                   onChange={(e) => handleCreateFormChange('meetingId', e.target.value)}
                   disabled={creating}
@@ -276,8 +276,8 @@ const ActionItems: React.FC = () => {
 
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">
-                  Title <span className="text-red-400">*</span>
+                <label className="block text-sm font-medium text-[#1D1B22] mb-1.5">
+                  Title <span className="text-red-500">*</span>
                 </label>
                 <Input
                   value={createForm.title}
@@ -289,9 +289,9 @@ const ActionItems: React.FC = () => {
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Description</label>
+                <label className="block text-sm font-medium text-[#1D1B22] mb-1.5">Description</label>
                 <textarea
-                  className="w-full min-h-[80px] rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white outline-none transition-all focus:border-[rgba(124,92,255,0.35)] focus:bg-white/[0.06] resize-none placeholder:text-[rgba(184,194,207,0.58)]"
+                  className="w-full min-h-[80px] rounded-xl border border-[#E4E0F5] bg-white px-4 py-2.5 text-sm text-[#1D1B22] outline-none transition-all focus:border-[#5B3FD6] focus:ring-2 focus:ring-[#5B3FD6]/20 resize-none placeholder:text-[#64607A]"
                   value={createForm.description}
                   onChange={(e) => handleCreateFormChange('description', e.target.value)}
                   placeholder="Optional details..."
@@ -302,7 +302,7 @@ const ActionItems: React.FC = () => {
               {/* Assignee + Due Date */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Assignee</label>
+                  <label className="block text-sm font-medium text-[#1D1B22] mb-1.5">Assignee</label>
                   <Input
                     value={createForm.assignee}
                     onChange={(e) => handleCreateFormChange('assignee', e.target.value)}
@@ -311,7 +311,7 @@ const ActionItems: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Due Date</label>
+                  <label className="block text-sm font-medium text-[#1D1B22] mb-1.5">Due Date</label>
                   <Input
                     type="date"
                     value={createForm.dueDate}
@@ -323,9 +323,9 @@ const ActionItems: React.FC = () => {
 
               {/* Priority */}
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Priority</label>
+                <label className="block text-sm font-medium text-[#1D1B22] mb-1.5">Priority</label>
                 <select
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white outline-none transition-all focus:border-[rgba(124,92,255,0.35)] focus:bg-white/[0.06]"
+                  className="w-full rounded-xl border border-[#E4E0F5] bg-white px-4 py-2.5 text-sm text-[#1D1B22] outline-none transition-all focus:border-[#5B3FD6] focus:ring-2 focus:ring-[#5B3FD6]/20"
                   value={createForm.priority}
                   onChange={(e) => handleCreateFormChange('priority', e.target.value)}
                   disabled={creating}
@@ -339,12 +339,12 @@ const ActionItems: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-3 border-t border-white/10 px-6 py-4">
-              <Button variant="outline" onClick={() => { setShowCreateModal(false); resetCreateForm(); }} disabled={creating}>
+            <div className="flex justify-end gap-3 border-t border-[#E4E0F5] px-6 py-4">
+              <Button variant="outline" className="rounded-full" onClick={() => { setShowCreateModal(false); resetCreateForm(); }} disabled={creating}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateActionItem} isLoading={creating}>
-                {creating ? 'Creating...' : 'Create Action Item'}
+              <Button className="rounded-full" onClick={handleCreateActionItem} isLoading={creating}>
+                {creating ? 'Creating...' : 'Create Task'}
               </Button>
             </div>
           </div>
@@ -354,12 +354,12 @@ const ActionItems: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Action Items</h1>
+          <h1 className="text-3xl font-bold">Tasks</h1>
           <p className="mt-2 text-muted-foreground">
             Track and manage all tasks extracted from your meetings
           </p>
         </div>
-        <Button onClick={() => { resetCreateForm(); setShowCreateModal(true); }}>Create Action Item</Button>
+        <Button className="rounded-full" onClick={() => { resetCreateForm(); setShowCreateModal(true); }}>Create Task</Button>
       </div>
 
       {/* Filters */}
@@ -488,7 +488,7 @@ const ActionItems: React.FC = () => {
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Search</label>
             <Input
               type="text"
-              placeholder="Search action items..."
+              placeholder="Search tasks..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -587,7 +587,7 @@ const ActionItems: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      <Button size="sm" onClick={() => handleCompleteTask(item.id)}>
+                      <Button size="sm" className="rounded-full" onClick={() => handleCompleteTask(item.id)}>
                         Complete
                       </Button>
                     </div>
@@ -642,7 +642,7 @@ const ActionItems: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      <Button size="sm" onClick={() => handleCompleteTask(item.id)}>
+                      <Button size="sm" className="rounded-full" onClick={() => handleCompleteTask(item.id)}>
                         Complete
                       </Button>
                     </div>
@@ -705,7 +705,7 @@ const ActionItems: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      <Button size="sm" onClick={() => handleCompleteTask(item.id)}>
+                      <Button size="sm" className="rounded-full" onClick={() => handleCompleteTask(item.id)}>
                         Complete
                       </Button>
                     </div>
@@ -722,12 +722,12 @@ const ActionItems: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold mb-2">No action items found</h3>
+              <h3 className="text-lg font-semibold mb-2">No tasks found</h3>
               <p className="text-muted-foreground mb-4">
-                Upload meetings to automatically extract action items
+                Upload meetings to automatically extract tasks
               </p>
               <Link to="/dashboard/upload">
-                <Button>Upload Meeting</Button>
+                <Button className="rounded-full">Upload Meeting</Button>
               </Link>
             </Card>
           )}
