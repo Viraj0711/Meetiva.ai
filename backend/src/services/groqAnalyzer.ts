@@ -79,7 +79,7 @@ const GROQ_FETCH_TIMEOUT_MS = parseInt(process.env.GROQ_FETCH_TIMEOUT_MS || '600
 
 /** Auto-generate Summary only (called on upload). Single Groq call. */
 export const generateSummaryOnly = async (transcript: string): Promise<string> => {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY || process.env.WHISPER_API_KEY;
   if (!apiKey) return '';
 
   const model = process.env.LLM_MODEL || DEFAULT_MODEL;
@@ -114,10 +114,10 @@ ${transcript}`;
 };
 
 export const analyzeTranscriptWithGroq = async (transcript: string): Promise<GroqAnalysisResult> => {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY || process.env.WHISPER_API_KEY;
 
   if (!apiKey) {
-    throw new AppError(502, 'Missing GROQ_API_KEY in environment (get one at https://console.groq.com/keys)');
+    throw new AppError(502, 'Missing GROQ_API_KEY or WHISPER_API_KEY in environment');
   }
 
   const model = process.env.LLM_MODEL || DEFAULT_MODEL;

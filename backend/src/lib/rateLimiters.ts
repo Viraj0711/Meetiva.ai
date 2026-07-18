@@ -15,7 +15,7 @@ import { createRateLimitStore } from './redis';
  * Limiters (3):
  *   authLimiter  —  10 / 5 min  — sensitive auth endpoints
  *   apiLimiter   —  60 /  1 min  — general authenticated CRUD
- *   uploadLimiter — 10 /  1 hr   — meeting uploads + AI proxy (cost protection)
+ *   uploadLimiter — 20 /  1 hr   — meeting uploads + AI proxy (cost protection)
  */
 
 /**
@@ -51,7 +51,7 @@ export const apiLimiter = rateLimit(withFreshStore({
  */
 export const uploadLimiter = rateLimit(withFreshStore({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many uploads or AI requests. Please slow down.' },

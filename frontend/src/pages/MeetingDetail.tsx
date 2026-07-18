@@ -19,7 +19,7 @@ const MeetingDetail: React.FC = () => {
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'actions'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'actions' | 'minutes'>('summary');
 
   // Edit / Complete state
   const [editingItem, setEditingItem] = useState<ActionItem | null>(null);
@@ -30,6 +30,7 @@ const MeetingDetail: React.FC = () => {
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -109,6 +110,29 @@ const MeetingDetail: React.FC = () => {
       console.error('Failed to update action item:', error);
     } finally {
       setSavingEdit(false);
+    }
+  };
+
+  // ── Process handler (generate tasks/minutes) ─────────────────────────
+  const processMeeting = async (mode: 'tasks' | 'minutes' | 'both') => {
+    if (!id) return;
+    try {
+      setProcessing(true);
+      const token = getAccessToken();
+      const res = await fetch(`${API_BASE_URL}/meetings/${id}/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mode }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Processing failed');
+      }
+      await loadMeetingDetails();
+    } catch (err) {
+      console.error('Failed to process meeting:', err);
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -235,6 +259,16 @@ const MeetingDetail: React.FC = () => {
           >
             Tasks ({actionItems.length})
           </button>
+          <button
+            className={`pb-3 px-1 font-medium border-b-2 transition-colors ${
+              activeTab === 'minutes'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => setActiveTab('minutes')}
+          >
+            Minutes
+          </button>
         </div>
       </div>
 
@@ -355,6 +389,34 @@ const MeetingDetail: React.FC = () => {
                   ? 'Transcript is being generated...'
                   : 'No transcript available yet.'}
               </p>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Minutes Tab */}
+      {activeTab === 'minutes' && (
+        <div className="space-y-6">
+          {summary?.minutesContent ? (
+            <Card className="p-6">
+              <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed">
+                {summary.minutesContent.split('\n').map((line: string, i: number) => {
+                  if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mt-6 mb-3 text-foreground">{line.slice(2)}</h1>;
+                  if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mt-5 mb-2 text-foreground">{line.slice(3)}</h2>;
+                  if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-semibold mt-4 mb-2 text-foreground">{line.slice(4)}</h3>;
+                  if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc">{line.slice(2)}</li>;
+                  if (line.match(/^\d+\. /)) return <li key={i} className="ml-4 list-decimal">{line.replace(/^\d+\. /, '')}</li>;
+                  if (line.trim() === '') return <div key={i} className="h-2" />;
+                  return <p key={i} className="mb-1">{line}</p>;
+                })}
+              </div>
+            </Card>
+          ) : (
+            <Card className="p-12 text-center">
+              <p className="text-muted-foreground mb-4">No minutes generated yet.</p>
+              <Button onClick={() => processMeeting('minutes')} disabled={processing}>
+                {processing ? 'Generating...' : 'Generate Minutes'}
+              </Button>
             </Card>
           )}
         </div>
@@ -502,11 +564,16 @@ const MeetingDetail: React.FC = () => {
             ))
           ) : (
             <Card className="p-12 text-center">
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-4">
                 {meeting.status === 'processing'
                   ? 'Tasks are being extracted...'
                   : 'No tasks found in this meeting.'}
               </p>
+              {meeting.status !== 'processing' && (
+                <Button onClick={() => processMeeting('tasks')} disabled={processing}>
+                  {processing ? 'Extracting...' : 'Extract Tasks'}
+                </Button>
+              )}
             </Card>
           )}
         </div>

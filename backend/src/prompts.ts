@@ -21,25 +21,6 @@ Provide a concise summary (2\u20134 paragraphs max) covering:
 - Major concerns or ideas
 - Final direction or outcome
 
-# Key Topics Discussed
-List the main topics discussed in order (bullet points, short phrases only)
-
-# Key Decisions
-List only confirmed decisions:
-- Decision
-- Brief reason (1 line)
-
-# Action Items
-| Task | Owner | Deadline |
-|------|-------|----------|
-(Use "Not specified" if missing)
-
-# Key Takeaways
-Provide 5\u201310 short bullet points highlighting the most important insights.
-
-# Open Points (if any)
-List only unresolved questions or pending items.
-
 ---
 
 Additional Instructions:

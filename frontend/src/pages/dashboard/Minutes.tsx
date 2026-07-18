@@ -50,7 +50,6 @@ const DashboardMinutes: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [summaries, setSummaries] = useState<Record<string, MeetingSummary | null>>({});
-  const [loadingSummaries, setLoadingSummaries] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -58,7 +57,18 @@ const DashboardMinutes: React.FC = () => {
       try {
         setLoading(true);
         const result = await meetingService.getMeetings({ limit: 50 });
-        setMeetings(result.data || []);
+        const allMeetings = result.data || [];
+        // ponytail: fetch all summaries upfront, filter to only those with minutesContent
+        const summaryEntries = await Promise.all(
+          allMeetings.map(async (m) => {
+            const s = await meetingService.getMeetingSummary(m.id).catch(() => null);
+            return [m.id, s] as const;
+          })
+        );
+        const summaryMap = Object.fromEntries(summaryEntries);
+        setSummaries(summaryMap);
+        // only keep meetings that have actual minutes generated
+        setMeetings(allMeetings.filter(m => summaryMap[m.id]?.minutesContent));
       } catch (err) {
         console.error('Failed to load meetings:', err);
       } finally {
@@ -68,24 +78,8 @@ const DashboardMinutes: React.FC = () => {
     load();
   }, []);
 
-  const handleExpand = async (meetingId: string) => {
-    if (expandedId === meetingId) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(meetingId);
-
-    if (!(meetingId in summaries)) {
-      setLoadingSummaries(prev => ({ ...prev, [meetingId]: true }));
-      try {
-        const summary = await meetingService.getMeetingSummary(meetingId).catch(() => null);
-        setSummaries(prev => ({ ...prev, [meetingId]: summary }));
-      } catch (err) {
-        console.error('Failed to load summary:', err);
-      } finally {
-        setLoadingSummaries(prev => ({ ...prev, [meetingId]: false }));
-      }
-    }
+  const handleExpand = (meetingId: string) => {
+    setExpandedId(expandedId === meetingId ? null : meetingId);
   };
 
   const filtered = meetings.filter(m =>
@@ -138,7 +132,6 @@ const DashboardMinutes: React.FC = () => {
           ) : filtered.map((m, idx) => {
             const open = expandedId === m.id;
             const summary = summaries[m.id];
-            const loadingSumm = loadingSummaries[m.id];
             const color = TAG_COLORS[idx % TAG_COLORS.length];
             return (
               <div key={m.id}
@@ -164,9 +157,7 @@ const DashboardMinutes: React.FC = () => {
 
                 {open && (
                   <div className="px-5 pb-5 space-y-4 border-t border-[#F0EDF9]">
-                    {loadingSumm ? (
-                      <div className="pt-4 text-center text-sm text-[#64607A]">Loading summary...</div>
-                    ) : summary ? (
+                    {summary ? (
                       <>
                         {/* ponytail: render minutesContent as markdown if available, fall back to structured fields */}
                         {summary.minutesContent ? (
@@ -228,11 +219,7 @@ const DashboardMinutes: React.FC = () => {
                           </>
                         )}
                       </>
-                    ) : (
-                      <div className="pt-4 text-center text-sm text-[#64607A]">
-                        {m.status === 'processing' ? 'Summary is being generated...' : 'No summary available yet.'}
-                      </div>
-                    )}
+                    ) : null}
 
                     {/* Bottom actions */}
                     <div className="flex items-center justify-between pt-1">
