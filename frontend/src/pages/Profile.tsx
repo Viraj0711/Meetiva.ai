@@ -528,9 +528,9 @@ const Profile: React.FC = () => {
 
               <div className="flex items-center justify-between py-4 border-b">
                 <div className="flex-1">
-                  <p className="font-medium">Action Item Reminders</p>
+                  <p className="font-medium">Task Reminders</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Get reminded about upcoming action item deadlines
+                    Get reminded about upcoming task deadlines
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer ml-4">
@@ -548,7 +548,7 @@ const Profile: React.FC = () => {
                 <div className="flex-1">
                   <p className="font-medium">Overdue Alerts</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Notifications when action items become overdue
+                    Notifications when tasks become overdue
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer ml-4">

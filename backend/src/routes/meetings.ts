@@ -5,7 +5,7 @@ import ExcelJS from 'exceljs';
 import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { canViewUserData } from '../middleware/authorize';
-import { analyzeTranscriptWithLLM } from '../services/llmRouter';
+import { analyzeTranscriptWithLLM, generateSummaryOnly } from '../services/llmRouter';
 import {
   transcribeWithWhisper,
   isAudioOrVideoFile,
@@ -348,6 +348,20 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
       segments: [],
     });
 
+    // ── Step 3b: auto-generate Summary (not Minutes/Tasks — those are manual) ──
+    const fullSummary = await generateSummaryOnly(transcriptText).catch(() => '');
+    if (fullSummary) {
+      await MeetingSummary.findOneAndUpdate(
+        { meetingId: createdMeeting._id },
+        {
+          meetingId: createdMeeting._id,
+          executiveSummary: fullSummary.slice(0, 300),
+          fullSummary,
+        },
+        { upsert: true },
+      ).catch(() => {}); // ponytail: non-critical, don't fail upload
+    }
+
     await Meeting.findByIdAndUpdate(createdMeeting._id, { status: 'completed', processingProgress: 100, completedAt: new Date() });
   } catch (err) {
     await Meeting.findByIdAndDelete(createdMeeting._id);
@@ -409,6 +423,8 @@ router.post('/:id/process', apiLimiter, authenticate, validate(processSchema), a
         {
           meetingId: meeting._id,
           executiveSummary: analysis.executiveSummary,
+          fullSummary: analysis.fullSummary,
+          minutesContent: analysis.minutesContent,
           keyPoints: analysis.keyPoints,
           decisions: analysis.decisions,
           openQuestions: analysis.openQuestions,
@@ -483,6 +499,8 @@ router.get('/:id/summary', apiLimiter, authenticate, asyncHandler(async (req: Au
     id: summary._id.toString(),
     meetingId: summary.meetingId.toString(),
     executiveSummary: summary.executiveSummary,
+    fullSummary: summary.fullSummary,
+    minutesContent: summary.minutesContent,
     keyPoints: summary.keyPoints,
     decisions: summary.decisions,
     openQuestions: summary.openQuestions,
@@ -708,7 +726,7 @@ router.get('/:id/minutes/export', apiLimiter, authenticate, asyncHandler(async (
 
   // Action Items
   if (actionItems.length > 0) {
-    section('Action Items');
+    section('Tasks');
     actionItems.forEach((item, i) => {
       const assignee = item.assignee || 'Unassigned';
       const due = item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not specified';

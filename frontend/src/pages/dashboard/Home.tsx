@@ -150,7 +150,7 @@ const DashboardHome: React.FC = () => {
                 Your meeting intelligence<br />is alive.
               </h1>
               <p className="text-sm font-normal text-[#64607A] leading-relaxed mb-7 max-w-sm">
-                Track summaries, action items, and calendar sync in a workspace designed to feel edited, not assembled.
+                Track summaries, tasks, and calendar sync in a workspace designed to feel edited, not assembled.
               </p>
 
               <div className="flex items-center gap-8 mb-7 pb-7 border-b border-[#E4E0F5]">
@@ -194,7 +194,7 @@ const DashboardHome: React.FC = () => {
                 <div className="space-y-3">
                   {[
                     { l: 'Meetings', d: totalMeetings > 0 ? `${totalMeetings} meetings in workspace` : 'No meetings yet' },
-                    { l: 'Action queue', d: totalActionItems > 0 ? `${completedActions}/${totalActionItems} tasks completed` : 'No action items yet' },
+                    { l: 'Action queue', d: totalActionItems > 0 ? `${completedActions}/${totalActionItems} tasks completed` : 'No tasks yet' },
                     { l: 'Processing', d: processingMeetings > 0 ? `${processingMeetings} meetings being processed` : 'All meetings processed' },
                   ].map((row) => (
                     <div key={row.l} className="flex gap-2.5">

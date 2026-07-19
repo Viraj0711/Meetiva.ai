@@ -24,8 +24,8 @@ export const validateBackendEnv = (): void => {
 
   const optionalMissing: string[] = [];
 
-  if (!process.env.GROQ_API_KEY) {
-    optionalMissing.push('GROQ_API_KEY (required for Groq Whisper transcription — get at https://console.groq.com/keys)');
+  if (!process.env.GROQ_API_KEY && !process.env.WHISPER_API_KEY) {
+    optionalMissing.push('GROQ_API_KEY or WHISPER_API_KEY (required for audio transcription — get at https://console.groq.com/keys)');
   }
 
   if (!process.env.REDIS_URL) {

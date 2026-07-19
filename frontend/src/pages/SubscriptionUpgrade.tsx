@@ -26,7 +26,7 @@ const TIERS = [
     features: [
       { text: '5 meetings/month', included: true },
       { text: 'AI summaries (Grok)', included: true },
-      { text: 'Action item extraction', included: true },
+      { text: 'Task extraction', included: true },
       { text: 'Excel export', included: true },
       { text: 'Team collaboration', included: false },
       { text: 'Calendar sync', included: false },
@@ -44,7 +44,7 @@ const TIERS = [
     features: [
       { text: 'Unlimited meetings', included: true },
       { text: 'AI summaries (Grok)', included: true },
-      { text: 'Action item extraction', included: true },
+      { text: 'Task extraction', included: true },
       { text: 'Excel export', included: true },
       { text: 'Team collaboration', included: true },
       { text: 'Calendar sync', included: true },

@@ -223,7 +223,7 @@ const TeamReport: React.FC = () => {
               {stats.avgActionItems}
             </div>
             <p className="text-xs text-white/40 mt-2">
-              Action items per meeting
+              Tasks per meeting
             </p>
           </Card>
         </div>

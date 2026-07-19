@@ -8,7 +8,7 @@ const sections = [
     title: 'Information we collect',
     items: [
       'Account details such as your name, email address, and company information.',
-      'Meeting recordings, transcripts, summaries, and extracted action items.',
+      'Meeting recordings, transcripts, summaries, and extracted tasks.',
       'Usage and device data required to keep the product stable and measurable.',
     ],
   },
