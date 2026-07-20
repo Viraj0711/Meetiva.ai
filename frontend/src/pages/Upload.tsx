@@ -373,7 +373,7 @@ const Upload: React.FC = () => {
               <div className="space-y-5">
                 {[
                   { n: '1', title: 'Upload or connect', desc: 'Drop a recording, transcript, or paste a Zoom / Meet link.' },
-                  { n: '2', title: 'AI extracts the signal', desc: 'Summaries, decisions, action items, and priorities appear automatically.' },
+                  { n: '2', title: 'AI extracts the signal', desc: 'Summaries, decisions, tasks, and priorities appear automatically.' },
                   { n: '3', title: 'Momentum keeps moving', desc: 'Calendar sync and ownership keep the whole team aligned.' },
                 ].map((step) => (
                   <div key={step.n} className="flex gap-4">

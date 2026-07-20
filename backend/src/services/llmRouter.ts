@@ -1,7 +1,10 @@
 import type { Sentiment } from '../lib/shared';
-import { analyzeTranscriptWithGroq } from './groqAnalyzer';
+import { analyzeTranscriptWithGroq, generateSummaryOnly } from './groqAnalyzer';
+export { generateSummaryOnly };
 
 export type AnalysisResult = {
+  fullSummary: string;
+  minutesContent: string;
   executiveSummary: string;
   keyPoints: string[];
   decisions: string[];

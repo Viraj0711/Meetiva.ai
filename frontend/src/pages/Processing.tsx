@@ -20,7 +20,7 @@ const Processing: React.FC = () => {
     { id: 2, name: 'Transcribing', description: 'Converting audio to text with AI' },
     { id: 3, name: 'Speaker Detection', description: 'Identifying and attributing speakers' },
     { id: 4, name: 'Summarizing', description: 'Extracting key points and decisions' },
-    { id: 5, name: 'Action Items', description: 'Detecting tasks and assignments' },
+    { id: 5, name: 'Tasks', description: 'Detecting tasks and assignments' },
     { id: 6, name: 'Finalizing', description: 'Preparing your meeting summary' },
   ];
 
@@ -309,7 +309,7 @@ const Processing: React.FC = () => {
                   <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-cyan-300">
                     <CheckCircle2 className="h-4 w-4" />
                   </div>
-                  <p className="text-white/60">Action items are being ranked so the most important tasks are surfaced first.</p>
+                  <p className="text-white/60">Tasks are being ranked so the most important ones are surfaced first.</p>
                 </div>
               </div>
             </div>

@@ -27,10 +27,10 @@ export const transcribeWithWhisper = async (
   originalname: string,
   mimeType: string
 ): Promise<string> => {
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.WHISPER_API_KEY || process.env.GROQ_API_KEY;
 
   if (!apiKey) {
-    throw new AppError(502, 'Missing GROQ_API_KEY in environment (get one at https://console.groq.com/keys)');
+    throw new AppError(502, 'Missing WHISPER_API_KEY or GROQ_API_KEY in environment');
   }
 
   if (fileBuffer.byteLength > WHISPER_MAX_BYTES) {
@@ -46,7 +46,7 @@ export const transcribeWithWhisper = async (
   const form = new FormData();
   const fileBlob = new Blob([new Uint8Array(fileBuffer)], { type: contentType });
   form.append('file', fileBlob, originalname);
-  form.append('model', 'whisper-1');
+  form.append('model', 'whisper-large-v3');
   form.append('response_format', 'text');
 
   const controller = new AbortController();

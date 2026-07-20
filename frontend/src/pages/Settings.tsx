@@ -415,8 +415,8 @@ const Settings: React.FC = () => {
             <div className="space-y-4">
               {([
                 { key: 'emailSummaries' as const, label: 'Meeting Summaries', desc: 'Receive email summaries after meetings are processed' },
-                { key: 'actionItemReminders' as const, label: 'Action Item Reminders', desc: 'Get reminded about upcoming action item deadlines' },
-                { key: 'overdueAlerts' as const, label: 'Overdue Alerts', desc: 'Notifications when action items become overdue' },
+                { key: 'actionItemReminders' as const, label: 'Task Reminders', desc: 'Get reminded about upcoming task deadlines' },
+                { key: 'overdueAlerts' as const, label: 'Overdue Alerts', desc: 'Notifications when tasks become overdue' },
                 { key: 'weeklyReports' as const, label: 'Weekly Reports', desc: 'Receive a weekly summary of your meetings and tasks' },
                 { key: 'meetingProcessed' as const, label: 'Processing Complete', desc: 'Notify when meeting processing is finished' },
               ]).map(({ key, label, desc }, idx) => (
@@ -525,7 +525,7 @@ const Settings: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Action Item Sensitivity</label>
+                <label className="block text-sm font-medium mb-2">Task Sensitivity</label>
                 <select
                   className="w-full px-3 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22]"
                   value={generalPrefs.actionItemSensitivity}
@@ -536,7 +536,7 @@ const Settings: React.FC = () => {
                   ))}
                 </select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Controls how many potential action items are extracted from meetings
+                  Controls how many tasks are extracted from meetings
                 </p>
               </div>
             </div>
