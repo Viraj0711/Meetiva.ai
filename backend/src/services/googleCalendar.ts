@@ -2,6 +2,9 @@ import crypto from 'crypto';
 import { google, calendar_v3 } from 'googleapis';
 import GoogleCalendarAuth from '../models/GoogleCalendarAuth';
 import { Types } from 'mongoose';
+import { createLogger } from '../lib/logger';
+
+const log = createLogger('meetiva:calendar');
 
 const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
@@ -150,7 +153,7 @@ export const getValidGoogleAccessToken = async (userId: string): Promise<string 
 
     return credentials.access_token || null;
   } catch (error) {
-    console.error('Google token refresh failed:', error);
+    log.error('Google token refresh failed', { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 };
@@ -191,7 +194,7 @@ export const revokeGoogleConnection = async (userId: string) => {
     const oauthClient = getGoogleOAuthClient();
     await oauthClient.revokeToken(token);
   } catch (error) {
-    console.warn('Google token revoke warning:', error);
+    log.warn('Google token revoke warning', { error: error instanceof Error ? error.message : String(error) });
   }
 
   await GoogleCalendarAuth.findOneAndDelete({ userId: new Types.ObjectId(userId) });

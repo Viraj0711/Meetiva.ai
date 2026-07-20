@@ -22,23 +22,21 @@ import { requestLogger } from './lib/requestLogger';
 import { errorHandler } from './middleware/errorHandler';
 import { connectMongoose, disconnectMongoose } from './lib/mongoose';
 import { disconnectRedis } from './lib/redis';
+import { createLogger } from './lib/logger';
 
-// Load backend/.env explicitly with override:true so shell-level env vars
-// (e.g. a stale mongodb+srv:// URI) don't block the correct config.
+const log = createLogger('meetiva');
+
 dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
 validateBackendEnv();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8000', 10);
 
-// Trust the first reverse proxy (required for rate limiters to see real client IP)
 app.set('trust proxy', 1);
 
-// ── API configuration constants ────────────────────────────────────────────
 const API_PREFIX = '/api/v1';
-const DEFAULT_JSON_BODY_LIMIT = '1mb'; // Express default is 100kb
+const DEFAULT_JSON_BODY_LIMIT = '1mb';
 
-// SPA catch-all: 100 req / 15 min per IP
 const spaRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -61,7 +59,7 @@ app.use(helmet({
       upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
     },
   },
-  crossOriginEmbedderPolicy: false, // allows loading third-party resources like images
+  crossOriginEmbedderPolicy: false,
 }));
 
 app.use(compression());
@@ -78,7 +76,6 @@ app.use(cors({
     } else if (isLocalhost) {
       return callback(null, true);
     } else {
-      // Deny unknown origins by default (previously allowed all in development).
       return callback(new Error('Not allowed by CORS'));
     }
   },
@@ -88,14 +85,12 @@ app.use(express.json({ limit: DEFAULT_JSON_BODY_LIMIT }));
 app.use(express.urlencoded({ extended: true, limit: DEFAULT_JSON_BODY_LIMIT }));
 app.use(cookieParser());
 
-// ── Request logging (BEFORE routes so it wraps every matched handler) ─────
 app.use(requestLogger);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ── Versioned API routes ───────────────────────────────────────────────────
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/ai`, aiRoutes);
 app.use(`${API_PREFIX}/meetings`, meetingsRoutes);
@@ -105,7 +100,6 @@ app.use(`${API_PREFIX}/calendar`, calendarRoutes);
 app.use(`${API_PREFIX}/notifications`, notificationsRoutes);
 app.use(`${API_PREFIX}/workspace`, workspaceRoutes);
 
-// Alias routes for integrations that expect non-versioned auth/calendar paths.
 app.use('/auth', authRoutes);
 app.use('/calendar', calendarRoutes);
 
@@ -124,51 +118,41 @@ app.get('{*path}', spaRateLimit, (req, res) => {
   }
 });
 
-// Global error handler — catches errors from asyncHandler wrappers in routes
 app.use(errorHandler);
 
 const server = app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-  console.log(`🌐 Network access: http://0.0.0.0:${PORT}`);
-  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+  log.info('Server started successfully', { port: PORT, environment: process.env.NODE_ENV || 'development' });
 
-  // Connect to MongoDB and start background jobs
   await connectMongoose();
   startDeadlineNotifier();
   startRefreshTokenCleanup();
 });
 
-// ── Graceful shutdown ───────────────────────────────────────────────────────
-// Close the HTTP server and disconnect Mongoose on termination signals.
-// This prevents connection pool leaks and allows in-flight requests to finish.
 const gracefulShutdown = async (signal: string) => {
-  console.log(`\n${signal} received — shutting down gracefully...`);
+  log.info(`${signal} received — shutting down gracefully`);
 
-  // Stop background jobs so the event loop can drain.
   stopDeadlineNotifier();
   stopRefreshTokenCleanup();
 
   server.close(async (err) => {
     if (err) {
-      console.error('Error closing server:', err);
+      log.error('Error closing server', { error: err.message });
       process.exit(1);
     }
     await Promise.all([
       disconnectMongoose(),
       disconnectRedis(),
     ]);
-    console.log('Connections closed. Goodbye.');
+    log.info('Connections closed. Goodbye.');
     process.exit(0);
   });
 
-  // Force shutdown after 10 seconds if graceful shutdown hangs
   setTimeout(() => {
-    console.error('Forced shutdown after timeout');
+    log.error('Forced shutdown after timeout');
     process.exit(1);
   }, 10000).unref();
 };
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-// SIGBREAK is the Windows equivalent of SIGTERM (Ctrl+Break / PM2 shutdown)
 process.on('SIGBREAK', () => gracefulShutdown('SIGBREAK'));

@@ -4,6 +4,9 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { uploadLimiter } from '../lib/rateLimiters';
 import { validate } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
+import { createLogger } from '../lib/logger';
+
+const log = createLogger('meetiva:ai');
 
 type GrokRole = 'system' | 'user' | 'assistant';
 
@@ -75,7 +78,7 @@ router.post('/grok', uploadLimiter, authenticate, validate(grokChatSchema), asyn
     if (!response.ok) {
       // Log the full error server-side for debugging, but never expose
       // API provider details (rate limits, internal error messages, etc.) to the client.
-      console.error(`[Grok] API error ${response.status}:`, JSON.stringify(result));
+      log.error(`Grok API error ${response.status}`, { body: JSON.stringify(result) });
       return res.status(502).json({
         message: 'The AI service returned an error. Please try again later.'
       });
@@ -144,7 +147,7 @@ router.post('/cerebras', uploadLimiter, authenticate, validate(grokChatSchema), 
   const result = (await response.json().catch(() => null)) as GrokChatCompletionResponse | null;
 
   if (!response.ok) {
-    console.error(`[Cerebras] API error ${response.status}:`, JSON.stringify(result));
+    log.error(`Cerebras API error ${response.status}`, { body: JSON.stringify(result) });
     return res.status(502).json({
       message: 'The AI service returned an error. Please try again later.'
     });

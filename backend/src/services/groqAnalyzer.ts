@@ -1,6 +1,9 @@
 import type { Sentiment, ActionItemStatus, MeetingPriority } from '../lib/shared';
 import { AppError } from '../lib/errors';
 import { TASK_EXTRACTION_PROMPT } from '../prompts';
+import { createLogger } from '../lib/logger';
+
+const log = createLogger('meetiva:llm');
 
 interface ExtractedTask {
   title: string;
@@ -127,7 +130,7 @@ ${transcript}`;
       throw new AppError(504, `Groq LLM request timed out after ${GROQ_FETCH_TIMEOUT_MS / 1000}s`);
     }
     const errorMessage = error instanceof Error ? error.message : 'Unknown Groq LLM API error';
-    console.error('Groq LLM API error:', errorMessage);
+    log.error('Groq LLM API error', { error: errorMessage });
     throw new AppError(502, `Groq LLM API error: ${errorMessage}`);
   } finally {
     clearTimeout(timeoutId);

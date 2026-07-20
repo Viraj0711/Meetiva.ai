@@ -1,5 +1,8 @@
 import type { Sentiment, ActionItemStatus, MeetingPriority } from '../lib/shared';
 import { TASK_EXTRACTION_PROMPT } from '../prompts';
+import { createLogger } from '../lib/logger';
+
+const log = createLogger('meetiva:llm');
 
 type GrokRole = 'system' | 'user' | 'assistant';
 
@@ -150,7 +153,7 @@ export const analyzeTranscriptWithGrok = async (transcript: string): Promise<Gro
   if (!response.ok) {
     const provider = useCerebras ? 'Cerebras' : 'Grok';
     const errorDetails = `${provider} API error ${response.status}: ${JSON.stringify(payload)}`;
-    console.error(errorDetails);
+    log.error(errorDetails);
     throw new Error(errorDetails);
   }
 

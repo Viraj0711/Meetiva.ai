@@ -5,6 +5,7 @@ import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { authorize } from '../middleware/authorize';
 import { apiLimiter } from '../lib/rateLimiters';
+import { createLogger } from '../lib/logger';
 import {
   validate,
   createTeamSchema,
@@ -23,6 +24,8 @@ import TeamInvitation from '../models/TeamInvitation';
 import TeamChatMessage from '../models/TeamChatMessage';
 import Notification from '../models/Notification';
 import { Types } from 'mongoose';
+
+const log = createLogger('meetiva:teams');
 
 const router = Router();
 
@@ -133,7 +136,7 @@ router.post(
       acceptedAt: new Date(),
     });
 
-    console.log(`✅ Team created: ${team._id} by user ${req.userId}`);
+    log.info('Team created', { teamId: String(team._id), userId: req.userId });
 
     res.status(201).json({
       team: {
@@ -504,7 +507,7 @@ router.post(
       expiresAt,
     });
 
-    console.log(`🔔 LEAD ${req.userId} invited ${normalizedEmail} to team ${teamId}`);
+    log.info('LEAD invited member', { userId: req.userId, email: normalizedEmail, teamId });
 
     res.status(201).json({
       invitation: {
@@ -605,7 +608,7 @@ router.post(
     // Update invitation to reflect acceptance
     await TeamInvitation.findByIdAndUpdate(invitationId, { $set: { status: 'ACCEPTED' } });
 
-    console.log(`🔔 User ${req.userId} accepted invitation to team ${invitation.teamId} — awaiting LEAD approval`);
+    log.info('User accepted invitation', { userId: req.userId, teamId: String(invitation.teamId) });
 
     // Notify the LEAD about the pending approval
     const leadMembers = await TeamMember.find({
@@ -683,7 +686,7 @@ router.post(
       message: `You have been approved as a member of ${team?.name || 'the team'}.`,
     });
 
-    console.log(`✅ LEAD ${req.userId} approved user ${userId} into team ${teamId}`);
+    log.info('LEAD approved user', { userId: req.userId, approvedUserId: userId, teamId });
 
     res.json({
       member: {
@@ -740,7 +743,7 @@ router.post(
       message: `Your request to join ${team?.name || 'the team'} was declined by the team lead.`,
     });
 
-    console.log(`❌ LEAD ${req.userId} rejected user ${userId} from team ${teamId}`);
+    log.info('LEAD rejected user', { userId: req.userId, rejectedUserId: userId, teamId });
 
     res.json({ message: 'Member rejected' });
   })
@@ -826,7 +829,7 @@ router.patch(
       { returnDocument: 'after' }
     ).lean();
 
-    console.log(`✅ User ${userId} role updated to ${role} in team ${teamId}`);
+    log.info('User role updated', { userId, role, teamId });
 
     res.json({
       userId: updated?.userId.toString(),
@@ -997,7 +1000,7 @@ router.delete(
       teamId: new Types.ObjectId(teamId),
     });
 
-    console.log(`✅ User ${userId} removed from team ${teamId}`);
+    log.info('User removed from team', { userId, teamId });
 
     res.json({ message: 'Member removed successfully' });
   })
@@ -1029,7 +1032,7 @@ router.delete('/:teamId', apiLimiter, authenticate, asyncHandler(async (req: Aut
 
   await Team.findByIdAndDelete(teamId);
 
-  console.log(`✅ Team deleted: ${teamId} by ${req.userId}`);
+  log.info('Team deleted', { teamId, userId: req.userId });
 
   res.json({ message: 'Team deleted successfully' });
 }));

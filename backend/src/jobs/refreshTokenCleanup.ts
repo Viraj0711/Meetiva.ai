@@ -1,4 +1,7 @@
 import RefreshToken from '../models/RefreshToken';
+import { createLogger } from '../lib/logger';
+
+const log = createLogger('meetiva:cleanup');
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 let timer: NodeJS.Timeout | null = null;
@@ -11,7 +14,7 @@ const cleanupExpiredRefreshTokens = async (): Promise<void> => {
   });
 
   if (deletedCount && deletedCount > 0) {
-    console.log(`[RefreshTokenCleanup] Deleted ${deletedCount} expired refresh token(s)`);
+    log.info('Expired refresh tokens deleted', { count: deletedCount });
   }
 };
 
@@ -19,7 +22,9 @@ export const runRefreshTokenCleanup = async (): Promise<void> => {
   try {
     await cleanupExpiredRefreshTokens();
   } catch (error) {
-    console.error('Refresh token cleanup sweep failed:', error);
+    log.error('Refresh token cleanup sweep failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 };
 
@@ -27,7 +32,7 @@ export const startRefreshTokenCleanup = async (): Promise<void> => {
   try {
     await runRefreshTokenCleanup();
   } catch (error) {
-    console.warn('⚠️ Initial refresh token cleanup sweep skipped (db may be unavailable)');
+    log.warn('Initial refresh token cleanup sweep skipped (db may be unavailable)');
   }
 
   if (timer) {
@@ -38,13 +43,13 @@ export const startRefreshTokenCleanup = async (): Promise<void> => {
     void runRefreshTokenCleanup();
   }, SIX_HOURS_MS);
 
-  console.log('✅ Refresh token cleanup started (6-hour cadence)');
+  log.info('Starting cleanup job', { schedule: 'every 6h' });
 };
 
 export const stopRefreshTokenCleanup = (): void => {
   if (timer) {
     clearInterval(timer);
     timer = null;
-    console.log('Refresh token cleanup stopped.');
+    log.info('Refresh token cleanup stopped');
   }
 };
