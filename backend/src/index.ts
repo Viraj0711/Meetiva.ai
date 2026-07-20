@@ -121,11 +121,25 @@ app.get('{*path}', spaRateLimit, (req, res) => {
 app.use(errorHandler);
 
 const server = app.listen(PORT, '0.0.0.0', async () => {
-  log.info('Server started successfully', { port: PORT, environment: process.env.NODE_ENV || 'development' });
+  const env = process.env.NODE_ENV || 'development';
+  const demoMode = process.env.DEMO_MODE === 'true';
+
+  log.info('Server started successfully', { port: PORT, environment: env, demoMode });
 
   await connectMongoose();
   startDeadlineNotifier();
   startRefreshTokenCleanup();
+
+  console.log(`
+========================================================
+  MEETIVA HEALTHCARE BACKEND API
+========================================================
+  Server:      http://localhost:${PORT}
+  Health:      http://localhost:${PORT}/health
+  API Base:    http://localhost:${PORT}${API_PREFIX}
+  Environment: ${env}
+  Demo Mode:   ${demoMode ? 'ENABLED' : 'DISABLED'}
+========================================================`);
 });
 
 const gracefulShutdown = async (signal: string) => {
