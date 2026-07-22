@@ -104,7 +104,7 @@ const SubscriptionUpgrade: React.FC = () => {
         </button>
 
         <div className="text-center">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-[1.75rem] bg-gradient-to-br from-cyan-500/30 to-purple-500/20 shadow-[0_18px_40px_rgba(124,92,255,0.35)]">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-[1.75rem] bg-gradient-to-br from-cyan-500/30 to-purple-500/20 shadow-[0_18px_40px_rgba(91,63,214,0.35)]">
             <Crown className="h-8 w-8 text-cyan-300" />
           </div>
           <h1 className="mt-6 font-display text-4xl font-bold tracking-tight text-white md:text-5xl">
@@ -136,7 +136,7 @@ const SubscriptionUpgrade: React.FC = () => {
               <Card
                 className={`relative overflow-hidden p-8 ${
                   tier.highlight
-                    ? 'border-cyan-400/30 bg-[radial-gradient(circle_at_top_right,rgba(48,213,246,0.1),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(124,92,255,0.08),transparent_40%),rgba(255,255,255,0.02)]'
+                    ? 'border-cyan-400/30 bg-[radial-gradient(circle_at_top_right,rgba(48,213,246,0.1),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(91,63,214,0.08),transparent_40%),rgba(255,255,255,0.02)]'
                     : ''
                 }`}
               >

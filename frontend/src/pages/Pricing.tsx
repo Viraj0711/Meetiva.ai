@@ -35,13 +35,13 @@ const plans = [
 const PricingPage: React.FC = () => {
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.16),transparent_26%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(91,63,214,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(244,114,182,0.16),transparent_26%)]" />
       <div className="absolute inset-0 fine-grid opacity-35" />
 
       <header className="sticky top-0 z-30 border-b border-white/10 bg-slate-950/60 backdrop-blur-2xl">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
           <Link to="/" className="group flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(124,92,255,0.35)]">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(91,63,214,0.35)]">
               <span className="text-sm font-bold text-white">M</span>
             </div>
             <div>
@@ -69,7 +69,7 @@ const PricingPage: React.FC = () => {
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
           {plans.map((plan, index) => (
             <motion.div key={plan.name} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ delay: index * 0.08 }} whileHover={{ y: -6 }}>
-              <Card className={`relative h-full p-7 ${plan.highlighted ? 'border-white/20 bg-[linear-gradient(180deg,rgba(124,92,255,0.18),rgba(255,255,255,0.04))] shadow-[0_40px_120px_rgba(124,92,255,0.16)]' : ''}`}>
+              <Card className={`relative h-full p-7 ${plan.highlighted ? 'border-white/20 bg-[linear-gradient(180deg,rgba(91,63,214,0.18),rgba(255,255,255,0.04))] shadow-[0_40px_120px_rgba(91,63,214,0.16)]' : ''}`}>
                 {plan.highlighted && <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-gradient-primary px-4 py-1 text-xs font-semibold text-white">Most popular</div>}
                 <div className="space-y-3">
                   <h3 className="text-2xl font-semibold text-white">{plan.name}</h3>
@@ -114,7 +114,7 @@ const PricingPage: React.FC = () => {
           </Card>
         </section>
 
-        <section className="mt-16 rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.14),transparent_28%),rgba(255,255,255,0.03)] p-8 text-center backdrop-blur-2xl lg:p-12">
+        <section className="mt-16 rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(91,63,214,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(244,114,182,0.14),transparent_28%),rgba(255,255,255,0.03)] p-8 text-center backdrop-blur-2xl lg:p-12">
           <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/70">Ready to move</p>
           <h2 className="mt-4 font-display text-4xl font-bold tracking-tight text-white md:text-5xl">Start with the plan that fits your momentum.</h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-white/60">Switch to a workspace that feels advanced, immersive, and built for follow-through.</p>

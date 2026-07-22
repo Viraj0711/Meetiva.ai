@@ -74,7 +74,7 @@ const ResetPassword: React.FC = () => {
   if (step === 'done') {
     return (
       <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.16),transparent_26%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(91,63,214,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(244,114,182,0.16),transparent_26%)]" />
         <div className="absolute inset-0 fine-grid opacity-40" />
 
         <Link to="/" className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 backdrop-blur-xl transition hover:bg-white/[0.08] hover:text-white">
@@ -114,7 +114,7 @@ const ResetPassword: React.FC = () => {
   if (step === 'request') {
     return (
       <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.16),transparent_26%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(91,63,214,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(244,114,182,0.16),transparent_26%)]" />
         <div className="absolute inset-0 fine-grid opacity-40" />
 
         <Link to="/login" className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 backdrop-blur-xl transition hover:bg-white/[0.08] hover:text-white">
@@ -159,7 +159,7 @@ const ResetPassword: React.FC = () => {
               className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-slate-950/75 p-8 shadow-[0_40px_120px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
             >
               <div className="mb-8 space-y-3 text-center">
-                <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(124,92,255,0.35)]">
+                <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(91,63,214,0.35)]">
                   <Lock className="h-7 w-7 text-white" />
                 </div>
                 <h2 className="text-3xl font-bold tracking-tight text-white">Reset password</h2>
@@ -206,7 +206,7 @@ const ResetPassword: React.FC = () => {
   // ── Reset form (token present) ───────────────────────────────────────────
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.16),transparent_26%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(91,63,214,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(244,114,182,0.16),transparent_26%)]" />
       <div className="absolute inset-0 fine-grid opacity-40" />
 
       <Link to="/login" className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 backdrop-blur-xl transition hover:bg-white/[0.08] hover:text-white">
@@ -251,7 +251,7 @@ const ResetPassword: React.FC = () => {
             className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-slate-950/75 p-8 shadow-[0_40px_120px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
           >
             <div className="mb-8 space-y-3 text-center">
-              <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(124,92,255,0.35)]">
+              <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(91,63,214,0.35)]">
                 <ShieldCheck className="h-7 w-7 text-white" />
               </div>
               <h2 className="text-3xl font-bold tracking-tight text-white">Choose new password</h2>
