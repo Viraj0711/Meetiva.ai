@@ -53,19 +53,19 @@
 
 :root {
   --font-size: 16px;
-  --background: #F8F6F9;
-  --foreground: #1D1B22;
+  --background: #FCFBFF;
+  --foreground: #0F0A1E;
   --card: #FFFFFF;
-  --card-foreground: #1D1B22;
+  --card-foreground: #0F0A1E;
   --popover: #FFFFFF;
-  --popover-foreground: #1D1B22;
-  --primary: #4B2E83;
+  --popover-foreground: #0F0A1E;
+  --primary: #5B3FD6;
   --primary-foreground: #FFFFFF;
   --secondary: #F0ECF6;
-  --secondary-foreground: #4B2E83;
+  --secondary-foreground: #5B3FD6;
   --muted: #F0ECF6;
-  --muted-foreground: #7A7089;
-  --accent: #D66BA0;
+  --muted-foreground: #64607A;
+  --accent: #F472B6;
   --accent-foreground: #FFFFFF;
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
@@ -75,58 +75,58 @@
   --switch-background: #C8BFD6;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #4B2E83;
-  --chart-1: #4B2E83;
-  --chart-2: #D66BA0;
-  --chart-3: #F4B183;
+  --ring: #5B3FD6;
+  --chart-1: #5B3FD6;
+  --chart-2: #F472B6;
+  --chart-3: #8B5CF6;
   --chart-4: #9B7BC0;
   --chart-5: #EDB4C8;
   --radius: 1.5rem;
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #1D1B22;
-  --sidebar-primary: #4B2E83;
+  --sidebar-foreground: #0F0A1E;
+  --sidebar-primary: #5B3FD6;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #F0ECF6;
-  --sidebar-accent-foreground: #4B2E83;
+  --sidebar-accent-foreground: #5B3FD6;
   --sidebar-border: #E8E2ED;
-  --sidebar-ring: #4B2E83;
+  --sidebar-ring: #5B3FD6;
 }
 
 .dark {
-  --background: #F8F6F9;
-  --foreground: #1D1B22;
-  --card: #FFFFFF;
-  --card-foreground: #1D1B22;
-  --popover: #FFFFFF;
-  --popover-foreground: #1D1B22;
-  --primary: #4B2E83;
+  --background: #0F0A1E;
+  --foreground: #F0ECF6;
+  --card: #1A1530;
+  --card-foreground: #F0ECF6;
+  --popover: #1A1530;
+  --popover-foreground: #F0ECF6;
+  --primary: #8B5CF6;
   --primary-foreground: #FFFFFF;
-  --secondary: #F0ECF6;
-  --secondary-foreground: #4B2E83;
-  --muted: #F0ECF6;
-  --muted-foreground: #7A7089;
-  --accent: #D66BA0;
+  --secondary: #231D3A;
+  --secondary-foreground: #C4B5FD;
+  --muted: #231D3A;
+  --muted-foreground: #9B97B0;
+  --accent: #F472B6;
   --accent-foreground: #FFFFFF;
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
-  --border: #E8E2ED;
-  --input: #FFFFFF;
-  --ring: #4B2E83;
+  --border: #2E2650;
+  --input: #1A1530;
+  --ring: #8B5CF6;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: #4B2E83;
-  --chart-2: #D66BA0;
-  --chart-3: #F4B183;
-  --chart-4: #9B7BC0;
+  --chart-1: #8B5CF6;
+  --chart-2: #F472B6;
+  --chart-3: #5B3FD6;
+  --chart-4: #C4B5FD;
   --chart-5: #EDB4C8;
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #1D1B22;
-  --sidebar-primary: #4B2E83;
+  --sidebar: #1A1530;
+  --sidebar-foreground: #F0ECF6;
+  --sidebar-primary: #8B5CF6;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F0ECF6;
-  --sidebar-accent-foreground: #4B2E83;
-  --sidebar-border: #E8E2ED;
-  --sidebar-ring: #4B2E83;
+  --sidebar-accent: #231D3A;
+  --sidebar-accent-foreground: #C4B5FD;
+  --sidebar-border: #2E2650;
+  --sidebar-ring: #8B5CF6;
 }
 
 @keyframes accordion-down {
@@ -165,8 +165,8 @@
   }
 
   ::selection {
-    background: rgba(75, 46, 131, 0.2);
-    color: #1D1B22;
+    background: rgba(91, 63, 214, 0.2);
+    color: #0F0A1E;
   }
 
   ::-webkit-scrollbar {
@@ -192,7 +192,7 @@
     font-weight: 700;
     line-height: 1.2;
     letter-spacing: -0.02em;
-    color: #1D1B22;
+    color: #0F0A1E;
   }
 
   h2 {
@@ -200,27 +200,27 @@
     font-weight: 700;
     line-height: 1.25;
     letter-spacing: -0.015em;
-    color: #1D1B22;
+    color: #0F0A1E;
   }
 
   h3 {
     font-size: var(--text-lg);
     font-weight: 600;
     line-height: 1.3;
-    color: #1D1B22;
+    color: #0F0A1E;
   }
 
   h4 {
     font-size: var(--text-base);
     font-weight: 600;
     line-height: 1.4;
-    color: #1D1B22;
+    color: #0F0A1E;
   }
 
   p {
     font-weight: 400;
     line-height: 1.6;
-    color: #7A7089;
+    color: #64607A;
   }
 
   label {
@@ -248,7 +248,7 @@
   }
 
   .text-gradient-primary {
-    background: linear-gradient(135deg, #4B2E83, #8B5CF6);
+    background: linear-gradient(135deg, #5B3FD6, #8B5CF6);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;

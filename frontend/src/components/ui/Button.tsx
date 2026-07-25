@@ -1,6 +1,6 @@
 import React from 'react';
 
-const GRAD = '#4B2E83';
+const GRAD = '#5B3FD6';
 const GRAD2 = '#8B5CF6';
 
 type Size = 'sm' | 'md' | 'lg';
