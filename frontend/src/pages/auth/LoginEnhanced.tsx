@@ -5,7 +5,7 @@ import { useLogin } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 
-const GRAD = '#4B2E83';
+const GRAD = '#5B3FD6';
 const GRAD2 = '#8B5CF6';
 
 const DOT_GRID: React.CSSProperties = {

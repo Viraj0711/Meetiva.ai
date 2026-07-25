@@ -12,7 +12,7 @@ const TermsPage: React.FC = () => {
       <div className="relative z-10 mx-auto max-w-5xl px-6 py-6 lg:px-8 lg:py-8">
         <div className="mb-10 flex items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur-2xl">
           <Link to="/" className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary text-white shadow-[0_18px_40px_rgba(124,92,255,0.35)]">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary text-white shadow-[0_18px_40px_rgba(91,63,214,0.35)]">
               <span className="font-bold">M</span>
             </div>
             <div>

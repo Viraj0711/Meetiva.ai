@@ -45,7 +45,7 @@ const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 5000, onClo
       <div className="flex-1 text-sm font-medium text-white">{message}</div>
       <button
         onClick={handleClose}
-        className="ml-4 inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.05)] focus:outline-none focus:ring-2 focus:ring-[rgba(124,92,255,0.12)]"
+        className="ml-4 inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.05)] focus:outline-none focus:ring-2 focus:ring-[rgba(91,63,214,0.12)]"
         aria-label="Close"
       >
         <X className="h-4 w-4 text-white" />

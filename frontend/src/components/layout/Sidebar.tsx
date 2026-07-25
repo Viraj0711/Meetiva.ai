@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { Avatar } from '@/components/ui/Avatar';
 
-const GRAD = '#4B2E83';
+const GRAD = '#5B3FD6';
 const GRAD2 = '#8B5CF6';
 
 const DOT_GRID: React.CSSProperties = {
