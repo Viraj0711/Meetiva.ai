@@ -8,6 +8,7 @@ import { canViewUserData } from '../middleware/authorize';
 import { analyzeTranscriptWithLLM, generateSummaryOnly } from '../services/llmRouter';
 import {
   transcribeWithWhisper,
+  formatTranscript,
   isAudioOrVideoFile,
   WHISPER_MAX_BYTES,
 } from '../services/whisperTranscriber';
@@ -267,11 +268,13 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
           `Whisper API accepts a maximum of 25 MB. Please trim or compress your recording.`,
       });
     }
-    transcriptText = await transcribeWithWhisper(
+    const rawTranscript = await transcribeWithWhisper(
       req.file.buffer,
       req.file.originalname,
       req.file.mimetype
     );
+    // Post-process: reformat raw Whisper output into structured transcript with speaker labels
+    transcriptText = await formatTranscript(rawTranscript);
     transcribedByWhisper = true;
   }
 
@@ -665,12 +668,17 @@ router.get('/:id/minutes/export', apiLimiter, authenticate, asyncHandler(async (
   const doc = new PDFDocument({ size: 'A4', margins: { top: 50, bottom: 50, left: 50, right: 50 } });
   doc.pipe(res);
 
-  // Helper
+  // Helpers
   const section = (title: string) => {
-    doc.moveDown(0.5).fontSize(14).font('Helvetica-Bold').fillColor('#1D1B22').text(title);
-    doc.moveDown(0.3);
+    doc.moveDown(1.2).fontSize(14).font('Helvetica-Bold').fillColor('#1D1B22').text(title);
+    doc.moveDown(0.4);
   };
   const body = () => doc.fontSize(10).font('Helvetica').fillColor('#333');
+
+  // Strip Markdown bold syntax and render as plain text to avoid overlap issues
+  const stripMarkdown = (text: string): string => {
+    return text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
+  };
 
   // Title
   doc.fontSize(20).font('Helvetica-Bold').fillColor('#1D1B22').text(meeting.title || 'Meeting Minutes', { align: 'center' });
@@ -696,35 +704,69 @@ router.get('/:id/minutes/export', apiLimiter, authenticate, asyncHandler(async (
     doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
   }
 
-  // Executive Summary
-  if (summary?.executiveSummary) {
-    section('Executive Summary');
-    body().text(summary.executiveSummary, { lineGap: 4 });
-    doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+  // If minutesContent exists, render the full MoM directly from it
+  if (summary?.minutesContent) {
+    const lines = summary.minutesContent.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      // Heading: ## something
+      const headingMatch = trimmed.match(/^#{1,3}\s+(.+)$/);
+      if (headingMatch) {
+        doc.moveDown(1.0);
+        doc.fontSize(13).font('Helvetica-Bold').fillColor('#1D1B22').text(headingMatch[1]);
+        doc.moveDown(0.4);
+        continue;
+      }
+
+      // Horizontal rule: ---
+      if (/^---+$/.test(trimmed)) {
+        doc.moveDown(0.5);
+        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#E0E0E0').stroke();
+        doc.moveDown(0.5);
+        continue;
+      }
+
+      // Bullet point: - something or * something
+      const bulletMatch = trimmed.match(/^[\-*]\s+(.+)$/);
+      if (bulletMatch) {
+        body().text(`  \u2022  ${stripMarkdown(bulletMatch[1])}`);
+        continue;
+      }
+
+      // Regular text (strip markdown and render)
+      body().text(stripMarkdown(trimmed));
+    }
+  } else {
+    // Fallback: build from individual fields if minutesContent is missing
+    if (summary?.executiveSummary) {
+      section('Executive Summary');
+      body().text(summary.executiveSummary, { lineGap: 4 });
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+    }
+
+    if (summary?.keyPoints && summary.keyPoints.length > 0) {
+      section('Key Discussion Points');
+      summary.keyPoints.forEach((point, i) => {
+        doc.fontSize(10).font('Helvetica').fillColor('#333').text(`${i + 1}. ${point}`, { indent: 10, lineGap: 3 });
+      });
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+    }
+
+    if (summary?.decisions && summary.decisions.length > 0) {
+      section('Decisions Made');
+      summary.decisions.forEach((decision) => {
+        doc.fontSize(10).font('Helvetica').fillColor('#333').text(`✓  ${decision}`, { indent: 10, lineGap: 3 });
+      });
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+    }
   }
 
-  // Key Discussion Points
-  if (summary?.keyPoints && summary.keyPoints.length > 0) {
-    section('Key Discussion Points');
-    summary.keyPoints.forEach((point, i) => {
-      doc.fontSize(10).font('Helvetica').fillColor('#333').text(`${i + 1}. ${point}`, { indent: 10, lineGap: 3 });
-    });
-    doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
-  }
-
-  // Decisions Made
-  if (summary?.decisions && summary.decisions.length > 0) {
-    section('Decisions Made');
-    summary.decisions.forEach((decision) => {
-      doc.fontSize(10).font('Helvetica').fillColor('#333').text(`✓  ${decision}`, { indent: 10, lineGap: 3 });
-    });
-    doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
-  }
-
-  // Action Items
+  // Action Items from DB (always included)
   if (actionItems.length > 0) {
     section('Tasks');
     actionItems.forEach((item, i) => {
