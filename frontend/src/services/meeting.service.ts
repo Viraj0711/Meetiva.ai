@@ -64,7 +64,8 @@ export const meetingService = {
     title?: string,
     description?: string,
     participants?: string[],
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    summaryMode?: string
   ): Promise<{ data: Meeting }> => {
     if (onProgress) onProgress(0);
     const formData = new FormData();
@@ -72,6 +73,7 @@ export const meetingService = {
     if (title) formData.append('title', title);
     if (description) formData.append('description', description);
     if (participants) formData.append('participants', JSON.stringify(participants));
+    if (summaryMode) formData.append('summaryMode', summaryMode);
 
     const token = getAccessToken();
 

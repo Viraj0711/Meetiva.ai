@@ -1,35 +1,68 @@
 // ponytail: single source of truth for prompt templates
 
+// ponytail: 3 summary modes — brief, standard (default), detailed.
+// Each varies only the length instruction; the structure stays identical.
+
+const SUMMARY_structure = `Use the following structure:
+
+# Meeting Snapshot
+- Title: (if available, otherwise "Not mentioned")
+- Date/Time: (if available)
+- Participants: (names if identifiable, otherwise Speaker 1, Speaker 2, etc.)
+- Purpose: Briefly state the main goal of the meeting in 1–2 lines
+
+# Executive Summary
+Provide a summary covering:
+- Context of the meeting
+- Key discussions
+- Major concerns or ideas
+- Final direction or outcome`;
+
+const SUMMARY_rules = `Additional Instructions:
+- Do not invent missing information
+- If something is unclear, state "Not clear"
+- Prefer bullet points over long paragraphs`;
+
+export const MEETING_SUMMARY_PROMPT_BRIEF = `Summarize this meeting transcript in EXACTLY this format — nothing else:
+
+# Meeting Snapshot
+- Title: (or "Not mentioned")
+- Date/Time: (or "Not mentioned")
+- Participants: (names, or "Speaker 1, Speaker 2, etc.")
+
+# Summary
+Write 5–7 plain sentences covering: what the meeting was about, the main points discussed, any decisions made, and what happens next. Use no more than 7 sentences. Do not use bullet points. Do not use subheadings. Do not use lists. Just short plain sentences.`;
+
 export const MEETING_SUMMARY_PROMPT = `You are an expert meeting analyst.
 
 Analyze the provided meeting transcript/audio and generate a clear, concise, and easy-to-understand meeting summary.
 
 Focus on key information only. Avoid unnecessary detail, repetition, or over-explanation. Do NOT expand minor points into long paragraphs.
 
-Use the following structure:
+${SUMMARY_structure}
 
-# Meeting Snapshot
-- Title: (if available, otherwise "Not mentioned")
-- Date/Time: (if available)
-- Participants: (names if identifiable, otherwise Speaker 1, Speaker 2, etc.)
-- Purpose: Briefly state the main goal of the meeting in 1\u20132 lines
+Provide a concise summary (2–4 paragraphs max) in the Executive Summary section.
 
-# Executive Summary
-Provide a concise summary (2\u20134 paragraphs max) covering:
-- Context of the meeting
-- Key discussions
-- Major concerns or ideas
-- Final direction or outcome
+${SUMMARY_rules}
 
----
-
-Additional Instructions:
-- Be concise and avoid unnecessary detail
-- Do not include every single discussion point
-- Do not invent missing information
-- If something is unclear, state "Not clear"
-- Prefer bullet points over long paragraphs
 - Keep the total output compact and readable`;
+
+export const MEETING_SUMMARY_PROMPT_DETAILED = `You are an expert meeting analyst. Generate a detailed meeting summary using ONLY bullet points — NO paragraphs, NO prose, NO formal sections.
+
+${SUMMARY_structure}
+
+# Summary
+- Bullet-point every key discussion, decision, concern, and outcome from the meeting
+- Group related bullets together under short inline labels (e.g. "Frontend:", "Backend:", "Testing:")
+- Include action items inline with [Owner: Name] format
+- Note any blockers, unresolved items, or follow-ups
+
+Rules:
+- Output ONLY bullet points — no paragraphs, no "overall" statements, no formal section headers
+- Be thorough: cover every meaningful topic discussed
+- Keep each bullet to 1–2 lines max
+- Aim for 40–50 lines total
+- If something is missing, write "Not specified"`;
 
 export const MEETING_MINUTES_PROMPT = `You are an expert AI assistant specialized in generating detailed yet easy-to-understand Minutes of Meeting (MoM).
 

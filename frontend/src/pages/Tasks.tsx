@@ -12,7 +12,7 @@ import { actionItemService, meetingService } from '@/services';
 import { ActionItem, Meeting, CreateActionItemRequest, MeetingPriority } from '@/types';
 import { formatDate } from '@/utils';
 
-const ActionItems: React.FC = () => {
+const Tasks: React.FC = () => {
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
@@ -263,7 +263,8 @@ const ActionItems: React.FC = () => {
                   Meeting <span className="text-red-500">*</span>
                 </label>
                 <select
-                  className="w-full rounded-xl border border-[#E4E0F5] bg-white px-4 py-2.5 text-sm text-[#1D1B22] outline-none transition-all focus:border-[#5B3FD6] focus:ring-2 focus:ring-[#5B3FD6]/20"
+                  className="w-full rounded-xl border border-[#E4E0F5] bg-white pl-4 pr-8 py-2.5 text-sm text-[#1D1B22] outline-none transition-all focus:border-[#5B3FD6] focus:ring-2 focus:ring-[#5B3FD6]/20 appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                   value={createForm.meetingId}
                   onChange={(e) => handleCreateFormChange('meetingId', e.target.value)}
                   disabled={creating}
@@ -326,7 +327,8 @@ const ActionItems: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-[#1D1B22] mb-1.5">Priority</label>
                 <select
-                  className="w-full rounded-xl border border-[#E4E0F5] bg-white px-4 py-2.5 text-sm text-[#1D1B22] outline-none transition-all focus:border-[#5B3FD6] focus:ring-2 focus:ring-[#5B3FD6]/20"
+                  className="w-full rounded-xl border border-[#E4E0F5] bg-white pl-4 pr-8 py-2.5 text-sm text-[#1D1B22] outline-none transition-all focus:border-[#5B3FD6] focus:ring-2 focus:ring-[#5B3FD6]/20 appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                   value={createForm.priority}
                   onChange={(e) => handleCreateFormChange('priority', e.target.value)}
                   disabled={creating}
@@ -370,7 +372,8 @@ const ActionItems: React.FC = () => {
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Status</label>
               <select
-                className="min-w-[140px] px-2 py-1 border rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                className="min-w-[140px] pl-3 pr-8 py-1 border rounded-full text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 appearance-none cursor-pointer"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
@@ -383,7 +386,8 @@ const ActionItems: React.FC = () => {
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Priority</label>
               <select
-                className="min-w-[140px] px-2 py-1 border rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                className="min-w-[140px] pl-3 pr-8 py-1 border rounded-full text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 appearance-none cursor-pointer"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
               >
@@ -497,7 +501,8 @@ const ActionItems: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Status</label>
             <select
-              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+              className="w-full pl-3 pr-8 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 appearance-none cursor-pointer"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
               value={filterStatus}
               onChange={(e) => {
                 setFilterStatus(e.target.value);
@@ -512,7 +517,8 @@ const ActionItems: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Priority</label>
             <select
-              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+              className="w-full pl-3 pr-8 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 appearance-none cursor-pointer"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
               value={filterPriority}
               onChange={(e) => {
                 setFilterPriority(e.target.value);
@@ -740,6 +746,6 @@ const ActionItems: React.FC = () => {
   );
 };
 
-export default ActionItems;
+export default Tasks;
 
 

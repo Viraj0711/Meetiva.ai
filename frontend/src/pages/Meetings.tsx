@@ -10,6 +10,9 @@ import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
 import { useMeetings, useDeleteMeeting } from '@/hooks';
 import { formatDate } from '@/utils';
 
+const GRAD = '#5B3FD6';
+const GRAD2 = '#8B5CF6';
+
 const Meetings: React.FC = () => {
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -99,7 +102,8 @@ const Meetings: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Status</label>
             <select
-              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+              className="w-full pl-3 pr-8 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 appearance-none cursor-pointer"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
               value={filterStatus}
               onChange={(e) => {
                 setFilterStatus(e.target.value);
@@ -223,7 +227,11 @@ const Meetings: React.FC = () => {
 
                   <div className="flex gap-2">
                     <Link to={`/dashboard/meetings/${meeting.id}`}>
-                      <Button size="sm" variant="outline" className="rounded-full">
+                      <Button
+                        size="sm"
+                        className="rounded-full font-bold text-white border-0"
+                        style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}
+                      >
                         View Details
                       </Button>
                     </Link>

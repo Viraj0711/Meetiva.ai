@@ -352,7 +352,9 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
     });
 
     // ── Step 3b: auto-generate Summary (not Minutes/Tasks — those are manual) ──
-    const fullSummary = await generateSummaryOnly(transcriptText).catch(() => '');
+    const summaryMode = typeof req.body.summaryMode === 'string' ? req.body.summaryMode : undefined;
+    console.log('[upload] summaryMode received:', summaryMode, '| req.body keys:', Object.keys(req.body || {}));
+    const fullSummary = await generateSummaryOnly(transcriptText, summaryMode).catch(() => '');
     if (fullSummary) {
       await MeetingSummary.findOneAndUpdate(
         { meetingId: createdMeeting._id },
@@ -420,21 +422,36 @@ router.post('/:id/process', apiLimiter, authenticate, validate(processSchema), a
 
   try {
     if (mode === 'minutes' || mode === 'both') {
-      // Upsert: one summary per meeting
-      await MeetingSummary.findOneAndUpdate(
-        { meetingId: meeting._id },
-        {
-          meetingId: meeting._id,
-          executiveSummary: analysis.executiveSummary,
-          fullSummary: analysis.fullSummary,
-          minutesContent: analysis.minutesContent,
-          keyPoints: analysis.keyPoints,
-          decisions: analysis.decisions,
-          openQuestions: analysis.openQuestions,
-          sentiment: analysis.sentiment,
-        },
-        { upsert: true },
-      );
+      // Upsert: one summary per meeting — but skip if already generated during upload
+      const existingSummary = await MeetingSummary.findOne({ meetingId: meeting._id }).lean();
+      if (!existingSummary?.fullSummary) {
+        await MeetingSummary.findOneAndUpdate(
+          { meetingId: meeting._id },
+          {
+            meetingId: meeting._id,
+            executiveSummary: analysis.executiveSummary,
+            fullSummary: analysis.fullSummary,
+            minutesContent: analysis.minutesContent,
+            keyPoints: analysis.keyPoints,
+            decisions: analysis.decisions,
+            openQuestions: analysis.openQuestions,
+            sentiment: analysis.sentiment,
+          },
+          { upsert: true },
+        );
+      } else {
+        // Summary exists from upload — only update minutes-specific fields
+        await MeetingSummary.findOneAndUpdate(
+          { meetingId: meeting._id },
+          {
+            minutesContent: analysis.minutesContent,
+            keyPoints: analysis.keyPoints.length ? analysis.keyPoints : undefined,
+            decisions: analysis.decisions.length ? analysis.decisions : undefined,
+            openQuestions: analysis.openQuestions.length ? analysis.openQuestions : undefined,
+            sentiment: analysis.sentiment,
+          },
+        );
+      }
     }
 
     if (mode === 'tasks' || mode === 'both') {

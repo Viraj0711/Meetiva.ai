@@ -121,6 +121,26 @@ export const useResetPassword = () => {
 };
 
 /**
+ * Hook to change password (authenticated user)
+ */
+export const useChangePassword = () => {
+  const dispatch = useAppDispatch();
+
+  return useMutation({
+    mutationFn: ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) =>
+      authService.changePassword(currentPassword, newPassword),
+    onSuccess: () => {
+      dispatch(
+        addToast({ type: 'success', message: 'Password updated successfully. Please log in again.' })
+      );
+    },
+    onError: (error: Error) => {
+      dispatch(addToast({ type: 'error', message: error.message }));
+    },
+  });
+};
+
+/**
  * Hook to upgrade the current user's subscription tier.
  * Calls POST /auth/admin/set-tier — server checks ADMIN_EMAIL env var.
  */

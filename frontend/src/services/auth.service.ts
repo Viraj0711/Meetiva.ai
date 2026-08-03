@@ -121,6 +121,13 @@ export const authService = {
   },
 
   /**
+   * Change password (authenticated user)
+   */
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    await apiClient.post('/auth/change-password', { currentPassword, newPassword });
+  },
+
+  /**
    * Upgrade the authenticated user's subscription tier.
    * Gated by ADMIN_EMAIL on the server — only the configured admin user can self-upgrade.
    */

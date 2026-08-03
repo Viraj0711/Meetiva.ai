@@ -13,7 +13,7 @@ const Meetings = React.lazy(() => import('@/pages/Meetings'));
 const MeetingDetail = React.lazy(() => import('@/pages/MeetingDetail'));
 const Upload = React.lazy(() => import('@/pages/Upload'));
 const Processing = React.lazy(() => import('@/pages/Processing'));
-const ActionItems = React.lazy(() => import('@/pages/ActionItems'));
+const Tasks = React.lazy(() => import('@/pages/Tasks'));
 const Analytics = React.lazy(() => import('@/pages/Analytics'));
 const TeamReport = React.lazy(() => import('@/pages/TeamReport'));
 const TeamsAdmin = React.lazy(() => import('@/pages/TeamsAdmin'));
@@ -155,7 +155,7 @@ const router = createBrowserRouter([
         path: 'action-items',
         element: (
           <Suspense fallback={<LoadingSpinner />}>
-            <ActionItems />
+            <Tasks />
           </Suspense>
         ),
       },

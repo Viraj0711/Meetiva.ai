@@ -18,6 +18,7 @@ import {
   loginSchema,
   passwordResetSchema,
   passwordResetConfirmSchema,
+  changePasswordSchema,
   updateProfileSchema,
 } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
@@ -438,6 +439,36 @@ router.post('/password-reset/confirm',
     await User.findByIdAndUpdate(userId, { hashedPassword });
 
     await deleteResetToken(token);
+
+    // Invalidate all existing refresh tokens (password changed — force re-login)
+    await RefreshToken.deleteMany({ userId: userId as any });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
+
+    return res.json({ message: 'Password updated successfully. Please log in again.' });
+  })
+);
+
+// ── Change password (authenticated) ─────────────────────────────────────────
+router.post('/change-password',
+  authenticate,
+  validate(changePasswordSchema),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { currentPassword, newPassword } = req.body as z.infer<typeof changePasswordSchema>;
+    const userId = req.userId;
+
+    const user = await User.findById(userId).select('hashedPassword');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.hashedPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await User.findByIdAndUpdate(userId, { hashedPassword });
 
     // Invalidate all existing refresh tokens (password changed — force re-login)
     await RefreshToken.deleteMany({ userId: userId as any });

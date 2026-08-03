@@ -80,6 +80,11 @@ export const passwordResetConfirmSchema = z.object({
   password: passwordField,
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: passwordField,
+});
+
 export const updateProfileSchema = z.object({
   name: z
     .string()

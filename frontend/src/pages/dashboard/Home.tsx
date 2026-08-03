@@ -168,12 +168,12 @@ const DashboardHome: React.FC = () => {
 
               <div className="flex items-center gap-3 flex-wrap">
                 <button onClick={() => navigate('/dashboard/upload')}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.015] active:scale-[0.985] cursor-pointer select-none"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-full font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.015] active:scale-[0.985] cursor-pointer select-none"
                   style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}>
                   <Upload size={13} /> Upload meeting
                 </button>
                 <button onClick={() => navigate('/dashboard/meetings')}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-2xl font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] active:scale-[0.985] cursor-pointer select-none"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 text-xs rounded-full font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] active:scale-[0.985] cursor-pointer select-none"
                   style={{ color: GRAD }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#EDE9FF'; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'white'; }}>
