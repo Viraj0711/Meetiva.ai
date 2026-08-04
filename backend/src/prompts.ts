@@ -54,7 +54,7 @@ ${SUMMARY_structure}
 # Summary
 - Bullet-point every key discussion, decision, concern, and outcome from the meeting
 - Group related bullets together under short inline labels (e.g. "Frontend:", "Backend:", "Testing:")
-- Include action items inline with [Owner: Name] format
+- Include tasks inline with [Owner: Name] format
 - Note any blockers, unresolved items, or follow-ups
 
 Rules:
@@ -135,7 +135,7 @@ The group discussed how the committee would be structured. Students were invited
 
 ---
 
-## Action Items
+## Tasks
 Use this exact format:
 * [Owner: Name/Unassigned, Deadline: Date/Not specified] Clear and simple task description
 

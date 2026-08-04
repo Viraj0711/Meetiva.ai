@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import type { SubscriptionTier } from '../lib/shared';
 import Meeting from './Meeting';
-import ActionItem from './ActionItem';
+import Task from './ActionItem';
 import TeamMember from './TeamMember';
 import TeamInvitation from './TeamInvitation';
 import Notification from './Notification';
@@ -51,7 +51,7 @@ userSchema.pre('findOneAndDelete', async function () {
     const userId = doc._id;
     await Promise.all([
       Meeting.deleteMany({ userId }),
-      ActionItem.deleteMany({ userId }),
+      Task.deleteMany({ userId }),
       TeamMember.deleteMany({ userId }),
       TeamInvitation.deleteMany({ invitedBy: userId }),
       Notification.deleteMany({ userId }),

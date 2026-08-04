@@ -21,7 +21,7 @@ const NAV = [
   { id: 'teams',      label: 'Teams',          icon: Users,       path: '/dashboard/teams' },
   { id: 'meetings',   label: 'My Meetings',    icon: FileText,    path: '/dashboard/meetings' },
   { id: 'minutes',    label: 'Minutes',        icon: ScrollText,  path: '/dashboard/minutes' },
-  { id: 'actions',    label: 'Tasks',          icon: Target,      path: '/dashboard/action-items' },
+  { id: 'actions',    label: 'Tasks',          icon: Target,      path: '/dashboard/tasks' },
   { id: 'analytics', label: 'Analytics',       icon: BarChart2,   path: '/dashboard/analytics' },
   { id: 'upload',     label: 'Upload',         icon: Upload,      path: '/dashboard/upload' },
   { id: 'workspaces', label: 'Workspaces',     icon: Layout,      path: '/dashboard/workspace' },

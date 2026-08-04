@@ -23,9 +23,9 @@ export {
   createMeetingSchema,
   updateMeetingSchema,
 
-  // Action Items
-  createActionItemSchema,
-  updateActionItemSchema,
+  // Tasks
+  createTaskSchema,
+  updateTaskSchema,
 
   // Teams
   createTeamSchema,

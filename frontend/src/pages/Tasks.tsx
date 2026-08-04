@@ -8,15 +8,15 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useAppSelector } from '@/store/hooks';
 import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
-import { actionItemService, meetingService } from '@/services';
-import { ActionItem, Meeting, CreateActionItemRequest, MeetingPriority } from '@/types';
+import { taskService, meetingService } from '@/services';
+import { Task, Meeting, CreateTaskRequest, MeetingPriority } from '@/types';
 import { formatDate } from '@/utils';
 
 const Tasks: React.FC = () => {
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
-  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -41,18 +41,18 @@ const Tasks: React.FC = () => {
   });
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const loadActionItems = useCallback(async () => {
+  const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await actionItemService.getActionItems({
+      const response = await taskService.getTasks({
         page: currentPage,
         limit: 20,
         status: filterStatus === 'all' ? undefined : filterStatus,
         priority: filterPriority === 'all' ? undefined : filterPriority,
       });
-      setActionItems(response.data || []);
+      setTasks(response.data || []);
     } catch (error) {
-      console.error('Failed to load action items:', error);
+      console.error('Failed to load tasks:', error);
     } finally {
       setLoading(false);
     }
@@ -60,8 +60,8 @@ const Tasks: React.FC = () => {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard data-fetching pattern called from effect
-    loadActionItems();
-  }, [loadActionItems]);
+    loadTasks();
+  }, [loadTasks]);
 
   // Fetch meetings for the create modal meeting selector
   useEffect(() => {
@@ -97,7 +97,7 @@ const Tasks: React.FC = () => {
     setCreateError(null);
   };
 
-  const handleCreateActionItem = async () => {
+  const handleCreateTask = async () => {
     if (!createForm.meetingId) {
       setCreateError('Please select a meeting.');
       return;
@@ -111,7 +111,7 @@ const Tasks: React.FC = () => {
       setCreating(true);
       setCreateError(null);
 
-      const data: CreateActionItemRequest = {
+      const data: CreateTaskRequest = {
         meetingId: createForm.meetingId,
         title: createForm.title.trim(),
         description: createForm.description.trim() || undefined,
@@ -120,10 +120,10 @@ const Tasks: React.FC = () => {
         priority: createForm.priority as MeetingPriority,
       };
 
-      await actionItemService.createActionItem(data);
+      await taskService.createTask(data);
       setShowCreateModal(false);
       resetCreateForm();
-      loadActionItems();
+      loadTasks();
     } catch (error: unknown) {
       setCreateError(error instanceof Error ? error.message : 'Failed to create task.');
     } finally {
@@ -140,16 +140,16 @@ const Tasks: React.FC = () => {
     if (!selectedTaskId) return;
     
     try {
-      await actionItemService.completeActionItem(selectedTaskId);
+      await taskService.completeTask(selectedTaskId);
       setShowCompleteDialog(false);
       setSelectedTaskId(null);
-      loadActionItems();
+      loadTasks();
     } catch (error) {
       console.error('Failed to complete task:', error);
     }
   };
 
-  const filteredItems = actionItems.filter((item) =>
+  const filteredItems = tasks.filter((item) =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -346,7 +346,7 @@ const Tasks: React.FC = () => {
               <Button variant="outline" className="rounded-full" onClick={() => { setShowCreateModal(false); resetCreateForm(); }} disabled={creating}>
                 Cancel
               </Button>
-              <Button className="rounded-full" onClick={handleCreateActionItem} isLoading={creating}>
+               <Button className="rounded-full" onClick={handleCreateTask} isLoading={creating}>
                 {creating ? 'Creating...' : 'Create Task'}
               </Button>
             </div>
@@ -534,7 +534,7 @@ const Tasks: React.FC = () => {
         </div>
       </Card>
 
-      {/* Action Items List */}
+      {/* Tasks List */}
       {loading ? (
         <div className="flex items-center justify-center h-96">
           <LoadingSpinner size="lg" />

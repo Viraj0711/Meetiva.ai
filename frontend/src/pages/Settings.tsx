@@ -27,7 +27,7 @@ const loadNotificationPrefs = () => {
   } catch { /* ignore */ }
   return {
     emailSummaries: true,
-    actionItemReminders: true,
+    taskReminders: true,
     overdueAlerts: true,
     weeklyReports: false,
     meetingProcessed: true,
@@ -46,7 +46,6 @@ const loadGeneralPrefs = () => {
     dateFormat: 'MM/DD/YYYY',
     defaultPriority: 'Medium',
     summaryLength: 'Standard (3-4 paragraphs)',
-    actionItemSensitivity: 'Balanced',
   };
 };
 
@@ -465,7 +464,7 @@ const Settings: React.FC = () => {
             <div className="space-y-4">
               {([
                 { key: 'emailSummaries' as const, label: 'Meeting Summaries', desc: 'Receive email summaries after meetings are processed' },
-                { key: 'actionItemReminders' as const, label: 'Task Reminders', desc: 'Get reminded about upcoming task deadlines' },
+                { key: 'taskReminders' as const, label: 'Task Reminders', desc: 'Get reminded about upcoming task deadlines' },
                 { key: 'overdueAlerts' as const, label: 'Overdue Alerts', desc: 'Notifications when tasks become overdue' },
                 { key: 'weeklyReports' as const, label: 'Weekly Reports', desc: 'Receive a weekly summary of your meetings and tasks' },
                 { key: 'meetingProcessed' as const, label: 'Processing Complete', desc: 'Notify when meeting processing is finished' },
@@ -576,23 +575,6 @@ const Settings: React.FC = () => {
                     <option key={opt}>{opt}</option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Task Sensitivity</label>
-                <select
-                  className="w-full pl-3 pr-8 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22] appearance-none cursor-pointer"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
-                  value={generalPrefs.actionItemSensitivity}
-                  onChange={(e) => handlePrefsChange('actionItemSensitivity', e.target.value)}
-                >
-                  {['Conservative (fewer items)', 'Balanced', 'Aggressive (more items)'].map((opt) => (
-                    <option key={opt}>{opt}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Controls how many tasks are extracted from meetings
-                </p>
               </div>
             </div>
             <div className="flex justify-end mt-6">

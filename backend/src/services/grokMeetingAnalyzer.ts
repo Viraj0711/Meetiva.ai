@@ -1,4 +1,4 @@
-import type { Sentiment, ActionItemStatus, MeetingPriority } from '../lib/shared';
+import type { Sentiment, TaskStatus, MeetingPriority } from '../lib/shared';
 import { TASK_EXTRACTION_PROMPT } from '../prompts';
 
 type GrokRole = 'system' | 'user' | 'assistant';
@@ -45,7 +45,7 @@ const normalizePriority = (priority?: string): MeetingPriority => {
   return 'medium';
 };
 
-const normalizeStatus = (status?: string): ActionItemStatus => {
+const normalizeStatus = (status?: string): TaskStatus => {
   const value = (status || 'pending').toLowerCase();
 
   if (value === 'pending' || value === 'in_progress' || value === 'completed' || value === 'cancelled') {

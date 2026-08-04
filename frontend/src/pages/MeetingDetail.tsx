@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { meetingService, actionItemService } from '@/services';
-import { Meeting, MeetingSummary, Transcript, ActionItem, UpdateActionItemRequest, MeetingPriority } from '@/types';
+import { meetingService, taskService } from '@/services';
+import { Meeting, MeetingSummary, Transcript, Task, UpdateTaskRequest, MeetingPriority } from '@/types';
 import { formatDate } from '@/utils';
 import { getAccessToken } from '@/services/api.client';
 import { API_BASE_URL } from '@/services/api.config';
@@ -17,12 +17,12 @@ const MeetingDetail: React.FC = () => {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [summary, setSummary] = useState<MeetingSummary | null>(null);
   const [transcript, setTranscript] = useState<Transcript | null>(null);
-  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'actions' | 'minutes'>('summary');
 
   // Edit / Complete state
-  const [editingItem, setEditingItem] = useState<ActionItem | null>(null);
+  const [editingItem, setEditingItem] = useState<Task | null>(null);
   const [editForm, setEditForm] = useState({
     title: '', description: '', assignee: '', dueDate: '',
     priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
@@ -43,15 +43,15 @@ const MeetingDetail: React.FC = () => {
 
     try {
       setLoading(true);
-      const [meetingData, summaryData, actionItemsData] = await Promise.all([
+      const [meetingData, summaryData, tasksData] = await Promise.all([
         meetingService.getMeetingById(id),
         meetingService.getMeetingSummary(id).catch(() => null),
-        meetingService.getMeetingActionItems(id).catch(() => []),
+        meetingService.getMeetingTasks(id).catch(() => []),
       ]);
 
       setMeeting(meetingData);
       setSummary(summaryData);
-      setActionItems(actionItemsData);
+      setTasks(tasksData);
 
       const transcriptData = await meetingService.getMeetingTranscript(id).catch(() => null);
       setTranscript(transcriptData);
@@ -75,7 +75,7 @@ const MeetingDetail: React.FC = () => {
   };
 
   // ── Edit handlers ────────────────────────────────────────────────────
-  const handleEditActionItem = (item: ActionItem) => {
+  const handleEditTask = (item: Task) => {
     setEditingItem(item);
     setEditForm({
       title: item.title,
@@ -95,7 +95,7 @@ const MeetingDetail: React.FC = () => {
     if (!editingItem) return;
     try {
       setSavingEdit(true);
-      const data: UpdateActionItemRequest = {
+      const data: UpdateTaskRequest = {
         title: editForm.title,
         description: editForm.description || undefined,
         assignee: editForm.assignee || undefined,
@@ -103,11 +103,11 @@ const MeetingDetail: React.FC = () => {
         priority: editForm.priority as MeetingPriority,
         status: editForm.status,
       };
-      await actionItemService.updateActionItem(editingItem.id, data);
+      await taskService.updateTask(editingItem.id, data);
       setEditingItem(null);
       await loadMeetingDetails();
     } catch (error) {
-      console.error('Failed to update action item:', error);
+      console.error('Failed to update task:', error);
     } finally {
       setSavingEdit(false);
     }
@@ -137,13 +137,13 @@ const MeetingDetail: React.FC = () => {
   };
 
   // ── Complete handler ──────────────────────────────────────────────────
-  const handleCompleteActionItem = async (itemId: string) => {
+  const handleCompleteTask = async (itemId: string) => {
     try {
       setCompletingId(itemId);
-      await actionItemService.completeActionItem(itemId);
+      await taskService.completeTask(itemId);
       await loadMeetingDetails();
     } catch (error) {
-      console.error('Failed to complete action item:', error);
+      console.error('Failed to complete task:', error);
     } finally {
       setCompletingId(null);
     }
@@ -257,7 +257,7 @@ const MeetingDetail: React.FC = () => {
             }`}
             onClick={() => setActiveTab('actions')}
           >
-            Tasks ({actionItems.length})
+            Tasks ({tasks.length})
           </button>
           <button
             className={`pb-3 px-1 font-medium border-b-2 transition-colors ${
@@ -503,8 +503,8 @@ const MeetingDetail: React.FC = () => {
             </Card>
           )}
 
-          {actionItems.length > 0 ? (
-            actionItems.map((item) => (
+          {tasks.length > 0 ? (
+            tasks.map((item) => (
               <Card key={item.id} className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -545,14 +545,14 @@ const MeetingDetail: React.FC = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleEditActionItem(item)}
+                      onClick={() => handleEditTask(item)}
                     >
                       Edit
                     </Button>
                     {item.status !== 'completed' && (
                       <Button
                         size="sm"
-                        onClick={() => handleCompleteActionItem(item.id)}
+                        onClick={() => handleCompleteTask(item.id)}
                         disabled={completingId === item.id}
                       >
                         {completingId === item.id ? 'Completing...' : 'Mark Complete'}

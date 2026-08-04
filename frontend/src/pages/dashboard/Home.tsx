@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Check, Clock, Calendar, Upload } from 'lucide-react';
-import { ActionItem, Meeting } from '@/types';
+import { Task, Meeting } from '@/types';
 import { useSubscription } from '@/hooks/useAuth';
-import { useMeetings, useMeetingStats, useActionItems } from '@/hooks/useMeetings';
+import { useMeetings, useMeetingStats, useTasks } from '@/hooks/useMeetings';
 
 
 const GRAD = '#5B3FD6';
@@ -111,13 +111,13 @@ const DashboardHome: React.FC = () => {
   const { data: subscription } = useSubscription();
   const { data: meetingStats, isLoading: statsLoading } = useMeetingStats();
   const { data: meetingsData } = useMeetings({ page: 1, limit: 50 });
-  const { data: actionItemsData } = useActionItems({ page: 1, limit: 100 });
+  const { data: tasksData } = useTasks({ page: 1, limit: 100 });
 
   const loading = statsLoading;
   const meetings: Meeting[] = meetingsData?.data || [];
-  const allActionItems: ActionItem[] = actionItemsData?.data || [];
-  const completedActions = allActionItems.filter((item: ActionItem) => item.status === 'completed').length;
-  const totalActionItems = allActionItems.length;
+  const allTasks: Task[] = tasksData?.data || [];
+  const completedActions = allTasks.filter((item: Task) => item.status === 'completed').length;
+  const totalTasks = allTasks.length;
   const processingMeetings = meetingStats?.processingMeetings || 0;
   const avgDuration = meetingStats?.avgDuration || meetingStats?.averageDuration || 0;
   const totalMeetings = meetingStats?.totalMeetings || meetingStats?.total || 0;
@@ -125,7 +125,7 @@ const DashboardHome: React.FC = () => {
 
   const metricTiles = [
     { l: 'Total meetings',  v: String(totalMeetings), sub: totalMeetings > 0 ? `${totalMeetings} total in workspace` : 'No meetings yet', icon: FileText, accent: GRAD, glow: 'rgba(91,63,214,0.12)' },
-    { l: 'Completed tasks', v: String(completedActions), sub: totalActionItems > 0 ? `${completedActions}/${totalActionItems} tasks done` : 'No tasks yet', icon: Check, accent: '#059669', glow: 'rgba(5,150,105,0.10)' },
+    { l: 'Completed tasks', v: String(completedActions), sub: totalTasks > 0 ? `${completedActions}/${totalTasks} tasks done` : 'No tasks yet', icon: Check, accent: '#059669', glow: 'rgba(5,150,105,0.10)' },
     { l: 'Avg. duration',   v: avgDuration ? `${Math.round(avgDuration)}m` : '0m', sub: totalMeetings > 0 ? `Across ${totalMeetings} meetings` : 'No duration data', icon: Clock, accent: '#F472B6', glow: 'rgba(244,114,182,0.12)' },
     { l: 'Processing',      v: String(processingMeetings), sub: processingMeetings > 0 ? 'Meetings in queue' : 'All caught up', icon: Calendar, accent: '#9A6130', glow: 'rgba(244,177,131,0.15)' },
   ];
@@ -194,7 +194,7 @@ const DashboardHome: React.FC = () => {
                 <div className="space-y-3">
                   {[
                     { l: 'Meetings', d: totalMeetings > 0 ? `${totalMeetings} meetings in workspace` : 'No meetings yet' },
-                    { l: 'Action queue', d: totalActionItems > 0 ? `${completedActions}/${totalActionItems} tasks completed` : 'No tasks yet' },
+                    { l: 'Action queue', d: totalTasks > 0 ? `${completedActions}/${totalTasks} tasks completed` : 'No tasks yet' },
                     { l: 'Processing', d: processingMeetings > 0 ? `${processingMeetings} meetings being processed` : 'All meetings processed' },
                   ].map((row) => (
                     <div key={row.l} className="flex gap-2.5">
@@ -213,11 +213,11 @@ const DashboardHome: React.FC = () => {
                 <div className="text-sm font-bold text-[#1D1B22]">Current workstream</div>
                 <div className="h-1.5 bg-[#EDE9FF] rounded-full overflow-hidden mt-3">
                   <div className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(totalActionItems > 0 ? Math.round((completedActions / (totalActionItems + totalMeetings || 1)) * 100) : 0, 100)}%`, background: `linear-gradient(90deg, ${GRAD}, ${GRAD2})` }}
+                    style={{ width: `${Math.min(totalTasks > 0 ? Math.round((completedActions / (totalTasks + totalMeetings || 1)) * 100) : 0, 100)}%`, background: `linear-gradient(90deg, ${GRAD}, ${GRAD2})` }}
                   />
                 </div>
                 <div className="text-[10px] text-[#64607A] mt-1.5">
-                  {totalActionItems > 0 ? `${completedActions}/${totalActionItems} tasks completed` : 'No tasks yet'}
+                  {totalTasks > 0 ? `${completedActions}/${totalTasks} tasks completed` : 'No tasks yet'}
                 </div>
               </div>
             </div>

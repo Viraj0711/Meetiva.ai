@@ -1,4 +1,4 @@
-import type { ActionItemStatus, MeetingPriority } from '../lib/shared';
+import type { TaskStatus, MeetingPriority } from '../lib/shared';
 import { Router, Response, NextFunction, Request } from 'express';
 import multer from 'multer';
 import ExcelJS from 'exceljs';
@@ -12,7 +12,7 @@ import {
   isAudioOrVideoFile,
   WHISPER_MAX_BYTES,
 } from '../services/whisperTranscriber';
-import { syncMeetingStatusFromActionItems } from '../services/meetingStatus';
+import { syncMeetingStatusFromTasks } from '../services/meetingStatus';
 import { apiLimiter, uploadLimiter } from '../lib/rateLimiters';
 import {
   validate,
@@ -26,7 +26,7 @@ import { checkMeetingCredits, incrementMeetingCount } from '../lib/subscription'
 import Meeting, { IMeeting } from '../models/Meeting';
 import MeetingSummary from '../models/MeetingSummary';
 import Transcript from '../models/Transcript';
-import ActionItem from '../models/ActionItem';
+import Task from '../models/ActionItem';
 import TeamMember from '../models/TeamMember';
 import mongoose, { Types } from 'mongoose';
 import PDFDocument from 'pdfkit';
@@ -104,7 +104,7 @@ router.get('/stats', apiLimiter, authenticate, asyncHandler(async (req: AuthRequ
     completedMeetings,
     processingMeetings,
     durationAgg,
-    totalActionItems,
+    totalTasks,
     recentMeetings,
   ] = await Promise.all([
     Meeting.countDocuments(filter),
@@ -114,7 +114,7 @@ router.get('/stats', apiLimiter, authenticate, asyncHandler(async (req: AuthRequ
       { $match: filter },
       { $group: { _id: null, total: { $sum: '$duration' } } },
     ]),
-    ActionItem.countDocuments({
+    Task.countDocuments({
       ...filter,
     }),
     // Only fetch last 6 months for trends + top participants, with a limit.
@@ -127,7 +127,7 @@ router.get('/stats', apiLimiter, authenticate, asyncHandler(async (req: AuthRequ
 
   const totalDuration = durationAgg[0]?.total ?? 0;
   const avgDuration = totalMeetings > 0 ? Math.round(totalDuration / totalMeetings) : 0;
-  const avgActionItems = totalMeetings > 0 ? Number((totalActionItems / totalMeetings).toFixed(1)) : 0;
+  const avgTasks = totalMeetings > 0 ? Number((totalTasks / totalMeetings).toFixed(1)) : 0;
 
   // Monthly trends from recent meetings
   const monthMap = new Map<string, number>();
@@ -156,7 +156,7 @@ router.get('/stats', apiLimiter, authenticate, asyncHandler(async (req: AuthRequ
     processingMeetings,
     totalDuration,
     avgDuration,
-    avgActionItems,
+    avgTasks,
     trends,
     topParticipants,
   });
@@ -455,10 +455,10 @@ router.post('/:id/process', apiLimiter, authenticate, validate(processSchema), a
     }
 
     if (mode === 'tasks' || mode === 'both') {
-      // Replace all action items for this meeting
-      await ActionItem.deleteMany({ meetingId: meeting._id });
+      // Replace all tasks for this meeting
+      await Task.deleteMany({ meetingId: meeting._id });
       if (analysis.tasks.length > 0) {
-        await ActionItem.insertMany(
+        await Task.insertMany(
           analysis.tasks.map((task) => ({
             meetingId: meeting._id,
             userId: new Types.ObjectId(req.userId!),
@@ -467,7 +467,7 @@ router.post('/:id/process', apiLimiter, authenticate, validate(processSchema), a
             assignee: task.assignee,
             dueDate: task.dueDate ? new Date(task.dueDate) : null,
             priority: (task.priority as MeetingPriority) || 'medium',
-            status: (task.status as ActionItemStatus) || 'pending',
+            status: (task.status as TaskStatus) || 'pending',
             tags: task.tags || [],
           }))
         );
@@ -576,18 +576,18 @@ router.get('/:id/action-items', apiLimiter, authenticate, asyncHandler(async (re
   const limitNumber = Math.max(1, Math.min(parseInt(limit as string, 10) || 50, 200));
   const skip = (pageNumber - 1) * limitNumber;
 
-  const [actionItems, total] = await Promise.all([
-    ActionItem.find({ meetingId: meeting._id })
+  const [tasks, total] = await Promise.all([
+    Task.find({ meetingId: meeting._id })
       .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limitNumber)
       .select('meetingId title description assignee dueDate priority status tags createdAt updatedAt completedAt')
       .lean(),
-    ActionItem.countDocuments({ meetingId: meeting._id }),
+    Task.countDocuments({ meetingId: meeting._id }),
   ]);
 
   res.json({
-    data: actionItems.map((item) => ({
+    data: tasks.map((item) => ({
       id: item._id.toString(),
       meetingId: item.meetingId.toString(),
       title: item.title,
@@ -624,12 +624,12 @@ router.get('/:id/action-items/export', apiLimiter, authenticate, asyncHandler(as
     return res.status(403).json({ message: 'You do not have permission to export this meeting' });
   }
 
-  const actionItems = await ActionItem.find({ meetingId: meeting._id })
+  const tasks = await Task.find({ meetingId: meeting._id })
     .sort({ createdAt: 1 })
     .select('title description assignee priority status dueDate tags')
     .lean();
 
-  const rows = actionItems.map((item) => ({
+  const rows = tasks.map((item) => ({
     Task: item.title,
     Description: item.description || '',
     Assignee: item.assignee || '',
@@ -668,9 +668,9 @@ router.get('/:id/minutes/export', apiLimiter, authenticate, asyncHandler(async (
     return res.status(403).json({ message: 'You do not have permission to export this meeting' });
   }
 
-  const [summary, actionItems] = await Promise.all([
+  const [summary, tasks] = await Promise.all([
     MeetingSummary.findOne({ meetingId: meeting._id }).lean(),
-    ActionItem.find({ meetingId: meeting._id })
+    Task.find({ meetingId: meeting._id })
       .sort({ createdAt: 1 })
       .select('title description assignee dueDate priority status')
       .lean(),
@@ -783,10 +783,10 @@ router.get('/:id/minutes/export', apiLimiter, authenticate, asyncHandler(async (
     }
   }
 
-  // Action Items from DB (always included)
-  if (actionItems.length > 0) {
+  // Tasks from DB (always included)
+  if (tasks.length > 0) {
     section('Tasks');
-    actionItems.forEach((item, i) => {
+    tasks.forEach((item, i) => {
       const assignee = item.assignee || 'Unassigned';
       const due = item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not specified';
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#1D1B22').text(`${i + 1}. ${item.title}`);
@@ -852,7 +852,7 @@ router.patch('/:id', apiLimiter, authenticate, validate(updateMeetingSchema), as
 
   await Meeting.findByIdAndUpdate(req.params.id, { $set: updateData });
 
-  await syncMeetingStatusFromActionItems(req.params.id);
+  await syncMeetingStatusFromTasks(req.params.id);
 
   const refreshed = await Meeting.findById(req.params.id).lean();
 

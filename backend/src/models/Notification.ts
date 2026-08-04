@@ -3,7 +3,7 @@ import type { NotificationType } from '../lib/shared';
 
 export interface INotification extends Document {
   userId: Types.ObjectId;
-  actionItemId?: Types.ObjectId | null;
+  taskId?: Types.ObjectId | null;
   type: NotificationType;
   title: string;
   message: string;
@@ -16,7 +16,7 @@ export interface INotification extends Document {
 const notificationSchema = new Schema<INotification>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    actionItemId: { type: Schema.Types.ObjectId, ref: 'ActionItem', default: null },
+    taskId: { type: Schema.Types.ObjectId, ref: 'ActionItem', default: null },
     type: {
       type: String,
       enum: ['DEADLINE_REMINDER', 'SYSTEM'],
@@ -32,6 +32,6 @@ const notificationSchema = new Schema<INotification>(
 );
 
 notificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
-notificationSchema.index({ actionItemId: 1 });
+notificationSchema.index({ taskId: 1 });
 
 export default mongoose.model<INotification>('Notification', notificationSchema);

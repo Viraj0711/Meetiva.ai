@@ -3,7 +3,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { apiLimiter } from '../lib/rateLimiters';
 import { asyncHandler } from '../lib/errors';
 import Meeting from '../models/Meeting';
-import ActionItem from '../models/ActionItem';
+import Task from '../models/ActionItem';
 import TeamMember from '../models/TeamMember';
 import { Types } from 'mongoose';
 
@@ -32,7 +32,7 @@ router.get('/overview', apiLimiter, authenticate, asyncHandler(async (req: AuthR
       .sort({ createdAt: -1 })
       .limit(20)
       .lean(),
-    ActionItem.find({
+    Task.find({
       userId: { $in: memberUserIds },
       status: { $in: ['pending', 'in_progress'] },
       dueDate: { $gte: new Date() },
@@ -41,7 +41,7 @@ router.get('/overview', apiLimiter, authenticate, asyncHandler(async (req: AuthR
       .limit(20)
       .select('title dueDate assignee status priority')
       .lean(),
-    ActionItem.countDocuments({
+    Task.countDocuments({
       userId: { $in: memberUserIds },
       status: 'completed',
       completedAt: {
@@ -58,17 +58,17 @@ router.get('/overview', apiLimiter, authenticate, asyncHandler(async (req: AuthR
       .lean(),
   ]);
 
-  // Compute action item counts per meeting for projects
+  // Compute task counts per meeting for projects
   const meetingIds = projects.map((p) => p._id);
-  const actionItemsByMeeting = await ActionItem.aggregate([
+  const tasksByMeeting = await Task.aggregate([
     { $match: { meetingId: { $in: meetingIds } } },
     { $group: { _id: '$meetingId', total: { $sum: 1 }, completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } } } },
   ]);
 
-  const actionItemMap = new Map(actionItemsByMeeting.map((a: any) => [a._id.toString(), a]));
+  const taskMap = new Map(tasksByMeeting.map((a: any) => [a._id.toString(), a]));
 
   const ongoingProjects = projects.map((meeting) => {
-    const stats = actionItemMap.get(meeting._id.toString());
+    const stats = taskMap.get(meeting._id.toString());
     const tasksCompleted = stats?.completed || 0;
     const tasksOpen = (stats?.total || 0) - tasksCompleted;
 

@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import type { ActionItemStatus, MeetingPriority } from '../lib/shared';
+import type { TaskStatus, MeetingPriority } from '../lib/shared';
 
-export interface IActionItem extends Document {
+export interface ITask extends Document {
   meetingId: Types.ObjectId;
   userId: Types.ObjectId;
   title: string;
@@ -9,7 +9,7 @@ export interface IActionItem extends Document {
   assignee?: string | null;
   dueDate?: Date | null;
   priority: MeetingPriority;
-  status: ActionItemStatus;
+  status: TaskStatus;
   tags: string[];
   reminderSentAt?: Date | null;
   completedAt?: Date | null;
@@ -17,7 +17,7 @@ export interface IActionItem extends Document {
   updatedAt: Date;
 }
 
-const actionItemSchema = new Schema<IActionItem>(
+const taskSchema = new Schema<ITask>(
   {
     meetingId: { type: Schema.Types.ObjectId, ref: 'Meeting', required: true },
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -42,9 +42,9 @@ const actionItemSchema = new Schema<IActionItem>(
   { timestamps: true, collection: 'action_items' }
 );
 
-actionItemSchema.index({ userId: 1, status: 1 });
-actionItemSchema.index({ userId: 1, createdAt: -1 });
-actionItemSchema.index({ meetingId: 1 });
-actionItemSchema.index({ status: 1, dueDate: 1, reminderSentAt: 1 });
+taskSchema.index({ userId: 1, status: 1 });
+taskSchema.index({ userId: 1, createdAt: -1 });
+taskSchema.index({ meetingId: 1 });
+taskSchema.index({ status: 1, dueDate: 1, reminderSentAt: 1 });
 
-export default mongoose.model<IActionItem>('ActionItem', actionItemSchema);
+export default mongoose.model<ITask>('ActionItem', taskSchema);

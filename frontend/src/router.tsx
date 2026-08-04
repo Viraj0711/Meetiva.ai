@@ -152,7 +152,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: 'action-items',
+        path: 'tasks',
         element: (
           <Suspense fallback={<LoadingSpinner />}>
             <Tasks />

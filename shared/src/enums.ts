@@ -18,9 +18,9 @@ export type MeetingPriority =
   | 'high'
   | 'urgent';
 
-// ─── Action Item Enums ──────────────────────────────────────────────────────
+// ─── Task Enums ──────────────────────────────────────────────────────
 
-export type ActionItemStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 
 // ─── Team Enums ─────────────────────────────────────────────────────────────
 

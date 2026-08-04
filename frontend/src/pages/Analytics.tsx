@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Meeting } from '@/types';
-import { useMeetings, useMeetingStats, useActionItems } from '@/hooks/useMeetings';
+import { useMeetings, useMeetingStats, useTasks } from '@/hooks/useMeetings';
 import { FileText, Clock, Check, Activity } from 'lucide-react';
 
 const GRAD = '#5B3FD6';
@@ -20,17 +20,17 @@ const Analytics: React.FC = () => {
 
   const { data: meetingStats, isLoading: statsLoading } = useMeetingStats();
   const { data: meetingsData } = useMeetings({ page: 1, limit: 100 });
-  const { data: actionItemsData } = useActionItems({ page: 1, limit: 100 });
+  const { data: tasksData } = useTasks({ page: 1, limit: 100 });
 
   const meetings: Meeting[] = meetingsData?.data || [];
-  const allActionItems = actionItemsData?.data || [];
+  const allTasks = tasksData?.data || [];
 
   const totalMeetings = meetingStats?.totalMeetings || meetingStats?.total || 0;
   const avgDuration = meetingStats?.avgDuration || meetingStats?.averageDuration || 0;
-  const totalActions = allActionItems.length;
-  const completedActions = allActionItems.filter(item => item.status === 'completed').length;
-  const inProgressActions = allActionItems.filter(item => item.status === 'in_progress').length;
-  const overdueActions = allActionItems.filter(item => item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'completed').length;
+  const totalActions = allTasks.length;
+  const completedActions = allTasks.filter(item => item.status === 'completed').length;
+  const inProgressActions = allTasks.filter(item => item.status === 'in_progress').length;
+  const overdueActions = allTasks.filter(item => item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'completed').length;
   const completionRate = totalActions > 0 ? Math.round((completedActions / totalActions) * 100) : 0;
 
   // totalDuration is in seconds, convert to hours
@@ -70,7 +70,7 @@ const Analytics: React.FC = () => {
     return meetingStats.topParticipants.slice(0, 4).map(p => ({
       name: p.name,
       meetings: p.meetingCount,
-      tasks: Math.round(p.meetingCount * (meetingStats?.avgActionItems || 2)),
+      tasks: Math.round(p.meetingCount * (meetingStats?.avgTasks || 2)),
       completionRate: Math.min(100, Math.round((completedActions / (totalActions || 1)) * 100)),
     }));
   }, [meetingStats, completedActions, totalActions]);
