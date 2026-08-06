@@ -59,7 +59,6 @@ const Tasks: React.FC = () => {
   }, [currentPage, filterStatus, filterPriority, showTeamItems]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard data-fetching pattern called from effect
     loadTasks();
   }, [loadTasks]);
 
