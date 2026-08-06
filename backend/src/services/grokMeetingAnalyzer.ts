@@ -1,0 +1,186 @@
+import type { Sentiment, TaskStatus, MeetingPriority } from '../lib/shared';
+import { TASK_EXTRACTION_PROMPT } from '../prompts';
+
+type GrokRole = 'system' | 'user' | 'assistant';
+
+interface GrokMessage {
+  role: GrokRole;
+  content: string;
+}
+
+interface ExtractedTask {
+  title: string;
+  description?: string;
+  assignee?: string;
+  dueDate?: string;
+  priority?: string;
+  status?: string;
+  tags?: string[];
+}
+
+interface GrokChatCompletionResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+}
+
+interface GrokAnalysisResult {
+  executiveSummary: string;
+  keyPoints: string[];
+  decisions: string[];
+  openQuestions: string[];
+  sentiment: Sentiment;
+  tasks: ExtractedTask[];
+}
+
+const normalizePriority = (priority?: string): MeetingPriority => {
+  const value = (priority || 'medium').toLowerCase();
+
+  if (value === 'low' || value === 'medium' || value === 'high' || value === 'urgent') {
+    return value;
+  }
+
+  return 'medium';
+};
+
+const normalizeStatus = (status?: string): TaskStatus => {
+  const value = (status || 'pending').toLowerCase();
+
+  if (value === 'pending' || value === 'in_progress' || value === 'completed' || value === 'cancelled') {
+    return value;
+  }
+
+  return 'pending';
+};
+
+const parseJsonResponse = (rawContent: string): GrokAnalysisResult | null => {
+  const direct = rawContent.trim();
+
+  try {
+    return JSON.parse(direct) as GrokAnalysisResult;
+  } catch {
+    // Continue to fenced JSON fallback.
+  }
+
+  const match = direct.match(/```(?:json)?\s*([\s\S]*?)```/i);
+
+  if (!match?.[1]) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(match[1].trim()) as GrokAnalysisResult;
+  } catch {
+    return null;
+  }
+};
+
+const fallbackFromTranscript = (transcript: string): GrokAnalysisResult => {
+  const shortText = transcript.slice(0, 600);
+
+  return {
+    executiveSummary: shortText || 'Transcript was provided but model output could not be parsed.',
+    keyPoints: shortText ? ['Transcript received and stored.'] : [],
+    decisions: [],
+    openQuestions: [],
+    sentiment: 'neutral',
+    tasks: []
+  };
+};
+
+/** Default timeout for Grok API calls in milliseconds (60s). */
+const GROK_FETCH_TIMEOUT_MS = parseInt(process.env.GROK_FETCH_TIMEOUT_MS || '60000', 10);
+
+export const analyzeTranscriptWithGrok = async (transcript: string): Promise<GrokAnalysisResult> => {
+  const grokApiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
+  const cerebrasApiKey = process.env.CEREBRAS_API_KEY;
+
+  const useCerebras = !grokApiKey && !!cerebrasApiKey;
+
+  const apiKey = useCerebras ? cerebrasApiKey : (grokApiKey ?? '');
+  const baseUrl = useCerebras
+    ? (process.env.CEREBRAS_BASE_URL || 'https://api.cerebras.ai/v1')
+    : (process.env.XAI_BASE_URL || 'https://api.x.ai/v1');
+  const model = useCerebras
+    ? (process.env.CEREBRAS_MODEL || 'gemma-4-9b-it')
+    : (process.env.GROK_MODEL || 'grok-2-latest');
+
+  if (!apiKey) {
+    throw new Error('Missing GROK_API_KEY (or XAI_API_KEY) or CEREBRAS_API_KEY');
+  }
+
+  const messages: GrokMessage[] = [
+    {
+      role: 'system',
+      content: TASK_EXTRACTION_PROMPT
+    },
+    {
+      role: 'user',
+      content: `Analyze this meeting transcript and produce structured output:\n\n${transcript}`
+    }
+  ];
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GROK_FETCH_TIMEOUT_MS);
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        messages
+      }),
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  const payload = (await response.json().catch(() => null)) as GrokChatCompletionResponse | null;
+
+  if (!response.ok) {
+    const provider = useCerebras ? 'Cerebras' : 'Grok';
+    const errorDetails = `${provider} API error ${response.status}: ${JSON.stringify(payload)}`;
+    console.error(errorDetails);
+    throw new Error(errorDetails);
+  }
+
+  const content = payload?.choices?.[0]?.message?.content;
+
+  if (typeof content !== 'string' || content.trim().length === 0) {
+    return fallbackFromTranscript(transcript);
+  }
+
+  const parsed = parseJsonResponse(content) || fallbackFromTranscript(transcript);
+
+  return {
+    executiveSummary: parsed.executiveSummary || '',
+    keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints.filter(Boolean) : [],
+    decisions: Array.isArray(parsed.decisions) ? parsed.decisions.filter(Boolean) : [],
+    openQuestions: Array.isArray(parsed.openQuestions) ? parsed.openQuestions.filter(Boolean) : [],
+    sentiment:
+      parsed.sentiment === 'positive' || parsed.sentiment === 'negative' || parsed.sentiment === 'neutral'
+        ? parsed.sentiment
+        : 'neutral',
+    tasks: Array.isArray(parsed.tasks)
+      ? parsed.tasks.map((task) => ({
+          title: task.title || 'Untitled task',
+          description: task.description,
+          assignee: task.assignee,
+          dueDate: task.dueDate,
+          priority: normalizePriority(task.priority),
+          status: normalizeStatus(task.status),
+          tags: Array.isArray(task.tags) ? task.tags.filter(Boolean) : []
+        }))
+      : []
+  };
+};

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": {
+    "paths": [".agents/skills"]
+  },
+  "mcp": {
+    "reticle": {
+      "type": "local",
+      "command": ["npx", "@reticlehq/core", "mcp"]
+    }
+  }
+}
