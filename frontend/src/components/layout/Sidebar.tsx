@@ -1,9 +1,6 @@
-import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  Home, Users, FileText, ScrollText, Target, BarChart2,
-  Upload, Layout, Settings, LogOut,
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Home, Upload, ListTodo, BarChart3, Settings, LogOut, Calendar, Users } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { Avatar } from '@/components/ui/Avatar';
@@ -32,33 +29,106 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
+  const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const isActive = (path: string) => location.pathname === path;
+  const baseNavigation = [
+    { name: 'Home', href: '/dashboard', icon: Home },
+    { name: 'Meetings', href: '/dashboard/meetings', icon: Calendar },
+    { name: 'Upload', href: '/dashboard/upload', icon: Upload },
+    { name: 'Action Items', href: '/dashboard/action-items', icon: ListTodo },
+    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+    { name: 'Teams', href: '/dashboard/teams', icon: Users },
+  ];
 
-  const navTo = (path: string) => navigate(path);
+  const managerNavigation = isManagerOrLead
+    ? [...baseNavigation, { name: 'Team Report', href: '/dashboard/team-report', icon: Users }]
+    : baseNavigation;
+
+  const navigation = [...managerNavigation, { name: 'Settings', href: '/dashboard/settings', icon: Settings }];
+
+  const handleLogout = () => {
+    dispatch(logout());
+  };
 
   return (
-    <div className="w-[232px] flex-shrink-0 h-screen flex flex-col relative overflow-hidden"
-      style={{
-        background: 'linear-gradient(180deg, #FCFBFF 0%, #F3EFFE 100%)',
-        borderRight: '1px solid #E4E0F5',
-        boxShadow: '1px 0 0 rgba(91,63,214,0.04)',
-      }}>
-      {/* Subtle dot-grid on sidebar */}
-      <div className="absolute inset-0 pointer-events-none" style={{ ...DOT_GRID, opacity: 0.25 }} />
-      {/* Very soft purple glow top */}
-      <div className="absolute -top-16 -left-16 w-[220px] h-[220px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(91,63,214,0.06) 0%, transparent 70%)' }} />
-
-      {/* Logo mark */}
-      <div className="relative px-5 pt-5 pb-4">
-        <div className="flex items-center gap-2.5 mb-5">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
-            style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
-            M
+    <aside
+      className={cn(
+        "hidden border-r border-border bg-card lg:block transition-all duration-300 ease-in-out",
+        isExpanded ? "w-64" : "w-20"
+      )}
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={() => setIsExpanded(false)}
+    >
+      <div className="flex h-full flex-col">
+        <Link to="/dashboard" className="flex h-16 items-center border-b border-border px-6 overflow-hidden">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-sm">M</span>
+            </div>
+            {isExpanded && (
+              <h1 className="bg-gradient-primary bg-clip-text text-xl font-bold text-transparent whitespace-nowrap animate-fade-in">
+                Meetiva
+              </h1>
+            )}
           </div>
-          <span className="font-bold text-[#1D1B22] text-xl tracking-tight">Meetiva</span>
-          <span className="text-[10px] text-[#64607A] font-medium">AI</span>
+        </Link>
+
+        <nav className="flex-1 space-y-1 px-3 py-4">
+          {navigation.map((item) => {
+            const isActive = location.pathname === item.href;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors relative group',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-[#F2F7FD] hover:text-[#2F80ED]'
+                )}
+                title={!isExpanded ? item.name : undefined}
+              >
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                {isExpanded && (
+                  <span className="whitespace-nowrap animate-fade-in">{item.name}</span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="border-t border-border p-4">
+          <Link 
+            to="/dashboard/profile" 
+            className={cn(
+              "mb-3 flex items-center gap-3 overflow-hidden rounded-lg p-2 transition-colors",
+              !isExpanded && "justify-center"
+            )}
+            title={!isExpanded ? "Profile" : undefined}
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary font-semibold text-white flex-shrink-0">
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            {isExpanded && (
+              <div className="flex-1 overflow-hidden animate-fade-in">
+                <p className="truncate text-sm font-medium">{user?.name || 'User'}</p>
+                <p className="truncate text-xs text-muted-foreground">{user?.email || ''}</p>
+              </div>
+            )}
+          </Link>
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-accent",
+              !isExpanded && "justify-center"
+            )}
+            title={!isExpanded ? "Logout" : undefined}
+          >
+            <LogOut className="h-4 w-4 flex-shrink-0" />
+            {isExpanded && <span className="animate-fade-in">Logout</span>}
+          </button>
         </div>
       </div>
 

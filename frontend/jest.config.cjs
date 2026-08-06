@@ -5,21 +5,19 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.{ts,tsx}', '**/__tests__/**/*.spec.{ts,tsx}'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    '^@shared/(.*)$': '<rootDir>/../backend/src/lib/$1',
-    '@shared$': '<rootDir>/../backend/src/lib',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   testTimeout: 10000,
   verbose: true,
-  transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
+  globals: {
+    'ts-jest': {
       tsconfig: {
         jsx: 'react-jsx',
         esModuleInterop: true,
         allowSyntheticDefaultImports: true,
       },
-    }],
+    },
   },
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',

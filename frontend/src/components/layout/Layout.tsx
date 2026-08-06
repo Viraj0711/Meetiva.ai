@@ -12,11 +12,11 @@ const MESH_BG: React.CSSProperties = {
 
 const Layout: React.FC = () => {
   return (
-    <div className="h-screen flex" style={MESH_BG}>
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <TopBar />
-        <main className="flex-1 min-w-0 relative overflow-y-auto">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>
       </div>

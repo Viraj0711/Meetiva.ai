@@ -1,622 +1,155 @@
-import { Router, Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
+﻿import { Router, Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
-import nodemailer from 'nodemailer';
-import z from 'zod';
+import { body, validationResult } from 'express-validator';
+import prisma from '../lib/prisma';
 import { TeamInfo } from '../middleware/auth';
-import {
-  getGoogleOAuthClient,
-  googleCalendarScopes,
-  upsertGoogleTokens,
-} from '../services/googleCalendar';
-import { authenticate, AuthRequest } from '../middleware/auth';
-import { authLimiter, apiLimiter } from '../lib/rateLimiters';
-import {
-  validate,
-  registerSchema,
-  loginSchema,
-  passwordResetSchema,
-  passwordResetConfirmSchema,
-  changePasswordSchema,
-  updateProfileSchema,
-} from '../lib/validation';
-import { asyncHandler } from '../lib/errors';
-import { setResetToken, getResetToken, deleteResetToken } from '../lib/redis';
-import User from '../models/User';
-import TeamMember from '../models/TeamMember';
-import RefreshToken from '../models/RefreshToken';
-import GoogleCalendarAuth from '../models/GoogleCalendarAuth';
 
 const router = Router();
 
-const OAUTH_STATE_COOKIE = 'google_oauth_state';
-const OAUTH_UID_COOKIE = 'google_oauth_uid';
-const REFRESH_COOKIE = 'refresh_token';
-const SESSION_COOKIE = 'session_exists';
-
-const ACCESS_TOKEN_EXPIRY = '15m';
-const REFRESH_TOKEN_DAYS = 7;
-const REFRESH_TOKEN_MAX_AGE = REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000; // 7 days in ms
-const MAX_REFRESH_TOKENS_PER_USER = 5; // Multi-tab: keep up to N valid tokens per user
-
 // Helper function to get user's teams
 const getUserTeams = async (userId: string): Promise<TeamInfo[]> => {
-  const teamMembers = await TeamMember.find({ userId: userId as any })
-    .select('teamId role')
-    .lean();
+  const teamMembers = await prisma.teamMember.findMany({
+    where: { userId },
+    select: { teamId: true, role: true }
+  });
 
   return teamMembers.map(tm => ({
-    teamId: tm.teamId.toString(),
+    teamId: tm.teamId,
     role: tm.role as TeamInfo['role']
   }));
 };
 
-/**
- * Create a short-lived access token (JWT).
- * This is returned in the response body and stored in-memory on the frontend.
- * It is NOT persisted to localStorage.
- */
-const createAccessToken = async (userId: string, email: string): Promise<string> => {
+// Helper function to create JWT token with team info
+const createToken = async (userId: string, email: string): Promise<string> => {
   const teams = await getUserTeams(userId);
 
   return jwt.sign(
     { userId, email, teams },
     process.env.JWT_SECRET!,
-    { expiresIn: ACCESS_TOKEN_EXPIRY }
+    { expiresIn: '7d' }
   );
 };
 
-/**
- * Create a refresh token, store it in the database, and set it as an httpOnly
- * cookie. The cookie is NOT accessible via JavaScript — it mitigates token
- * theft from XSS and browser-inspect attacks.
- *
- * The refresh token is hashed (SHA-256) before storage for defense in depth.
- */
-const hashToken = (token: string): string =>
-  crypto.createHash('sha256').update(token).digest('hex');
-
-const createAndSetRefreshToken = async (
-  res: Response,
-  userId: string
-): Promise<void> => {
-  // Generate a cryptographically random token
-  const rawToken = crypto.randomBytes(40).toString('hex');
-  const tokenHash = hashToken(rawToken);
-
-  // Multi-tab safe: keep up to MAX_REFRESH_TOKENS_PER_USER tokens per user.
-  // If at the limit, delete only the oldest token to make room.
-  // This prevents a refresh on one tab from invalidating other open tabs.
-  const tokenCount = await RefreshToken.countDocuments({ userId: userId as any });
-  if (tokenCount >= MAX_REFRESH_TOKENS_PER_USER) {
-    const oldestTokens = await RefreshToken.find({ userId: userId as any })
-      .sort({ createdAt: 1 })
-      .limit(tokenCount - MAX_REFRESH_TOKENS_PER_USER + 1)
-      .select('_id')
-      .lean();
-    await RefreshToken.deleteMany({
-      _id: { $in: oldestTokens.map((t) => t._id) },
-    });
-  }
-
-  // Store the hashed token in the database
-  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_MAX_AGE);
-  await RefreshToken.create({
-    userId: userId as any,
-    tokenHash,
-    expiresAt,
-  });
-
-  // Set the raw token as an httpOnly cookie
-  res.cookie(REFRESH_COOKIE, rawToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: REFRESH_TOKEN_MAX_AGE,
-  });
-
-  // Set a non-httpOnly flag cookie so the frontend can detect session presence
-  // without making a 401-generating refresh call on every page load.
-  res.cookie(SESSION_COOKIE, 'true', {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: REFRESH_TOKEN_MAX_AGE,
-  });
-};
-
-/**
- * Verify a refresh token from the cookie, look it up in the database,
- * and if valid, rotate it (delete old, create new).
- * Returns the userId on success, null on failure.
- */
-const validateAndRotateRefreshToken = async (
-  req: Request,
-  res: Response
-): Promise<string | null> => {
-  const rawToken = req.cookies?.[REFRESH_COOKIE] as string | undefined;
-  if (!rawToken) return null;
-
-  const tokenHash = hashToken(rawToken);
-
-  const stored = await RefreshToken.findOne({ tokenHash })
-    .select('userId expiresAt')
-    .lean();
-
-  if (!stored || stored.expiresAt < new Date()) {
-    if (stored) {
-      // Expired token — clean it up
-      await RefreshToken.deleteOne({ tokenHash });
-    }
-    res.clearCookie(REFRESH_COOKIE, { path: '/' });
-    res.clearCookie(SESSION_COOKIE, { path: '/' });
-    return null;
-  }
-
-  // ── Token rotation ─────────────────────────────────────────────────────
-  // Delete the old token and issue a new one. This ensures that if a refresh
-  // token is stolen, using it invalidates the old one.
-  await RefreshToken.deleteOne({ tokenHash });
-  await createAndSetRefreshToken(res, stored.userId.toString());
-
-  return stored.userId.toString();
-};
-
-/**
- * Send auth response: access token in body + refresh token cookie + user data.
- */
-const sendAuthResponse = async (
-  res: Response,
-  user: { _id: any; email: string; name: string; createdAt: Date; updatedAt: Date },
-  statusCode = 200
-): Promise<void> => {
-  const userId = user._id.toString();
-  const accessToken = await createAccessToken(userId, user.email);
-  await createAndSetRefreshToken(res, userId);
-
-  res.status(statusCode).json({
-    token: accessToken,
-    user: {
-      id: userId,
-      email: user.email,
-      name: user.name,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-    },
-  });
-};
-
-// ── Auth routes ────────────────────────────────────────────────────────────
-
-// ── Open registration ──────────────────────────────────────────────────────
-// Any user can create an account with a FREE tier (5 meetings/month).
-// Team-creation and team-joining require a subscription upgrade.
+// Register
 router.post('/register',
-  authLimiter,
-  validate(registerSchema),
-  asyncHandler(async (req: Request, res: Response) => {
-    const { email, name, password } = req.body as z.infer<typeof registerSchema>;
+  [
+    body('email').isEmail(),
+    body('name').trim().isLength({ min: 2, max: 50 }),
+    body('password').isLength({ min: 8 })
+  ],
+  async (req: Request, res: Response) => {
+    console.log('📝 Registration request received from:', req.ip);
+    console.log('📧 Email:', req.body.email);
+    console.log('🌐 Origin:', req.get('origin'));
+    console.log('🔧 User-Agent:', req.get('user-agent'));
+    console.log('📦 Request Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('📋 Request Body:', JSON.stringify(req.body, null, 2));
+    
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        console.log('❌ Validation errors:', errors.array());
+        return res.status(400).json({ message: 'Invalid input', errors: errors.array() });
+      }
 
-    const existing = await User.findOne({ email }).lean();
-    if (existing) {
-      return res.status(400).json({ message: 'Email already registered' });
+      const { email, name, password } = req.body;
+
+      const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      if (existing) {
+        return res.status(400).json({ message: 'Email already registered' });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const user = await prisma.user.create({
+        data: {
+          email: email.toLowerCase(),
+          name,
+          hashedPassword
+        }
+      });
+
+      const token = await createToken(user.id, user.email);
+
+      res.status(201).json({
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          createdAt: user.createdAt.toISOString(),
+          updatedAt: user.updatedAt.toISOString()
+        }
+      });
+    } catch (error) {
+      console.error('❌ Registration error:', error);
+      console.error('❌ Error details:', {
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        code: (error as any).code,
+        meta: (error as any).meta
+      });
+      
+      // Return detailed error for debugging
+      const errorMessage = (error as Error).message || 'Registration failed';
+      const status = (error as any).code === 'P2002' ? 400 : 500;
+      res.status(status).json({ message: errorMessage });
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({ email, name, hashedPassword });
-
-    await sendAuthResponse(res, user, 201);
-  })
-);
-
-// ── Get subscription info ──────────────────────────────────────────────────
-router.get('/subscription', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const user = await User.findById(req.userId!)
-    .select('subscriptionTier meetingCountThisMonth meetingCountResetAt subscriptionExpiresAt')
-    .lean();
-
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
   }
-
-  const monthlyLimit = user.subscriptionTier === 'FREE' ? 5 : 999_999;
-  const meetingsRemaining = Math.max(0, monthlyLimit - user.meetingCountThisMonth);
-
-  res.json({
-    tier: user.subscriptionTier,
-    meetingCountThisMonth: user.meetingCountThisMonth,
-    monthlyLimit,
-    meetingsRemaining,
-    subscriptionExpiresAt: user.subscriptionExpiresAt?.toISOString() || null,
-    isSubscribed: user.subscriptionTier !== 'FREE',
-  });
-}));
+);
 
 // Login
 router.post('/login',
-  authLimiter,
-  validate(loginSchema),
-  asyncHandler(async (req: Request, res: Response) => {
-    const { email, password } = req.body as z.infer<typeof loginSchema>;
+  [
+    body('email').isEmail(),
+    body('password').notEmpty()
+  ],
+  async (req: Request, res: Response) => {
+    console.log('🔐 Login request from:', req.ip);
+    console.log('📧 Login Email:', req.body.email);
+    console.log('🌐 Origin:', req.get('origin'));
+    
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        console.log('❌ Login validation errors:', errors.array());
+        return res.status(400).json({ message: 'Invalid input' });
+      }
 
-    const user = await User.findOne({ email }).lean() as any;
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
+      const { email, password } = req.body;
 
-    const valid = await bcrypt.compare(password, user.hashedPassword);
-    if (!valid) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
+      const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
 
-    if (!user.isActive) {
-      return res.status(403).json({ message: 'Account is inactive' });
-    }
+      const valid = await bcrypt.compare(password, user.hashedPassword);
+      if (!valid) {
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
 
-    await sendAuthResponse(res, user);
-  })
-);
+      if (!user.isActive) {
+        return res.status(403).json({ message: 'Account is inactive' });
+      }
 
-// Get current authenticated user (access token required)
-router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const user = await User.findById(req.userId!)
-    .select('email name createdAt updatedAt')
-    .lean();
+      const token = await createToken(user.id, user.email);
 
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
-  }
-
-  return res.json({
-    id: user._id.toString(),
-    email: user.email,
-    name: user.name,
-    createdAt: user.createdAt.toISOString(),
-    updatedAt: user.updatedAt.toISOString(),
-  });
-}));
-
-// Update current authenticated user profile
-router.patch(
-  '/me',
-  apiLimiter,
-  authenticate,
-  validate(updateProfileSchema),
-  asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { name, email } = req.body as z.infer<typeof updateProfileSchema>;
-
-    const data: Record<string, string> = {};
-    if (typeof name === 'string' && name.trim()) {
-      data.name = name.trim();
-    }
-    if (typeof email === 'string' && email.trim()) {
-      data.email = email.trim().toLowerCase();
-    }
-
-    if (Object.keys(data).length === 0) {
-      return res.status(400).json({ message: 'No profile changes provided' });
-    }
-
-    const updated = await User.findByIdAndUpdate(req.userId!, data, { returnDocument: 'after' })
-      .select('email name createdAt updatedAt')
-      .lean();
-
-    if (!updated) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Profile update returns a new access token + rotated refresh token
-    await sendAuthResponse(res, updated);
-  })
-);
-
-// ── Logout ────────────────────────────────────────────────────────────────
-// Clears the refresh token cookie and deletes the refresh token from the DB.
-router.post('/logout', apiLimiter, asyncHandler(async (req: Request, res: Response) => {
-  const rawToken = req.cookies?.[REFRESH_COOKIE] as string | undefined;
-  if (rawToken) {
-    const tokenHash = hashToken(rawToken);
-    await RefreshToken.deleteMany({ tokenHash });
-  }
-  res.clearCookie(REFRESH_COOKIE, { path: '/' });
-  res.clearCookie(SESSION_COOKIE, { path: '/' });
-  res.json({ message: 'Logged out successfully' });
-}));
-
-// ── Refresh token ──────────────────────────────────────────────────────────
-// Reads the httpOnly refresh cookie, validates the token, rotates it, and
-// returns a new short-lived access token. Also returns user data so the
-// frontend can restore the session in one call.
-router.post('/refresh', authLimiter, asyncHandler(async (req: Request, res: Response) => {
-  const userId = await validateAndRotateRefreshToken(req, res);
-  if (!userId) {
-    return res.status(401).json({ message: 'Session expired. Please log in again.' });
-  }
-
-  const user = await User.findById(userId)
-    .select('email name isActive createdAt updatedAt')
-    .lean();
-  if (!user) {
-    return res.status(401).json({ message: 'User not found' });
-  }    if (!user.isActive) {
-    res.clearCookie(REFRESH_COOKIE, { path: '/' });
-    res.clearCookie(SESSION_COOKIE, { path: '/' });
-    return res.status(403).json({ message: 'Account is inactive' });
-  }
-
-  const accessToken = await createAccessToken(userId, user.email);
-
-  return res.json({
-    token: accessToken,
-    user: {
-      id: user._id.toString(),
-      email: user.email,
-      name: user.name,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-    },
-  });
-}));
-
-// ── Password reset request ─────────────────────────────────────────────────
-// Reset tokens are stored in Redis (with a 1-hour TTL), falling back to an
-// in-memory Map when Redis is not available.
-
-// ── SMTP email helper for password reset ────────────────────────────────────
-const sendPasswordResetEmail = async (email: string, token: string): Promise<void> => {
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPassword = process.env.SMTP_PASSWORD;
-  const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
-  // Production default points to backend-served frontend (port 8000).
-  // In development, set FRONTEND_APP_URL=http://localhost:5173 in backend/.env.
-  const frontendUrl = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
-  const resetLink = `${frontendUrl}/reset-password?token=${token}`;
-
-  if (smtpHost && smtpUser && smtpPassword) {
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_PORT === '465',
-      auth: {
-        user: smtpUser,
-        pass: smtpPassword,
-      },
-    });
-
-    await transporter.sendMail({
-      from: emailFrom,
-      to: email,
-      subject: 'Reset your Meetiva.ai password',
-      text: `You requested a password reset. Click this link to reset your password: ${resetLink}\n\nThis link expires in 1 hour.`,
-      html: `<p>You requested a password reset.</p><p>Click <a href="${resetLink}">here</a> to reset your password.</p><p>This link expires in 1 hour.</p>`,
-    });
-  } else {
-    // Dev fallback — log the token so developers can test the reset flow
-    console.log(`[DEV] Password reset token for ${email}: ${token}`);
-  }
-};
-
-router.post('/password-reset',
-  authLimiter,
-  validate(passwordResetSchema),
-  asyncHandler(async (req: Request, res: Response) => {
-    const { email } = req.body as z.infer<typeof passwordResetSchema>;
-    const user = await User.findOne({ email }).lean();
-
-    // Always return success to avoid revealing whether the email exists
-    if (!user) {
-      return res.json({ message: 'If the email is registered, a reset link has been sent.' });
-    }
-
-    const token = crypto.randomBytes(32).toString('hex');
-    await setResetToken(token, user._id.toString());
-
-    // Send the reset token via email (or log in dev if SMTP not configured)
-    await sendPasswordResetEmail(email, token);
-
-    return res.json({ message: 'If the email is registered, a reset link has been sent.' });
-  })
-);
-
-// ── Password reset confirm ──────────────────────────────────────────────────
-router.post('/password-reset/confirm',
-  authLimiter,
-  validate(passwordResetConfirmSchema),
-  asyncHandler(async (req: Request, res: Response) => {
-    const { token, password } = req.body as z.infer<typeof passwordResetConfirmSchema>;
-    const userId = await getResetToken(token);
-
-    if (!userId) {
-      return res.status(400).json({ message: 'Invalid or expired reset token' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await User.findByIdAndUpdate(userId, { hashedPassword });
-
-    await deleteResetToken(token);
-
-    // Invalidate all existing refresh tokens (password changed — force re-login)
-    await RefreshToken.deleteMany({ userId: userId as any });
-    res.clearCookie(REFRESH_COOKIE, { path: '/' });
-    res.clearCookie(SESSION_COOKIE, { path: '/' });
-
-    return res.json({ message: 'Password updated successfully. Please log in again.' });
-  })
-);
-
-// ── Change password (authenticated) ─────────────────────────────────────────
-router.post('/change-password',
-  authenticate,
-  validate(changePasswordSchema),
-  asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { currentPassword, newPassword } = req.body as z.infer<typeof changePasswordSchema>;
-    const userId = req.userId;
-
-    const user = await User.findById(userId).select('hashedPassword');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const isMatch = await bcrypt.compare(currentPassword, user.hashedPassword);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Current password is incorrect' });
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await User.findByIdAndUpdate(userId, { hashedPassword });
-
-    // Invalidate all existing refresh tokens (password changed — force re-login)
-    await RefreshToken.deleteMany({ userId: userId as any });
-    res.clearCookie(REFRESH_COOKIE, { path: '/' });
-    res.clearCookie(SESSION_COOKIE, { path: '/' });
-
-    return res.json({ message: 'Password updated successfully. Please log in again.' });
-  })
-);
-
-// ── Admin: upgrade user subscription tier ──────────────────────────────
-// Gated by ADMIN_EMAIL env var. The authenticated user whose email matches
-// ADMIN_EMAIL can upgrade themselves to PRO (enabling team features).
-// Use for testing when no payment gateway is integrated.
-router.post('/admin/set-tier',
-  apiLimiter,
-  authenticate,
-  asyncHandler(async (req: AuthRequest, res: Response) => {
-    const adminEmail = process.env.ADMIN_EMAIL;
-
-    if (!adminEmail) {
-      return res.status(501).json({ message: 'ADMIN_EMAIL not configured on server' });
-    }
-
-    // Get the authenticated user's email
-    const currentUser = await User.findById(req.userId!)
-      .select('email name')
-      .lean();
-
-    if (!currentUser) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (currentUser.email !== adminEmail) {
-      return res.status(403).json({
-        message: 'Your email is not authorized for admin upgrades',
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          createdAt: user.createdAt.toISOString(),
+          updatedAt: user.updatedAt.toISOString()
+        }
       });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ message: 'Login failed' });
     }
-
-    const { tier } = req.body as { tier?: string };
-
-    if (!tier || !['PRO', 'TEAM'].includes(tier)) {
-      return res.status(400).json({
-        message: 'Provide tier (PRO or TEAM)',
-      });
-    }
-
-    const updated = await User.findByIdAndUpdate(
-      currentUser._id,
-      {
-        subscriptionTier: tier as 'PRO' | 'TEAM',
-        subscriptionExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
-      },
-      { returnDocument: 'after' }
-    )
-      .select('email name subscriptionTier subscriptionExpiresAt')
-      .lean();
-
-    if (!updated) {
-      return res.status(500).json({ message: 'Failed to update user' });
-    }
-
-    console.log(`✅ Admin upgraded user ${updated.email} to ${tier}`);
-
-    res.json({
-      user: {
-        id: updated._id.toString(),
-        email: updated.email,
-        name: updated.name,
-        subscriptionTier: updated.subscriptionTier,
-        subscriptionExpiresAt: updated.subscriptionExpiresAt?.toISOString(),
-      },
-    });
-  })
+  }
 );
-
-/**
- * POST /auth/google/init — Secure OAuth initialization.
- */
-router.post('/google/init', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const userId = req.userId!;
-  const oauthClient = getGoogleOAuthClient();
-  const forceConsent = req.query.force === '1';
-  const existingGoogleAuth = await GoogleCalendarAuth.findOne({ userId: userId as any })
-    .select('_id')
-    .lean();
-
-  const state = crypto.randomBytes(24).toString('hex');
-
-  res.cookie(OAUTH_STATE_COOKIE, state, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 10 * 60 * 1000,
-  });
-
-  res.cookie(OAUTH_UID_COOKIE, userId, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 10 * 60 * 1000,
-  });
-
-  const authUrl = oauthClient.generateAuthUrl({
-    access_type: 'offline',
-    scope: googleCalendarScopes,
-    state,
-    include_granted_scopes: true,
-    ...(forceConsent || !existingGoogleAuth ? { prompt: 'consent' } : {}),
-  });
-
-  return res.json({ authUrl });
-}));
-
-router.get('/google/callback', authLimiter, asyncHandler(async (req: Request, res: Response) => {
-  const returnedState = typeof req.query.state === 'string' ? req.query.state : '';
-  const stateFromCookie = req.cookies?.[OAUTH_STATE_COOKIE] as string | undefined;
-  const userId = req.cookies?.[OAUTH_UID_COOKIE] as string | undefined;
-
-  if (!returnedState || !stateFromCookie || returnedState !== stateFromCookie) {
-    return res.status(400).json({ message: 'Invalid OAuth state.' });
-  }
-
-  if (!userId) {
-    return res.status(400).json({ message: 'Missing OAuth user context.' });
-  }
-
-  const code = typeof req.query.code === 'string' ? req.query.code : '';
-  if (!code) {
-    return res.status(400).json({ message: 'Missing OAuth code.' });
-  }
-
-  const oauthClient = getGoogleOAuthClient();
-  const { tokens } = await oauthClient.getToken(code);
-
-  await upsertGoogleTokens(userId, {
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
-    expiry_date: tokens.expiry_date,
-    token_type: tokens.token_type,
-    scope: tokens.scope,
-  });
-
-  res.clearCookie(OAUTH_STATE_COOKIE);
-  res.clearCookie(OAUTH_UID_COOKIE);
-
-  const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
-  return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=1`);
-}));
 
 export default router;

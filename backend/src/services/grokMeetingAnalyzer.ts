@@ -18,14 +18,6 @@ interface ExtractedTask {
   tags?: string[];
 }
 
-interface GrokChatCompletionResponse {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-}
-
 interface GrokAnalysisResult {
   executiveSummary: string;
   keyPoints: string[];
@@ -90,9 +82,6 @@ const fallbackFromTranscript = (transcript: string): GrokAnalysisResult => {
   };
 };
 
-/** Default timeout for Grok API calls in milliseconds (60s). */
-const GROK_FETCH_TIMEOUT_MS = parseInt(process.env.GROK_FETCH_TIMEOUT_MS || '60000', 10);
-
 export const analyzeTranscriptWithGrok = async (transcript: string): Promise<GrokAnalysisResult> => {
   const grokApiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
   const cerebrasApiKey = process.env.CEREBRAS_API_KEY;
@@ -122,30 +111,20 @@ export const analyzeTranscriptWithGrok = async (transcript: string): Promise<Gro
     }
   ];
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), GROK_FETCH_TIMEOUT_MS);
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.2,
+      messages
+    })
+  });
 
-  let response: Response;
-
-  try {
-    response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        messages
-      }),
-      signal: controller.signal
-    });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-
-  const payload = (await response.json().catch(() => null)) as GrokChatCompletionResponse | null;
+  const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
     const provider = useCerebras ? 'Cerebras' : 'Grok';

@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { meetingService, taskService } from '@/services';
-import { Meeting, MeetingSummary, Transcript, Task, UpdateTaskRequest, MeetingPriority } from '@/types';
+import { meetingService } from '@/services';
+import { Meeting, MeetingSummary, Transcript, ActionItem } from '@/types';
 import { formatDate } from '@/utils';
 import { getAccessToken } from '@/services/api.client';
 import { API_BASE_URL } from '@/services/api.config';
@@ -20,17 +19,6 @@ const MeetingDetail: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'summary' | 'transcript' | 'actions' | 'minutes'>('summary');
-
-  // Edit / Complete state
-  const [editingItem, setEditingItem] = useState<Task | null>(null);
-  const [editForm, setEditForm] = useState({
-    title: '', description: '', assignee: '', dueDate: '',
-    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
-    status: 'pending' as 'pending' | 'in_progress' | 'completed' | 'cancelled',
-  });
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [completingId, setCompletingId] = useState<string | null>(null);
-  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -74,81 +62,6 @@ const MeetingDetail: React.FC = () => {
     }
   };
 
-  // ── Edit handlers ────────────────────────────────────────────────────
-  const handleEditTask = (item: Task) => {
-    setEditingItem(item);
-    setEditForm({
-      title: item.title,
-      description: item.description || '',
-      assignee: item.assignee || '',
-      dueDate: item.dueDate ? item.dueDate.slice(0, 10) : '',
-      priority: (item.priority as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
-      status: item.status,
-    });
-  };
-
-  const handleEditFormChange = (field: keyof typeof editForm, value: string) => {
-    setEditForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingItem) return;
-    try {
-      setSavingEdit(true);
-      const data: UpdateTaskRequest = {
-        title: editForm.title,
-        description: editForm.description || undefined,
-        assignee: editForm.assignee || undefined,
-        dueDate: editForm.dueDate || undefined,
-        priority: editForm.priority as MeetingPriority,
-        status: editForm.status,
-      };
-      await taskService.updateTask(editingItem.id, data);
-      setEditingItem(null);
-      await loadMeetingDetails();
-    } catch (error) {
-      console.error('Failed to update task:', error);
-    } finally {
-      setSavingEdit(false);
-    }
-  };
-
-  // ── Process handler (generate tasks/minutes) ─────────────────────────
-  const processMeeting = async (mode: 'tasks' | 'minutes' | 'both') => {
-    if (!id) return;
-    try {
-      setProcessing(true);
-      const token = getAccessToken();
-      const res = await fetch(`${API_BASE_URL}/meetings/${id}/process`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ mode }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Processing failed');
-      }
-      await loadMeetingDetails();
-    } catch (err) {
-      console.error('Failed to process meeting:', err);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // ── Complete handler ──────────────────────────────────────────────────
-  const handleCompleteTask = async (itemId: string) => {
-    try {
-      setCompletingId(itemId);
-      await taskService.completeTask(itemId);
-      await loadMeetingDetails();
-    } catch (error) {
-      console.error('Failed to complete task:', error);
-    } finally {
-      setCompletingId(null);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -161,7 +74,7 @@ const MeetingDetail: React.FC = () => {
     return (
       <Card className="p-12 text-center">
         <h2 className="text-2xl font-bold mb-4">Meeting Not Found</h2>
-        <p className="text-muted-foreground mb-4">The meeting you are looking for does not exist.</p>
+        <p className="text-muted-foreground mb-4">The meeting you're looking for doesn't exist.</p>
         <Link to="/dashboard/meetings">
           <Button>Back to Meetings</Button>
         </Link>
@@ -193,9 +106,9 @@ const MeetingDetail: React.FC = () => {
           </div>
           <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
             <span>{formatDate(meeting.createdAt)}</span>
-            {meeting.duration && <span>&bull;</span>}
+            {meeting.duration && <span>•</span>}
             {meeting.duration && <span>{Math.round(meeting.duration / 60)} minutes</span>}
-            {meeting.participants && meeting.participants.length > 0 && <span>&bull;</span>}
+            {meeting.participants && meeting.participants.length > 0 && <span>•</span>}
             {meeting.participants && meeting.participants.length > 0 && (
               <span>{meeting.participants.length} participants</span>
             )}
@@ -272,25 +185,64 @@ const MeetingDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Tab */}
+      {/* Tab Content */}
       {activeTab === 'summary' && (
         <div className="space-y-6">
           {summary ? (
-            <Card className="p-6">
-              {/* ponytail: render fullSummary as markdown if available, fall back to executiveSummary */}
-              {summary.fullSummary ? (
-                <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed">
-                  {summary.fullSummary.split('\n').map((line: string, i: number) => {
-                    if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mt-6 mb-3 text-foreground">{line.slice(2)}</h1>;
-                    if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mt-5 mb-2 text-foreground">{line.slice(3)}</h2>;
-                    if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-semibold mt-4 mb-2 text-foreground">{line.slice(4)}</h3>;
-                    if (line.startsWith('| ') && line.includes('|')) {
-                      // Simple table row rendering
-                      const cells = line.split('|').filter((c: string) => c.trim()).map((c: string) => c.trim());
-                      if (cells.every((c: string) => c.match(/^-+$/))) return null; // skip separator rows
-                      return (
-                        <div key={i} className="grid gap-2 py-1.5 border-b border-white/5 text-sm" style={{ gridTemplateColumns: `repeat(${cells.length}, 1fr)` }}>
-                          {cells.map((cell: string, ci: number) => <span key={ci}>{cell}</span>)}
+            <>
+              {/* Executive Summary */}
+              <Card className="p-6">
+                <h2 className="text-xl font-bold mb-4">Executive Summary</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  {summary.executiveSummary || 'No executive summary available yet.'}
+                </p>
+              </Card>
+
+              {/* Key Points */}
+              {summary.keyPoints && summary.keyPoints.length > 0 && (
+                <Card className="p-6">
+                  <h2 className="text-xl font-bold mb-4">Key Discussion Points</h2>
+                  <ul className="space-y-3">
+                    {summary.keyPoints.map((point, index) => (
+                      <li key={index} className="flex items-start">
+                        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold mr-3 flex-shrink-0 mt-0.5">
+                          {index + 1}
+                        </span>
+                        <span className="text-muted-foreground">{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+
+              {/* Decisions */}
+              {summary.decisions && summary.decisions.length > 0 && (
+                <Card className="p-6">
+                  <h2 className="text-xl font-bold mb-4">Decisions Made</h2>
+                  <ul className="space-y-3">
+                    {summary.decisions.map((decision, index) => (
+                      <li key={index} className="flex items-start p-4 bg-green-50 rounded-lg">
+                        <svg className="w-5 h-5 text-green-600 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-gray-700">{decision}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+
+              {/* Participants */}
+              {meeting.participants && meeting.participants.length > 0 && (
+                <Card className="p-6">
+                  <h2 className="text-xl font-bold mb-4">Participants</h2>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {meeting.participants.map((participant, index) => (
+                      <div key={index} className="flex items-center p-3 rounded-lg border">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                          <span className="font-semibold text-primary">
+                            {participant.charAt(0).toUpperCase()}
+                          </span>
                         </div>
                       );
                     }
@@ -353,10 +305,9 @@ const MeetingDetail: React.FC = () => {
         </div>
       )}
 
-      {/* Transcript Tab */}
       {activeTab === 'transcript' && (
         <div className="space-y-4">
-          {transcript && transcript.segments && transcript.segments.length > 0 ? (
+          {transcript && transcript.segments ? (
             <Card className="p-6">
               <div className="space-y-4">
                 {transcript.segments.map((segment, index) => (
@@ -376,12 +327,6 @@ const MeetingDetail: React.FC = () => {
                 ))}
               </div>
             </Card>
-          ) : transcript?.fullText ? (
-            <Card className="p-6">
-              <pre className="whitespace-pre-wrap text-sm text-muted-foreground font-sans leading-relaxed">
-                {transcript.fullText}
-              </pre>
-            </Card>
           ) : (
             <Card className="p-12 text-center">
               <p className="text-muted-foreground">
@@ -394,117 +339,10 @@ const MeetingDetail: React.FC = () => {
         </div>
       )}
 
-      {/* Minutes Tab */}
-      {activeTab === 'minutes' && (
-        <div className="space-y-6">
-          {summary?.minutesContent ? (
-            <Card className="p-6">
-              <div className="prose prose-invert max-w-none text-muted-foreground leading-relaxed">
-                {summary.minutesContent.split('\n').map((line: string, i: number) => {
-                  if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-bold mt-6 mb-3 text-foreground">{line.slice(2)}</h1>;
-                  if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mt-5 mb-2 text-foreground">{line.slice(3)}</h2>;
-                  if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-semibold mt-4 mb-2 text-foreground">{line.slice(4)}</h3>;
-                  if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc">{line.slice(2)}</li>;
-                  if (line.match(/^\d+\. /)) return <li key={i} className="ml-4 list-decimal">{line.replace(/^\d+\. /, '')}</li>;
-                  if (line.trim() === '') return <div key={i} className="h-2" />;
-                  return <p key={i} className="mb-1">{line}</p>;
-                })}
-              </div>
-            </Card>
-          ) : (
-            <Card className="p-12 text-center">
-              <p className="text-muted-foreground mb-4">No minutes generated yet.</p>
-              <Button onClick={() => processMeeting('minutes')} disabled={processing}>
-                {processing ? 'Generating...' : 'Generate Minutes'}
-              </Button>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* Tasks Tab */}
       {activeTab === 'actions' && (
         <div className="space-y-4">
-          {/* Inline Edit Form */}
-          {editingItem && (
-            <Card className="p-6 border-2 border-primary/30">
-              <h3 className="text-lg font-bold mb-4">Edit Task</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Title</label>
-                  <Input
-                    value={editForm.title}
-                    onChange={(e) => handleEditFormChange('title', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    className="w-full px-3 py-2 border border-white/10 rounded-md bg-white/[0.04] text-white resize-none"
-                    rows={2}
-                    value={editForm.description}
-                    onChange={(e) => handleEditFormChange('description', e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Assignee</label>
-                    <Input
-                      value={editForm.assignee}
-                      onChange={(e) => handleEditFormChange('assignee', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Due Date</label>
-                    <Input
-                      type="date"
-                      value={editForm.dueDate}
-                      onChange={(e) => handleEditFormChange('dueDate', e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Priority</label>
-                    <select
-                      className="w-full px-3 py-2 border border-white/10 rounded-md bg-white/[0.04] text-white"
-                      value={editForm.priority}
-                      onChange={(e) => handleEditFormChange('priority', e.target.value)}
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Status</label>
-                    <select
-                      className="w-full px-3 py-2 border border-white/10 rounded-md bg-white/[0.04] text-white"
-                      value={editForm.status}
-                      onChange={(e) => handleEditFormChange('status', e.target.value)}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" size="sm" onClick={() => setEditingItem(null)}>
-                    Cancel
-                  </Button>
-                  <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
-                    {savingEdit ? 'Saving...' : 'Save'}
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {tasks.length > 0 ? (
-            tasks.map((item) => (
+          {actionItems.length > 0 ? (
+            actionItems.map((item) => (
               <Card key={item.id} className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -542,21 +380,11 @@ const MeetingDetail: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEditTask(item)}
-                    >
+                    <Button size="sm" variant="outline">
                       Edit
                     </Button>
                     {item.status !== 'completed' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleCompleteTask(item.id)}
-                        disabled={completingId === item.id}
-                      >
-                        {completingId === item.id ? 'Completing...' : 'Mark Complete'}
-                      </Button>
+                      <Button size="sm">Mark Complete</Button>
                     )}
                   </div>
                 </div>

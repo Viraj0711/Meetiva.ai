@@ -1,13 +1,11 @@
-// Re-export shared meeting types
-export type {
-  Meeting,
-  MeetingSummary,
-  Transcript,
-  TranscriptSegment,
-  MeetingStats,
-  CreateMeetingRequest,
-  UpdateMeetingRequest,
-} from '@meetiva/shared-types';
+export enum MeetingStatus {
+  UPLOADING = 'uploading',
+  PROCESSING = 'processing',
+  TRANSCRIBING = 'transcribing',
+  ANALYZING = 'analyzing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
 
 // Re-export enums from shared (type-only — these are type aliases, not runtime enums)
 export type { MeetingStatus, MeetingPriority } from '@meetiva/shared-types';

@@ -5,53 +5,38 @@ test.describe('Authentication Flow', () => {
     await page.goto('/');
     
     // Click login button
-    await page.getByRole('link', { name: /login/i }).first().click();
+    await page.getByRole('link', { name: /sign in/i }).first().click();
     
     await expect(page).toHaveURL('/login');
-    await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
+    await expect(page.locator('h1')).toContainText('Welcome Back');
   });
 
   test('should show validation errors for invalid email', async ({ page }) => {
     await page.goto('/login');
-    await page.waitForSelector('#login-email');
     
-    // Enter invalid email + valid password
-    await page.locator('#login-email').fill('invalid-email');
-    await page.locator('#login-password').fill('Test1234!');
+    // Enter invalid email
+    await page.fill('input[type="email"]', 'invalid-email');
+    await page.fill('input[type="password"]', 'Test1234!');
     
-    // Dispatch native SubmitEvent — React's delegation catches it and runs handleSubmit
-    await page.evaluate(() => {
-      const form = document.querySelector('form');
-      if (form) {
-        form.dispatchEvent(new SubmitEvent('submit', { cancelable: true, bubbles: true }));
-      }
-    });
+    // Blur email field to trigger validation
+    await page.locator('input[type="email"]').blur();
     
-    // Zod validation prevents navigation
-    await expect(page).toHaveURL('/login');
-    // Input component sets aria-invalid on validation failure
-    await expect(page.locator('#login-email')).toHaveAttribute('aria-invalid', 'true');
+    // Check for error message
+    await expect(page.locator('text=valid email')).toBeVisible();
   });
 
-  test('should show validation error for empty password', async ({ page }) => {
+  test('should show validation error for short password', async ({ page }) => {
     await page.goto('/login');
-    await page.waitForSelector('#login-email');
     
-    // Enter valid email but leave password empty (loginSchema requires password: min(1))
-    await page.locator('#login-email').fill('test@example.com');
+    // Enter short password
+    await page.fill('input[type="email"]', 'test@example.com');
+    await page.fill('input[type="password"]', '123');
     
-    // Dispatch native SubmitEvent — React's delegation catches it and runs handleSubmit
-    await page.evaluate(() => {
-      const form = document.querySelector('form');
-      if (form) {
-        form.dispatchEvent(new SubmitEvent('submit', { cancelable: true, bubbles: true }));
-      }
-    });
+    // Blur password field
+    await page.locator('input[type="password"]').blur();
     
-    // Zod validation prevents navigation — stays on /login
-    await expect(page).toHaveURL('/login');
-    // Input component sets aria-invalid on validation failure
-    await expect(page.locator('#login-password')).toHaveAttribute('aria-invalid', 'true');
+    // Check for error message
+    await expect(page.locator('text=at least 8 characters')).toBeVisible();
   });
 
   test('should toggle password visibility', async ({ page }) => {
@@ -73,10 +58,10 @@ test.describe('Authentication Flow', () => {
   test('should navigate to register page', async ({ page }) => {
     await page.goto('/login');
     
-    await page.getByRole('link', { name: /create an account/i }).click();
+    await page.getByRole('link', { name: /sign up/i }).click();
     
     await expect(page).toHaveURL('/register');
-    await expect(page.locator('h2')).toContainText('Create your account');
+    await expect(page.locator('h1')).toContainText('Create Account');
   });
 });
 
@@ -84,34 +69,29 @@ test.describe('Registration Flow', () => {
   test('should display registration form', async ({ page }) => {
     await page.goto('/register');
     
-    await expect(page.getByPlaceholder('Your name')).toBeVisible();
-    await expect(page.getByPlaceholder('you@company.com')).toBeVisible();
-    await expect(page.getByPlaceholder('Minimum 8 characters')).toBeVisible();
+    await expect(page.getByPlaceholder('John Doe')).toBeVisible();
+    await expect(page.getByPlaceholder('you@example.com')).toBeVisible();
+    await expect(page.getByPlaceholder('••••••••').first()).toBeVisible();
   });
 
-  test('should require all fields', async ({ page }) => {
+  test('should validate name field', async ({ page }) => {
     await page.goto('/register');
     
-    // Submit empty form
-    await page.getByRole('button', { name: /create workspace/i }).click();
+    // Enter single character name
+    await page.fill('input[placeholder="John Doe"]', 'A');
+    await page.locator('input[placeholder="John Doe"]').blur();
     
-    // Should show validation error on the name field
-    await expect(page.locator('text=Name must be at least 2 characters')).toBeVisible();
+    await expect(page.locator('text=at least 2 characters')).toBeVisible();
   });
 
-  test('should validate minimum password length', async ({ page }) => {
+  test('should show password strength meter', async ({ page }) => {
     await page.goto('/register');
     
-    // Fill form with short password
-    await page.fill('input[placeholder="Your name"]', 'Test User');
-    await page.fill('input[type="email"]', 'test@example.com');
-    await page.fill('input[type="password"]', '123');
+    // Enter weak password
+    await page.fill('input[type="password"]', 'password');
     
-    // Submit
-    await page.getByRole('button', { name: /create workspace/i }).click();
-    
-    // Check for validation error
-    await expect(page.locator('text=at least 8 characters')).toBeVisible();
+    // Check for strength indicator
+    await expect(page.locator('text=Password Strength')).toBeVisible();
   });
 
   test('should validate password confirmation', async ({ page }) => {
@@ -121,8 +101,23 @@ test.describe('Registration Flow', () => {
     const passwordInputs = page.locator('input[type="password"]');
     await passwordInputs.nth(0).fill('Test1234!');
     await passwordInputs.nth(1).fill('Test5678!');
-    await page.getByRole('button', { name: /create workspace/i }).click();
+    await passwordInputs.nth(1).blur();
     
     await expect(page.locator('text=Passwords do not match')).toBeVisible();
+  });
+
+  test('should require terms acceptance', async ({ page }) => {
+    await page.goto('/register');
+    
+    // Fill form without accepting terms
+    await page.fill('input[placeholder="John Doe"]', 'Test User');
+    await page.fill('input[type="email"]', 'test@example.com');
+    await page.locator('input[type="password"]').first().fill('Test1234!');
+    
+    // Try to submit
+    await page.getByRole('button', { name: /create account/i }).click();
+    
+    // Should show error
+    await expect(page.locator('text=accept the Terms')).toBeVisible();
   });
 });

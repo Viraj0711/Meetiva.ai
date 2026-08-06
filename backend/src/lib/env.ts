@@ -1,4 +1,4 @@
-const REQUIRED_ENV_KEYS = ['MONGODB_URI', 'JWT_SECRET'] as const;
+const REQUIRED_ENV_KEYS = ['DATABASE_URL', 'DIRECT_URL', 'JWT_SECRET'] as const;
 
 const missingKeys = (keys: readonly string[]): string[] =>
   keys.filter((key) => !process.env[key] || process.env[key]?.trim() === '');
@@ -26,14 +26,6 @@ export const validateBackendEnv = (): void => {
 
   if (!process.env.GROQ_API_KEY && !process.env.WHISPER_API_KEY) {
     optionalMissing.push('GROQ_API_KEY or WHISPER_API_KEY (required for audio transcription — get at https://console.groq.com/keys)');
-  }
-
-  if (!process.env.REDIS_URL) {
-    optionalMissing.push('REDIS_URL (rate limits use in-memory store when missing — add for multi-process deployments)');
-  }
-
-  if (!process.env.LLM_MODEL) {
-    optionalMissing.push('LLM_MODEL (set Groq model name e.g. "llama-3.3-70b-versatile"; defaults to the provider default)');
   }
 
   if (optionalMissing.length > 0) {

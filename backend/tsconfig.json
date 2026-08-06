@@ -5,12 +5,6 @@
     "lib": ["ES2022"],
     "outDir": "./dist",
     "rootDir": "./src",
-
-    "paths": {
-      "@/*": ["./src/*"],
-      "@meetiva/shared-types": ["../shared/dist/index.d.ts"],
-      "@meetiva/shared-types/*": ["../shared/dist/*"]
-    },
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

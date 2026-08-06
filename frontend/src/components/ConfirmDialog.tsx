@@ -30,19 +30,19 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       case 'danger':
         return {
           iconColor: 'text-red-600',
-          bgColor: 'bg-white/[0.06]',
+          bgColor: 'bg-red-100',
           confirmVariant: 'destructive' as const,
         };
       case 'warning':
         return {
           iconColor: 'text-orange-600',
-          bgColor: 'bg-white/[0.06]',
+          bgColor: 'bg-orange-100',
           confirmVariant: 'default' as const,
         };
       default:
         return {
-          iconColor: 'text-cyan-300',
-          bgColor: 'bg-white/[0.06]',
+          iconColor: 'text-blue-600',
+          bgColor: 'bg-blue-100',
           confirmVariant: 'default' as const,
         };
     }

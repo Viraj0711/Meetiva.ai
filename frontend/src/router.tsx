@@ -1,14 +1,13 @@
 import React, { Suspense } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useAppSelector } from '@/store/hooks';
 
 const Landing = React.lazy(() => import('@/pages/LandingNew'));
-const Home = React.lazy(() => import('@/pages/dashboard/Home'));
+const Home = React.lazy(() => import('@/pages/Home'));
 const Login = React.lazy(() => import('@/pages/auth/LoginEnhanced'));
 const Register = React.lazy(() => import('@/pages/auth/RegisterEnhanced'));
-const ResetPassword = React.lazy(() => import('@/pages/auth/ResetPassword'));
 const Meetings = React.lazy(() => import('@/pages/Meetings'));
 const MeetingDetail = React.lazy(() => import('@/pages/MeetingDetail'));
 const Upload = React.lazy(() => import('@/pages/Upload'));
@@ -17,11 +16,8 @@ const Tasks = React.lazy(() => import('@/pages/Tasks'));
 const Analytics = React.lazy(() => import('@/pages/Analytics'));
 const TeamReport = React.lazy(() => import('@/pages/TeamReport'));
 const TeamsAdmin = React.lazy(() => import('@/pages/TeamsAdmin'));
-const Workspace = React.lazy(() => import('@/pages/Workspace'));
 const Profile = React.lazy(() => import('@/pages/Profile'));
 const Settings = React.lazy(() => import('@/pages/Settings'));
-const SubscriptionUpgrade = React.lazy(() => import('@/pages/SubscriptionUpgrade'));
-const DashboardMinutes = React.lazy(() => import('@/pages/dashboard/Minutes'));
 const Pricing = React.lazy(() => import('@/pages/Pricing'));
 const Contact = React.lazy(() => import('@/pages/Contact'));
 const Terms = React.lazy(() => import('@/pages/Terms'));
@@ -60,14 +56,6 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={<LoadingSpinner />}>
         <Register />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/reset-password',
-    element: (
-      <Suspense fallback={<LoadingSpinner />}>
-        <ResetPassword />
       </Suspense>
     ),
   },
@@ -184,14 +172,6 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: 'workspace',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <Workspace />
-          </Suspense>
-        ),
-      },
-      {
         path: 'profile',
         element: (
           <Suspense fallback={<LoadingSpinner />}>
@@ -204,23 +184,6 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LoadingSpinner />}>
             <Settings />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'minutes',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <DashboardMinutes />
-          </Suspense>
-        ),
-      },
-
-      {
-        path: 'upgrade',
-        element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <SubscriptionUpgrade />
           </Suspense>
         ),
       },

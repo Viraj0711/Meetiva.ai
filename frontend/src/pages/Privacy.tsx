@@ -1,134 +1,179 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Sparkles } from 'lucide-react';
 import GradientOrbs from '@/components/GradientOrbs';
-
-const sections = [
-  {
-    title: 'Information we collect',
-    items: [
-      'Account details such as your name, email address, and company information.',
-      'Meeting recordings, transcripts, summaries, and extracted tasks.',
-      'Usage and device data required to keep the product stable and measurable.',
-    ],
-  },
-  {
-    title: 'How we use information',
-    items: [
-      'To provide transcription, summarization, and task extraction features.',
-      'To improve reliability, security, and product quality over time.',
-      'To send service notifications and support communications.',
-    ],
-  },
-  {
-    title: 'Data protection',
-    items: [
-      'Transport encryption, access controls, and secure storage practices.',
-      'Operational monitoring to detect issues quickly and reduce risk.',
-      'Retention controls that let us delete data when you request it.',
-    ],
-  },
-];
 
 const PrivacyPage: React.FC = () => {
   return (
-    <div className="scene-shell relative min-h-screen overflow-hidden bg-background text-foreground">
+    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 overflow-hidden">
       <GradientOrbs />
-      <div className="absolute inset-0 fine-grid opacity-25" />
 
-      <div className="relative z-10 mx-auto max-w-6xl px-6 py-6 lg:px-8 lg:py-8">
-        <div className="mb-10 flex items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur-2xl">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary text-white shadow-[0_18px_40px_rgba(91,63,214,0.35)]">
-              <span className="font-bold">M</span>
+      {/* Navbar */}
+      <nav className="relative z-10 container mx-auto px-6 py-4">
+        <div className="flex justify-between items-center backdrop-blur-sm bg-white/70 rounded-2xl px-6 py-4 shadow-lg border border-white/20">
+          <Link to="/" className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-xl">M</span>
             </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-white/45">Meetiva.ai</p>
-              <p className="text-sm font-medium text-white">Privacy</p>
-            </div>
-          </Link>
-          <Link to="/register" className="text-sm text-cyan-300 transition hover:text-white">
-            Create workspace
+            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              Meetiva.ai
+            </span>
           </Link>
         </div>
+      </nav>
 
-        <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
-          <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-8 backdrop-blur-2xl lg:p-10">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80">
-              <Shield className="h-3.5 w-3.5" /> Privacy policy
-            </div>
-            <h1 className="mt-6 font-display text-4xl font-bold tracking-tight text-white md:text-5xl">
-              Privacy built for a product that listens, summarizes, and acts.
-            </h1>
-            <p className="mt-5 max-w-xl text-lg leading-8 text-white/60">
-              Meetiva.ai is designed to handle meeting data with care. This policy explains what we collect, how we use it, and how you stay in control.
-            </p>
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              {[
-                ['Last updated', new Date().toLocaleDateString()],
-                ['Encryption', 'Transport + at rest'],
-                ['Retention', 'User-controlled'],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/42">{label}</p>
-                  <p className="mt-2 text-sm font-semibold text-white">{value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Content */}
+      <section className="relative z-10 container mx-auto px-6 py-20">
+        <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-sm rounded-2xl p-12 shadow-xl border border-white/50">
+          <h1 className="text-5xl font-bold text-gray-900 mb-4">Privacy Policy</h1>
+          <p className="text-gray-600 mb-8">Last updated: {new Date().toLocaleDateString()}</p>
 
-          <div className="space-y-4">
-            {sections.map((section, index) => (
-              <div key={section.title} className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
-                <div className="flex items-start gap-4">
-                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/[0.06] text-cyan-300">
-                    <Lock className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-4">
-                      <h2 className="text-xl font-semibold text-white">{section.title}</h2>
-                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-white/55">
-                        0{index + 1}
-                      </span>
-                    </div>
-                    <div className="mt-4 space-y-3">
-                      {section.items.map((item) => (
-                        <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-white/65">
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+          <div className="prose prose-lg max-w-none space-y-8">
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Introduction</h2>
+              <p className="text-gray-700 leading-relaxed">
+                At Meetiva.ai, we take your privacy seriously. This Privacy Policy explains how we collect, use,
+                disclose, and safeguard your information when you use our service. Please read this privacy policy
+                carefully.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Information We Collect</h2>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Personal Information</h3>
+              <ul className="list-disc pl-6 space-y-2 text-gray-700 mb-4">
+                <li>Name and email address</li>
+                <li>Company information</li>
+                <li>Payment and billing information</li>
+                <li>Account credentials</li>
+              </ul>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Meeting Data</h3>
+              <ul className="list-disc pl-6 space-y-2 text-gray-700 mb-4">
+                <li>Audio and video recordings you upload</li>
+                <li>Transcriptions generated from your meetings</li>
+                <li>Meeting summaries and action items</li>
+                <li>Meeting metadata (date, duration, participants)</li>
+              </ul>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Usage Information</h3>
+              <ul className="list-disc pl-6 space-y-2 text-gray-700">
+                <li>Log data and device information</li>
+                <li>IP address and browser type</li>
+                <li>Pages visited and features used</li>
+                <li>Analytics and performance data</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">3. How We Use Your Information</h2>
+              <ul className="list-disc pl-6 space-y-2 text-gray-700">
+                <li>To provide, maintain, and improve our services</li>
+                <li>To process your transactions and send related information</li>
+                <li>To send administrative information and updates</li>
+                <li>To respond to your comments and questions</li>
+                <li>To analyze usage patterns and optimize user experience</li>
+                <li>To detect, prevent, and address technical issues</li>
+                <li>To comply with legal obligations</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">4. Data Security</h2>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                We implement industry-standard security measures to protect your data:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-gray-700">
+                <li>AES-256 encryption for data at rest</li>
+                <li>TLS 1.3 encryption for data in transit</li>
+                <li>Regular security audits and penetration testing</li>
+                <li>Strict access controls and authentication</li>
+                <li>Regular backups and disaster recovery procedures</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">5. Data Retention</h2>
+              <p className="text-gray-700 leading-relaxed">
+                We retain your personal information and meeting data for as long as your account is active or as
+                needed to provide you services. You can request deletion of your data at any time by contacting us.
+                Upon request, we will delete your data within 30 days, except where we are required to retain it by
+                law.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">6. Data Sharing and Disclosure</h2>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                We do not sell, trade, or rent your personal information to third parties. We may share your
+                information only in the following circumstances:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-gray-700">
+                <li>With your explicit consent</li>
+                <li>With service providers who assist in our operations (under strict confidentiality agreements)</li>
+                <li>To comply with legal obligations or protect our rights</li>
+                <li>In connection with a merger, acquisition, or sale of assets (with prior notice)</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">7. Your Rights</h2>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                Under GDPR and other privacy laws, you have the right to:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-gray-700">
+                <li>Access your personal data</li>
+                <li>Correct inaccurate or incomplete data</li>
+                <li>Request deletion of your data</li>
+                <li>Object to processing of your data</li>
+                <li>Request data portability</li>
+                <li>Withdraw consent at any time</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">8. Cookies and Tracking</h2>
+              <p className="text-gray-700 leading-relaxed">
+                We use cookies and similar tracking technologies to track activity on our service and hold certain
+                information. You can instruct your browser to refuse all cookies or to indicate when a cookie is
+                being sent.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">9. Third-Party Services</h2>
+              <p className="text-gray-700 leading-relaxed">
+                Our service may integrate with third-party services (such as JIRA, Slack, or Google Calendar). These
+                third parties have their own privacy policies, and we encourage you to review them.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">10. Changes to This Policy</h2>
+              <p className="text-gray-700 leading-relaxed">
+                We may update our Privacy Policy from time to time. We will notify you of any changes by posting the
+                new Privacy Policy on this page and updating the "Last updated" date. You are advised to review this
+                Privacy Policy periodically for any changes.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">11. Contact Us</h2>
+              <p className="text-gray-700 leading-relaxed">
+                If you have any questions about this Privacy Policy, please contact us at:
+              </p>
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                <p className="text-gray-700">
+                  <strong>Email:</strong> privacy@meetiva.ai<br />
+                  <strong>Address:</strong> 123 Innovation Drive, San Francisco, CA 94102
+                </p>
               </div>
-            ))}
+            </section>
           </div>
         </div>
+      </section>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1.12fr_0.88fr]">
-          <div className="rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(91,63,214,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(244,114,182,0.14),transparent_28%),rgba(255,255,255,0.03)] p-8 backdrop-blur-2xl lg:p-10">
-            <div className="flex items-center gap-3">
-              <Sparkles className="h-5 w-5 text-cyan-300" />
-              <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/70">Your rights</p>
-            </div>
-            <p className="mt-4 max-w-2xl text-lg leading-8 text-white/60">
-              You can access, correct, delete, or export your personal information, and you can contact us any time if you want help understanding how data is handled.
-            </p>
-          </div>
-
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-8 backdrop-blur-2xl lg:p-10">
-            <h2 className="text-2xl font-semibold text-white">Contact</h2>
-            <p className="mt-3 text-sm leading-7 text-white/60">
-              privacy@meetiva.ai
-              <br />
-              123 Innovation Drive, San Francisco, CA 94102
-            </p>
-            <Link to="/contact" className="mt-6 inline-flex text-sm font-medium text-cyan-300 transition hover:text-white">
-              Reach the team
-            </Link>
-          </div>
-        </div>
-      </div>
+      {/* Footer */}
+      <footer className="relative z-10 container mx-auto px-6 py-12 text-center border-t border-gray-200/50">
+        <p className="text-gray-600">&copy; {new Date().getFullYear()} Meetiva.ai. All rights reserved.</p>
+      </footer>
     </div>
   );
 };

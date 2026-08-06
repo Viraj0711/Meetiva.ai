@@ -1,660 +1,534 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const multer_1 = __importDefault(require("multer"));
-const exceljs_1 = __importDefault(require("exceljs"));
-const zod_1 = __importDefault(require("zod"));
+const XLSX = __importStar(require("xlsx"));
 const auth_1 = require("../middleware/auth");
 const authorize_1 = require("../middleware/authorize");
-const llmRouter_1 = require("../services/llmRouter");
+const prisma_1 = __importDefault(require("../lib/prisma"));
+const grokMeetingAnalyzer_1 = require("../services/grokMeetingAnalyzer");
 const whisperTranscriber_1 = require("../services/whisperTranscriber");
-const meetingStatus_1 = require("../services/meetingStatus");
-const rateLimiters_1 = require("../lib/rateLimiters");
-const validation_1 = require("../lib/validation");
-const errors_1 = require("../lib/errors");
-const subscription_1 = require("../lib/subscription");
-const Meeting_1 = __importDefault(require("../models/Meeting"));
-const MeetingSummary_1 = __importDefault(require("../models/MeetingSummary"));
-const Transcript_1 = __importDefault(require("../models/Transcript"));
-const ActionItem_1 = __importDefault(require("../models/ActionItem"));
-const TeamMember_1 = __importDefault(require("../models/TeamMember"));
-const mongoose_1 = require("mongoose");
-const pdfkit_1 = __importDefault(require("pdfkit"));
 const router = (0, express_1.Router)();
-// Validate all :id route params as MongoDB ObjectId
-router.param('id', (req, res, next, value) => {
-    if (!mongoose_1.Types.ObjectId.isValid(value)) {
-        return res.status(400).json({ message: `Invalid id: must be a valid ObjectId` });
-    }
-    next();
-});
 // Multer: keep limit at Whisper's hard cap (25 MB).
 const upload = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
     limits: { fileSize: whisperTranscriber_1.WHISPER_MAX_BYTES },
 });
-const handleMulterError = (err, _req, _res, next) => {
-    if (err instanceof multer_1.default.MulterError) {
-        if (err.code === 'LIMIT_FILE_SIZE') {
-            return next(new errors_1.AppError(413, 'File exceeds the 25 MB limit. Please compress and try again.'));
-        }
-        return next(new errors_1.AppError(400, `Upload error: ${err.message}`));
-    }
-    next(err);
-};
-// Helper to get the appropriate filter based on user's role
-const getMeetingsFilter = async (req) => {
-    // For members or users with no team membership, only show their own meetings
-    if (!req.userTeams || req.userTeams.length === 0) {
-        return { userId: new mongoose_1.Types.ObjectId(req.userId) };
-    }
-    // Check if user is MANAGER or LEAD in any team
-    const isManagerOrLead = req.userTeams.some(team => team.role === 'MANAGER' || team.role === 'LEAD');
-    if (!isManagerOrLead) {
-        return { userId: new mongoose_1.Types.ObjectId(req.userId) };
-    }
-    // User is MANAGER or LEAD - fetch all team members from their teams
-    const teamIds = req.userTeams
-        .filter(team => team.role === 'MANAGER' || team.role === 'LEAD')
-        .map(team => new mongoose_1.Types.ObjectId(team.teamId));
-    if (teamIds.length === 0) {
-        return { userId: new mongoose_1.Types.ObjectId(req.userId) };
-    }
-    const teamMembers = await TeamMember_1.default.find({ teamId: { $in: teamIds } })
-        .select('userId')
-        .lean();
-    const memberUserIds = Array.from(new Set([
-        new mongoose_1.Types.ObjectId(req.userId),
-        ...teamMembers.map(tm => tm.userId),
-    ]));
-    return { userId: { $in: memberUserIds } };
-};
-router.get('/stats', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
-    const filter = await getMeetingsFilter(req);
-    const now = new Date();
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    const [totalMeetings, completedMeetings, processingMeetings, durationAgg, totalActionItems, recentMeetings,] = await Promise.all([
-        Meeting_1.default.countDocuments(filter),
-        Meeting_1.default.countDocuments({ ...filter, status: 'completed' }),
-        Meeting_1.default.countDocuments({ ...filter, status: 'processing' }),
-        Meeting_1.default.aggregate([
-            { $match: filter },
-            { $group: { _id: null, total: { $sum: '$duration' } } },
-        ]),
-        ActionItem_1.default.countDocuments({
-            ...filter,
-        }),
-        // Only fetch last 6 months for trends + top participants, with a limit.
-        Meeting_1.default.find({ ...filter, createdAt: { $gte: sixMonthsAgo } })
-            .select('createdAt participants')
-            .sort({ createdAt: -1 })
-            .limit(500)
-            .lean(),
-    ]);
-    const totalDuration = durationAgg[0]?.total ?? 0;
-    const avgDuration = totalMeetings > 0 ? Math.round(totalDuration / totalMeetings) : 0;
-    const avgActionItems = totalMeetings > 0 ? Number((totalActionItems / totalMeetings).toFixed(1)) : 0;
-    // Monthly trends from recent meetings
-    const monthMap = new Map();
-    recentMeetings.forEach((meeting) => {
-        const month = new Date(meeting.createdAt).toLocaleDateString('en-US', { month: 'short' });
-        monthMap.set(month, (monthMap.get(month) || 0) + 1);
-    });
-    const trends = Array.from(monthMap.entries()).map(([month, count]) => ({ month, count }));
-    // Top participants from recent meetings
-    const participantMap = new Map();
-    recentMeetings.forEach((meeting) => {
-        const participants = Array.isArray(meeting.participants) ? meeting.participants : [];
-        participants.forEach((participant) => {
-            participantMap.set(participant, (participantMap.get(participant) || 0) + 1);
-        });
-    });
-    const topParticipants = Array.from(participantMap.entries())
-        .map(([name, meetingCount]) => ({ name, meetingCount }))
-        .sort((a, b) => b.meetingCount - a.meetingCount)
-        .slice(0, 5);
-    res.json({
-        totalMeetings,
-        completedMeetings,
-        processingMeetings,
-        totalDuration,
-        avgDuration,
-        avgActionItems,
-        trends,
-        topParticipants,
-    });
-}));
-router.get('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(validation_1.paginationQuerySchema, 'query'), (0, errors_1.asyncHandler)(async (req, res) => {
-    const { page, limit } = req.query;
-    const skip = (page - 1) * limit;
-    const filter = await getMeetingsFilter(req);
-    const [meetings, total] = await Promise.all([
-        Meeting_1.default.find(filter)
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: -1 })
-            .select('title description status priority duration participants processingProgress userId createdAt updatedAt completedAt')
-            .lean(),
-        Meeting_1.default.countDocuments(filter),
-    ]);
-    res.json({
-        data: meetings.map(m => ({ ...m, id: m._id.toString() })),
-        pagination: {
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit),
-        },
-    });
-}));
-router.get('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
-    const meeting = await Meeting_1.default.findById(req.params.id).lean();
-    if (!meeting) {
-        return res.status(404).json({ message: 'Meeting not found' });
-    }
-    // Check if user can view this meeting
-    if (!(await (0, authorize_1.canViewUserData)(req.userId, meeting.userId.toString(), req.userTeams || []))) {
-        return res.status(403).json({ message: 'You do not have permission to view this meeting' });
-    }
-    res.json({ ...meeting, id: meeting._id.toString() });
-}));
-router.post('/upload', rateLimiters_1.uploadLimiter, auth_1.authenticate, upload.single('file'), handleMulterError, (0, errors_1.asyncHandler)(async (req, res) => {
-    // Apply XSS sanitization to user-supplied text fields (the multer/
-    // multipart path bypasses the Zod validation pipeline).
-    const title = typeof req.body.title === 'string' && req.body.title.trim().length > 0
-        ? (0, validation_1.sanitize)(req.body.title.trim())
-        : req.file?.originalname || 'Uploaded meeting';
-    const description = typeof req.body.description === 'string'
-        ? (0, validation_1.sanitize)(req.body.description.trim())
-        : null;
-    const participants = (() => {
-        if (!req.body.participants)
-            return [];
-        if (Array.isArray(req.body.participants)) {
-            return req.body.participants
-                .filter((item) => typeof item === 'string')
-                .map((item) => (0, validation_1.sanitize)(item.trim()));
-        }
-        if (typeof req.body.participants === 'string') {
-            try {
-                const parsed = JSON.parse(req.body.participants);
-                return Array.isArray(parsed)
-                    ? parsed
-                        .filter((item) => typeof item === 'string')
-                        .map((item) => (0, validation_1.sanitize)(item.trim()))
-                    : [];
-            }
-            catch {
-                return req.body.participants
-                    .split(',')
-                    .map((item) => (0, validation_1.sanitize)(item.trim()))
-                    .filter(Boolean);
-            }
-        }
+const jsonArrayToStringArray = (value) => {
+    if (!Array.isArray(value)) {
         return [];
-    })();
-    // ── Step 1: resolve transcript text ──────────────────────────────────────
-    let transcriptText = '';
-    let transcribedByWhisper = false;
-    // Priority 1: caller sent raw text in the body
-    if (typeof req.body.transcriptText === 'string' && req.body.transcriptText.trim().length > 0) {
-        transcriptText = req.body.transcriptText.trim();
     }
-    // Priority 2: uploaded .txt file
-    else if (req.file &&
-        (req.file.mimetype.startsWith('text/') || req.file.originalname.endsWith('.txt'))) {
-        transcriptText = req.file.buffer.toString('utf8').trim();
+    return value.filter((entry) => typeof entry === 'string');
+};
+// Helper to get the appropriate where clause based on user's role
+const getMeetingsWhereClause = async (req) => {
+    try {
+        // For members or users with no team membership, only show their own meetings
+        if (!req.userTeams || req.userTeams.length === 0) {
+            console.log(`[getMeetingsWhereClause] User ${req.userId} has no teams, returning own meetings only`);
+            return { userId: req.userId };
+        }
+        // Check if user is MANAGER or LEAD in any team
+        const isManagerOrLead = req.userTeams.some(team => team.role === 'MANAGER' || team.role === 'LEAD');
+        if (!isManagerOrLead) {
+            // User is just a MEMBER, show only their own meetings
+            console.log(`[getMeetingsWhereClause] User ${req.userId} is MEMBER only, returning own meetings`);
+            return { userId: req.userId };
+        }
+        // User is MANAGER or LEAD - fetch all team members from their teams
+        const teamIds = req.userTeams
+            .filter(team => team.role === 'MANAGER' || team.role === 'LEAD')
+            .map(team => team.teamId);
+        if (teamIds.length === 0) {
+            console.log(`[getMeetingsWhereClause] User ${req.userId} has no MANAGER/LEAD teams`);
+            return { userId: req.userId };
+        }
+        console.log(`[getMeetingsWhereClause] User ${req.userId} is MANAGER/LEAD in teams: ${teamIds.join(', ')}`);
+        const teamMembers = await prisma_1.default.teamMember.findMany({
+            where: { teamId: { in: teamIds } },
+            select: { userId: true }
+        });
+        const memberUserIds = Array.from(new Set([req.userId, ...teamMembers.map(tm => tm.userId)]));
+        console.log(`[getMeetingsWhereClause] Showing meetings for ${memberUserIds.length} users`);
+        return {
+            userId: { in: memberUserIds }
+        };
     }
-    // Priority 3: audio/video file → Whisper transcription
-    else if (req.file && (0, whisperTranscriber_1.isAudioOrVideoFile)(req.file.originalname)) {
-        if (req.file.buffer.byteLength > whisperTranscriber_1.WHISPER_MAX_BYTES) {
-            return res.status(413).json({
-                message: `File is ${(req.file.buffer.byteLength / 1024 / 1024).toFixed(1)} MB. ` +
-                    `Whisper API accepts a maximum of 25 MB. Please trim or compress your recording.`,
+    catch (error) {
+        console.error(`[getMeetingsWhereClause] Error: ${error}`);
+        console.log(`[getMeetingsWhereClause] Fallback: returning only own meetings for user ${req.userId}`);
+        return { userId: req.userId };
+    }
+};
+router.get('/stats', auth_1.authenticate, async (req, res) => {
+    try {
+        const where = await getMeetingsWhereClause(req);
+        const meetings = await prisma_1.default.meeting.findMany({
+            where,
+            include: { actionItems: true }
+        });
+        const totalMeetings = meetings.length;
+        const totalDuration = meetings.reduce((sum, meeting) => sum + (meeting.duration || 0), 0);
+        const avgDuration = totalMeetings > 0 ? Math.round(totalDuration / totalMeetings) : 0;
+        const totalActionItems = meetings.reduce((sum, meeting) => sum + meeting.actionItems.length, 0);
+        const avgActionItems = totalMeetings > 0 ? Number((totalActionItems / totalMeetings).toFixed(1)) : 0;
+        const now = new Date();
+        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        const monthlyMeetings = meetings.filter((meeting) => meeting.createdAt >= sixMonthsAgo);
+        const monthMap = new Map();
+        monthlyMeetings.forEach((meeting) => {
+            const month = new Date(meeting.createdAt).toLocaleDateString('en-US', { month: 'short' });
+            monthMap.set(month, (monthMap.get(month) || 0) + 1);
+        });
+        const trends = Array.from(monthMap.entries()).map(([month, count]) => ({ month, count }));
+        const participantMap = new Map();
+        meetings.forEach((meeting) => {
+            const participants = jsonArrayToStringArray(meeting.participants);
+            participants.forEach((participant) => {
+                participantMap.set(participant, (participantMap.get(participant) || 0) + 1);
+            });
+        });
+        const topParticipants = Array.from(participantMap.entries())
+            .map(([name, meetingCount]) => ({ name, meetingCount }))
+            .sort((a, b) => b.meetingCount - a.meetingCount)
+            .slice(0, 5);
+        res.json({
+            totalMeetings,
+            completedMeetings: meetings.filter((meeting) => meeting.status === 'completed').length,
+            processingMeetings: meetings.filter((meeting) => meeting.status === 'processing').length,
+            totalDuration,
+            avgDuration,
+            avgActionItems,
+            trends,
+            topParticipants
+        });
+    }
+    catch (error) {
+        console.error('Error fetching stats:', error);
+        res.status(500).json({ message: 'Failed to fetch statistics' });
+    }
+});
+router.get('/', auth_1.authenticate, async (req, res) => {
+    try {
+        const { page = '1', limit = '10' } = req.query;
+        const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+        const limitNumber = Math.max(1, parseInt(limit, 10) || 10);
+        const skip = (pageNumber - 1) * limitNumber;
+        const where = await getMeetingsWhereClause(req);
+        const [meetings, total] = await Promise.all([
+            prisma_1.default.meeting.findMany({
+                where,
+                skip,
+                take: limitNumber,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    _count: {
+                        select: { actionItems: true }
+                    }
+                }
+            }),
+            prisma_1.default.meeting.count({ where })
+        ]);
+        res.json({
+            data: meetings,
+            pagination: {
+                total,
+                page: pageNumber,
+                limit: limitNumber,
+                totalPages: Math.ceil(total / limitNumber)
+            }
+        });
+    }
+    catch (error) {
+        console.error('Error fetching meetings:', error);
+        res.status(500).json({ message: 'Failed to fetch meetings' });
+    }
+});
+router.get('/:id', auth_1.authenticate, async (req, res) => {
+    try {
+        const meeting = await prisma_1.default.meeting.findFirst({
+            where: { id: req.params.id },
+            include: { actionItems: true }
+        });
+        if (!meeting) {
+            return res.status(404).json({ message: 'Meeting not found' });
+        }
+        // Check if user can view this meeting
+        if (!(0, authorize_1.canViewUserData)(req.userId, meeting.userId, req.userTeams || [])) {
+            return res.status(403).json({ message: 'You do not have permission to view this meeting' });
+        }
+        res.json(meeting);
+    }
+    catch (error) {
+        console.error('Error fetching meeting:', error);
+        res.status(500).json({ message: 'Failed to fetch meeting' });
+    }
+});
+router.post('/upload', auth_1.authenticate, upload.single('file'), async (req, res) => {
+    try {
+        const title = typeof req.body.title === 'string' && req.body.title.trim().length > 0
+            ? req.body.title.trim()
+            : req.file?.originalname || 'Uploaded meeting';
+        const description = typeof req.body.description === 'string' ? req.body.description : null;
+        const participants = (() => {
+            if (!req.body.participants)
+                return [];
+            if (Array.isArray(req.body.participants)) {
+                return req.body.participants.filter((item) => typeof item === 'string');
+            }
+            if (typeof req.body.participants === 'string') {
+                try {
+                    const parsed = JSON.parse(req.body.participants);
+                    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
+                }
+                catch {
+                    return req.body.participants.split(',').map((item) => item.trim()).filter(Boolean);
+                }
+            }
+            return [];
+        })();
+        // ── Step 1: resolve transcript text ──────────────────────────────────────
+        let transcriptText = '';
+        let transcribedByWhisper = false;
+        // Priority 1: caller sent raw text in the body
+        if (typeof req.body.transcriptText === 'string' && req.body.transcriptText.trim().length > 0) {
+            transcriptText = req.body.transcriptText.trim();
+        }
+        // Priority 2: uploaded .txt file
+        else if (req.file &&
+            (req.file.mimetype.startsWith('text/') || req.file.originalname.endsWith('.txt'))) {
+            transcriptText = req.file.buffer.toString('utf8').trim();
+        }
+        // Priority 3: audio/video file → Whisper transcription
+        else if (req.file && (0, whisperTranscriber_1.isAudioOrVideoFile)(req.file.originalname)) {
+            if (req.file.buffer.byteLength > whisperTranscriber_1.WHISPER_MAX_BYTES) {
+                return res.status(413).json({
+                    message: `File is ${(req.file.buffer.byteLength / 1024 / 1024).toFixed(1)} MB. ` +
+                        `Whisper API accepts a maximum of 25 MB. Please trim or compress your recording.`,
+                });
+            }
+            transcriptText = await (0, whisperTranscriber_1.transcribeWithWhisper)(req.file.buffer, req.file.originalname, req.file.mimetype);
+            transcribedByWhisper = true;
+        }
+        if (!transcriptText) {
+            return res.status(400).json({
+                message: 'No transcript found. Upload an audio/video file (≤ 25 MB), a .txt transcript, ' +
+                    'or include transcriptText in the form body.',
             });
         }
-        transcriptText = await (0, whisperTranscriber_1.transcribeWithWhisper)(req.file.buffer, req.file.originalname, req.file.mimetype);
-        transcribedByWhisper = true;
-    }
-    if (!transcriptText) {
-        return res.status(400).json({
-            message: 'No transcript found. Upload an audio/video file (≤ 25 MB), a .txt transcript, ' +
-                'or include transcriptText in the form body.',
-        });
-    }
-    // Prevent duplicate meetings for the same user by normalized transcript content.
-    const normalizedIncomingTranscript = transcriptText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
-    const existingMeetings = await Transcript_1.default.aggregate([
-        {
-            $lookup: {
-                from: 'meetings',
-                localField: 'meetingId',
-                foreignField: '_id',
-                as: 'meeting',
-            },
-        },
-        { $unwind: '$meeting' },
-        { $match: { 'meeting.userId': new mongoose_1.Types.ObjectId(req.userId) } },
-        {
-            $project: {
-                _id: '$meeting._id',
-                title: '$meeting.title',
-                status: '$meeting.status',
-                createdAt: '$meeting.createdAt',
-                fullText: 1,
-            },
-        },
-    ]);
-    const duplicateMeeting = existingMeetings.find((candidate) => {
-        const existingText = candidate.fullText;
-        if (!existingText)
-            return false;
-        return existingText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim() === normalizedIncomingTranscript;
-    });
-    if (duplicateMeeting) {
-        return res.status(409).json({
-            message: 'This meeting already exists in your workspace.',
-            code: 'MEETING_DUPLICATE',
-            existingMeeting: {
-                id: duplicateMeeting._id.toString(),
-                title: duplicateMeeting.title,
-                status: duplicateMeeting.status,
-                createdAt: duplicateMeeting.createdAt,
+        // ── Step 2: persist meeting record ───────────────────────────────────────
+        const createdMeeting = await prisma_1.default.meeting.create({
+            data: {
+                title,
+                description,
+                participants,
+                status: 'processing',
+                processingProgress: transcribedByWhisper ? 50 : 20,
+                userId: req.userId,
             },
         });
-    }
-    // ── Step 1b: check meeting credits (before persisting) ─────────────────
-    await (0, subscription_1.checkMeetingCredits)(req.userId);
-    // ── Step 2: persist meeting record ───────────────────────────────────────
-    const createdMeeting = await Meeting_1.default.create({
-        title,
-        description,
-        participants,
-        status: 'processing',
-        processingProgress: transcribedByWhisper ? 50 : 20,
-        userId: new mongoose_1.Types.ObjectId(req.userId),
-    });
-    // ── Step 3: persist transcript only (no analysis yet — user chooses later) ──
-    try {
-        await Transcript_1.default.create({
-            meetingId: createdMeeting._id,
-            fullText: transcriptText,
-            segments: [],
-        });
-        await Meeting_1.default.findByIdAndUpdate(createdMeeting._id, { status: 'completed', processingProgress: 100, completedAt: new Date() });
-    }
-    catch (err) {
-        await Meeting_1.default.findByIdAndDelete(createdMeeting._id);
-        throw err;
-    }
-    // ── Step 4: increment meeting counter ────────────────────────────────────
-    await (0, subscription_1.incrementMeetingCount)(req.userId);
-    const meeting = await Meeting_1.default.findById(createdMeeting._id).lean();
-    res.status(201).json({
-        data: meeting ? { ...meeting, id: meeting._id.toString() } : null,
-        message: transcribedByWhisper
-            ? 'Meeting transcribed successfully.'
-            : 'Meeting uploaded successfully.',
-        transcribedByWhisper,
-        minutesExportUrl: `/meetings/${createdMeeting._id}/minutes/export`,
-        meetingId: createdMeeting._id.toString(),
-    });
-}));
-// ── POST /meetings/:id/process — analyze meeting (tasks, minutes, or both) ──
-const processSchema = zod_1.default.object({
-    mode: zod_1.default.enum(['tasks', 'minutes', 'both']),
-});
-router.post('/:id/process', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(processSchema), (0, errors_1.asyncHandler)(async (req, res) => {
-    const meeting = await Meeting_1.default.findById(req.params.id).lean();
-    if (!meeting) {
-        return res.status(404).json({ message: 'Meeting not found' });
-    }
-    if (meeting.userId.toString() !== req.userId) {
-        return res.status(403).json({ message: 'You do not have permission to process this meeting' });
-    }
-    const transcript = await Transcript_1.default.findOne({ meetingId: meeting._id }).lean();
-    if (!transcript?.fullText) {
-        return res.status(400).json({ message: 'No transcript found for this meeting' });
-    }
-    const { mode } = req.body;
-    await Meeting_1.default.findByIdAndUpdate(meeting._id, { status: 'analyzing' });
-    let analysis;
-    try {
-        analysis = await (0, llmRouter_1.analyzeTranscriptWithLLM)(transcript.fullText);
-    }
-    catch (err) {
-        await Meeting_1.default.findByIdAndUpdate(meeting._id, { status: 'failed' });
-        throw err;
-    }
-    try {
-        if (mode === 'minutes' || mode === 'both') {
-            // Upsert: one summary per meeting
-            await MeetingSummary_1.default.findOneAndUpdate({ meetingId: meeting._id }, {
-                meetingId: meeting._id,
-                executiveSummary: analysis.executiveSummary,
-                keyPoints: analysis.keyPoints,
-                decisions: analysis.decisions,
-                openQuestions: analysis.openQuestions,
-                sentiment: analysis.sentiment,
-            }, { upsert: true });
-        }
-        if (mode === 'tasks' || mode === 'both') {
-            // Replace all action items for this meeting
-            await ActionItem_1.default.deleteMany({ meetingId: meeting._id });
+        // ── Step 3: Grok analysis ─────────────────────────────────────────────────
+        const analysis = await (0, grokMeetingAnalyzer_1.analyzeTranscriptWithGrok)(transcriptText);
+        // ── Step 4: persist all derived data atomically ──────────────────────────
+        await prisma_1.default.$transaction(async (tx) => {
+            await tx.transcript.create({
+                data: { meetingId: createdMeeting.id, fullText: transcriptText, segments: [] },
+            });
+            await tx.meetingSummary.create({
+                data: {
+                    meetingId: createdMeeting.id,
+                    executiveSummary: analysis.executiveSummary,
+                    keyPoints: analysis.keyPoints,
+                    decisions: analysis.decisions,
+                    openQuestions: analysis.openQuestions,
+                    sentiment: analysis.sentiment,
+                },
+            });
             if (analysis.tasks.length > 0) {
-                await ActionItem_1.default.insertMany(analysis.tasks.map((task) => ({
-                    meetingId: meeting._id,
-                    userId: new mongoose_1.Types.ObjectId(req.userId),
-                    title: task.title,
-                    description: task.description,
-                    assignee: task.assignee,
-                    dueDate: task.dueDate ? new Date(task.dueDate) : null,
-                    priority: task.priority || 'medium',
-                    status: task.status || 'pending',
-                    tags: task.tags || [],
-                })));
+                await tx.actionItem.createMany({
+                    data: analysis.tasks.map((task) => ({
+                        meetingId: createdMeeting.id,
+                        userId: req.userId,
+                        title: task.title,
+                        description: task.description,
+                        assignee: task.assignee,
+                        dueDate: task.dueDate ? new Date(task.dueDate) : null,
+                        priority: task.priority || 'medium',
+                        status: task.status || 'pending',
+                        tags: task.tags || [],
+                    })),
+                });
             }
+            await tx.meeting.update({
+                where: { id: createdMeeting.id },
+                data: { status: 'completed', processingProgress: 100, completedAt: new Date() },
+            });
+        });
+        const meeting = await prisma_1.default.meeting.findUnique({ where: { id: createdMeeting.id } });
+        res.status(201).json({
+            data: meeting,
+            message: transcribedByWhisper
+                ? 'Meeting transcribed with Whisper, summarized with Grok, and tasks extracted successfully.'
+                : 'Meeting uploaded, summarized with Grok, and tasks extracted successfully.',
+            transcribedByWhisper,
+            actionItemsExportUrl: `/meetings/${createdMeeting.id}/action-items/export`,
+            taskCount: analysis.tasks.length,
+        });
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorDetails = {
+            message: errorMessage,
+            stack: error instanceof Error ? error.stack : undefined,
+            type: error instanceof Error ? error.constructor.name : typeof error
+        };
+        console.error('Meeting upload processing error:', JSON.stringify(errorDetails, null, 2));
+        // Surface user-friendly Whisper size errors
+        if (error instanceof Error && error.message.includes('Whisper')) {
+            return res.status(413).json({ message: error.message });
         }
-        await Meeting_1.default.findByIdAndUpdate(meeting._id, { status: 'completed', processingProgress: 100, completedAt: new Date() });
+        // Surface API errors
+        if (error instanceof Error && error.message.includes('Grok')) {
+            return res.status(502).json({ message: `AI service error: ${error.message}` });
+        }
+        res.status(500).json({ message: 'Failed to process uploaded meeting', error: errorMessage });
     }
-    catch (err) {
-        await Meeting_1.default.findByIdAndUpdate(meeting._id, { status: 'failed' });
-        throw err;
-    }
-    const updated = await Meeting_1.default.findById(meeting._id).lean();
-    res.json({
-        data: updated ? { ...updated, id: updated._id.toString() } : null,
-        message: mode === 'both'
-            ? 'Tasks extracted and minutes generated successfully.'
-            : mode === 'tasks'
-                ? 'Tasks extracted successfully.'
-                : 'Meeting minutes generated successfully.',
-        taskCount: analysis.tasks.length,
-        actionItemsExportUrl: `/meetings/${meeting._id}/action-items/export`,
-        minutesExportUrl: `/meetings/${meeting._id}/minutes/export`,
-    });
-}));
-router.get('/:id/summary', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
-    const meeting = await Meeting_1.default.findById(req.params.id)
-        .select('userId')
-        .lean();
-    if (!meeting) {
-        return res.status(404).json({ message: 'Meeting not found' });
-    }
-    // Check permissions
-    if (!(await (0, authorize_1.canViewUserData)(req.userId, meeting.userId.toString(), req.userTeams || []))) {
-        return res.status(403).json({ message: 'You do not have permission to view this meeting' });
-    }
-    const summary = await MeetingSummary_1.default.findOne({ meetingId: meeting._id }).lean();
-    if (!summary) {
-        return res.status(404).json({ message: 'Summary not found for this meeting yet' });
-    }
-    res.json({
-        id: summary._id.toString(),
-        meetingId: summary.meetingId.toString(),
-        executiveSummary: summary.executiveSummary,
-        keyPoints: summary.keyPoints,
-        decisions: summary.decisions,
-        openQuestions: summary.openQuestions,
-        sentiment: summary.sentiment,
-        createdAt: summary.createdAt,
-    });
-}));
-router.get('/:id/transcript', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
-    const meeting = await Meeting_1.default.findById(req.params.id)
-        .select('userId')
-        .lean();
-    if (!meeting) {
-        return res.status(404).json({ message: 'Meeting not found' });
-    }
-    // Check permissions
-    if (!(await (0, authorize_1.canViewUserData)(req.userId, meeting.userId.toString(), req.userTeams || []))) {
-        return res.status(403).json({ message: 'You do not have permission to view this meeting' });
-    }
-    const transcript = await Transcript_1.default.findOne({ meetingId: meeting._id }).lean();
-    if (!transcript) {
-        return res.status(404).json({ message: 'Transcript not found for this meeting yet' });
-    }
-    res.json({
-        id: transcript._id.toString(),
-        meetingId: transcript.meetingId.toString(),
-        segments: [],
-        fullText: transcript.fullText,
-        language: transcript.language,
-        createdAt: transcript.createdAt,
-    });
-}));
-router.get('/:id/action-items', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
-    const meeting = await Meeting_1.default.findById(req.params.id).lean();
-    if (!meeting) {
-        return res.status(404).json({ message: 'Meeting not found' });
-    }
-    // Check permissions
-    if (!(await (0, authorize_1.canViewUserData)(req.userId, meeting.userId.toString(), req.userTeams || []))) {
-        return res.status(403).json({ message: 'You do not have permission to view this meeting' });
-    }
-    const { page = '1', limit = '50' } = req.query;
-    const pageNumber = Math.max(1, parseInt(page, 10) || 1);
-    const limitNumber = Math.max(1, Math.min(parseInt(limit, 10) || 50, 200));
-    const skip = (pageNumber - 1) * limitNumber;
-    const [actionItems, total] = await Promise.all([
-        ActionItem_1.default.find({ meetingId: meeting._id })
-            .sort({ createdAt: 1 })
-            .skip(skip)
-            .limit(limitNumber)
-            .select('meetingId title description assignee dueDate priority status tags createdAt updatedAt completedAt')
-            .lean(),
-        ActionItem_1.default.countDocuments({ meetingId: meeting._id }),
-    ]);
-    res.json({
-        data: actionItems.map((item) => ({
-            id: item._id.toString(),
-            meetingId: item.meetingId.toString(),
-            title: item.title,
-            description: item.description,
-            assignee: item.assignee,
-            dueDate: item.dueDate,
-            priority: item.priority,
-            status: item.status,
-            tags: item.tags,
-            createdAt: item.createdAt,
-            updatedAt: item.updatedAt,
-            completedAt: item.completedAt,
-        })),
-        pagination: {
-            total,
-            page: pageNumber,
-            limit: limitNumber,
-            totalPages: Math.ceil(total / limitNumber),
-        },
-    });
-}));
-router.get('/:id/action-items/export', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
-    const meeting = await Meeting_1.default.findById(req.params.id)
-        .select('title userId')
-        .lean();
-    if (!meeting) {
-        return res.status(404).json({ message: 'Meeting not found' });
-    }
-    // Check permissions
-    if (!(await (0, authorize_1.canViewUserData)(req.userId, meeting.userId.toString(), req.userTeams || []))) {
-        return res.status(403).json({ message: 'You do not have permission to export this meeting' });
-    }
-    const actionItems = await ActionItem_1.default.find({ meetingId: meeting._id })
-        .sort({ createdAt: 1 })
-        .select('title description assignee priority status dueDate tags')
-        .lean();
-    const rows = actionItems.map((item) => ({
-        Task: item.title,
-        Description: item.description || '',
-        Assignee: item.assignee || '',
-        Priority: item.priority,
-        Status: item.status,
-        DueDate: item.dueDate ? item.dueDate.toISOString().slice(0, 10) : '',
-        Tags: Array.isArray(item.tags) ? item.tags.join(', ') : '',
-    }));
-    const workbook = new exceljs_1.default.Workbook();
-    const worksheet = workbook.addWorksheet('Tasks');
-    worksheet.columns = Object.keys(rows[0] ?? {}).map((key) => ({ header: key, key, width: 20 }));
-    worksheet.addRows(rows);
-    const fileBuffer = await workbook.xlsx.writeBuffer();
-    const safeTitle = meeting.title.replace(/[^a-z0-9-_]+/gi, '_').slice(0, 60);
-    const filename = `${safeTitle || 'meeting'}_tasks.xlsx`;
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(fileBuffer);
-}));
-router.get('/:id/minutes/export', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
-    const meeting = await Meeting_1.default.findById(req.params.id)
-        .select('title description duration participants userId createdAt')
-        .lean();
-    if (!meeting) {
-        return res.status(404).json({ message: 'Meeting not found' });
-    }
-    if (!(await (0, authorize_1.canViewUserData)(req.userId, meeting.userId.toString(), req.userTeams || []))) {
-        return res.status(403).json({ message: 'You do not have permission to export this meeting' });
-    }
-    const [summary, actionItems] = await Promise.all([
-        MeetingSummary_1.default.findOne({ meetingId: meeting._id }).lean(),
-        ActionItem_1.default.find({ meetingId: meeting._id })
-            .sort({ createdAt: 1 })
-            .select('title description assignee dueDate priority status')
-            .lean(),
-    ]);
-    const safeTitle = meeting.title.replace(/[^a-z0-9-_]+/gi, '_').slice(0, 60);
-    const filename = `${safeTitle || 'meeting'}_minutes.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    const doc = new pdfkit_1.default({ size: 'A4', margins: { top: 50, bottom: 50, left: 50, right: 50 } });
-    doc.pipe(res);
-    // Helper
-    const section = (title) => {
-        doc.moveDown(0.5).fontSize(14).font('Helvetica-Bold').fillColor('#1D1B22').text(title);
-        doc.moveDown(0.3);
-    };
-    const body = () => doc.fontSize(10).font('Helvetica').fillColor('#333');
-    // Title
-    doc.fontSize(20).font('Helvetica-Bold').fillColor('#1D1B22').text(meeting.title || 'Meeting Minutes', { align: 'center' });
-    doc.moveDown(0.5);
-    // Date & Time
-    const dateStr = meeting.createdAt
-        ? new Date(meeting.createdAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-        : 'Not specified';
-    const durationStr = meeting.duration ? `${Math.round(meeting.duration / 60)} minutes` : 'Not specified';
-    doc.fontSize(9).font('Helvetica').fillColor('#888').text(`Date: ${dateStr}  |  Duration: ${durationStr}`, { align: 'center' });
-    doc.moveDown(1.5);
-    // Divider
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#E0E0E0').stroke();
-    doc.moveDown(1);
-    // Attendees
-    if (meeting.participants && meeting.participants.length > 0) {
-        section('Attendees');
-        body().text(meeting.participants.join(', '));
-        doc.moveDown(0.5);
-        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
-    }
-    // Executive Summary
-    if (summary?.executiveSummary) {
-        section('Executive Summary');
-        body().text(summary.executiveSummary, { lineGap: 4 });
-        doc.moveDown(0.5);
-        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
-    }
-    // Key Discussion Points
-    if (summary?.keyPoints && summary.keyPoints.length > 0) {
-        section('Key Discussion Points');
-        summary.keyPoints.forEach((point, i) => {
-            doc.fontSize(10).font('Helvetica').fillColor('#333').text(`${i + 1}. ${point}`, { indent: 10, lineGap: 3 });
+});
+router.get('/:id/summary', auth_1.authenticate, async (req, res) => {
+    try {
+        const meeting = await prisma_1.default.meeting.findFirst({
+            where: { id: req.params.id },
+            include: { summary: true }
         });
-        doc.moveDown(0.5);
-        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
-    }
-    // Decisions Made
-    if (summary?.decisions && summary.decisions.length > 0) {
-        section('Decisions Made');
-        summary.decisions.forEach((decision) => {
-            doc.fontSize(10).font('Helvetica').fillColor('#333').text(`✓  ${decision}`, { indent: 10, lineGap: 3 });
+        if (!meeting) {
+            return res.status(404).json({ message: 'Meeting not found' });
+        }
+        // Check permissions
+        if (!(0, authorize_1.canViewUserData)(req.userId, meeting.userId, req.userTeams || [])) {
+            return res.status(403).json({ message: 'You do not have permission to view this meeting' });
+        }
+        if (!meeting.summary) {
+            return res.status(404).json({ message: 'Summary not found for this meeting yet' });
+        }
+        res.json({
+            id: meeting.summary.id,
+            meetingId: meeting.summary.meetingId,
+            executiveSummary: meeting.summary.executiveSummary,
+            keyPoints: jsonArrayToStringArray(meeting.summary.keyPoints),
+            decisions: jsonArrayToStringArray(meeting.summary.decisions),
+            openQuestions: jsonArrayToStringArray(meeting.summary.openQuestions),
+            sentiment: meeting.summary.sentiment,
+            createdAt: meeting.summary.createdAt
         });
-        doc.moveDown(0.5);
-        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
     }
-    // Action Items
-    if (actionItems.length > 0) {
-        section('Action Items');
-        actionItems.forEach((item, i) => {
-            const assignee = item.assignee || 'Unassigned';
-            const due = item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not specified';
-            doc.fontSize(10).font('Helvetica-Bold').fillColor('#1D1B22').text(`${i + 1}. ${item.title}`);
-            doc.fontSize(9).font('Helvetica').fillColor('#666')
-                .text(`   Owner: ${assignee}  |  Deadline: ${due}  |  Priority: ${item.priority || 'medium'}  |  Status: ${item.status || 'pending'}`);
-            if (item.description) {
-                doc.fontSize(9).font('Helvetica-Oblique').fillColor('#888').text(`   ${item.description}`);
+    catch (error) {
+        console.error('Error fetching meeting summary:', error);
+        res.status(500).json({ message: 'Failed to fetch meeting summary' });
+    }
+});
+router.get('/:id/transcript', auth_1.authenticate, async (req, res) => {
+    try {
+        const meeting = await prisma_1.default.meeting.findFirst({
+            where: { id: req.params.id },
+            include: { transcript: true }
+        });
+        if (!meeting) {
+            return res.status(404).json({ message: 'Meeting not found' });
+        }
+        // Check permissions
+        if (!(0, authorize_1.canViewUserData)(req.userId, meeting.userId, req.userTeams || [])) {
+            return res.status(403).json({ message: 'You do not have permission to view this meeting' });
+        }
+        if (!meeting.transcript) {
+            return res.status(404).json({ message: 'Transcript not found for this meeting yet' });
+        }
+        res.json({
+            id: meeting.transcript.id,
+            meetingId: meeting.transcript.meetingId,
+            segments: [],
+            fullText: meeting.transcript.fullText,
+            language: meeting.transcript.language,
+            createdAt: meeting.transcript.createdAt
+        });
+    }
+    catch (error) {
+        console.error('Error fetching transcript:', error);
+        res.status(500).json({ message: 'Failed to fetch transcript' });
+    }
+});
+router.get('/:id/action-items', auth_1.authenticate, async (req, res) => {
+    try {
+        const meeting = await prisma_1.default.meeting.findFirst({
+            where: { id: req.params.id }
+        });
+        if (!meeting) {
+            return res.status(404).json({ message: 'Meeting not found' });
+        }
+        // Check permissions
+        if (!(0, authorize_1.canViewUserData)(req.userId, meeting.userId, req.userTeams || [])) {
+            return res.status(403).json({ message: 'You do not have permission to view this meeting' });
+        }
+        const actionItems = await prisma_1.default.actionItem.findMany({
+            where: { meetingId: req.params.id },
+            orderBy: { createdAt: 'asc' }
+        });
+        res.json(actionItems.map((item) => ({
+            ...item,
+            tags: jsonArrayToStringArray(item.tags)
+        })));
+    }
+    catch (error) {
+        console.error('Error fetching meeting action items:', error);
+        res.status(500).json({ message: 'Failed to fetch meeting action items' });
+    }
+});
+router.get('/:id/action-items/export', auth_1.authenticate, async (req, res) => {
+    try {
+        const meeting = await prisma_1.default.meeting.findFirst({
+            where: { id: req.params.id },
+            select: { id: true, title: true, userId: true }
+        });
+        if (!meeting) {
+            return res.status(404).json({ message: 'Meeting not found' });
+        }
+        // Check permissions
+        if (!(0, authorize_1.canViewUserData)(req.userId, meeting.userId, req.userTeams || [])) {
+            return res.status(403).json({ message: 'You do not have permission to export this meeting' });
+        }
+        const actionItems = await prisma_1.default.actionItem.findMany({
+            where: { meetingId: meeting.id },
+            orderBy: { createdAt: 'asc' }
+        });
+        const rows = actionItems.map((item) => ({
+            Task: item.title,
+            Description: item.description || '',
+            Assignee: item.assignee || '',
+            Priority: item.priority,
+            Status: item.status,
+            DueDate: item.dueDate ? item.dueDate.toISOString().slice(0, 10) : '',
+            Tags: jsonArrayToStringArray(item.tags).join(', ')
+        }));
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
+        const fileBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+        const safeTitle = meeting.title.replace(/[^a-z0-9-_]+/gi, '_').slice(0, 60);
+        const filename = `${safeTitle || 'meeting'}_tasks.xlsx`;
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(fileBuffer);
+    }
+    catch (error) {
+        console.error('Error exporting action items:', error);
+        res.status(500).json({ message: 'Failed to export action items' });
+    }
+});
+router.post('/', auth_1.authenticate, async (req, res) => {
+    try {
+        const { title, description, duration, participants } = req.body;
+        const meeting = await prisma_1.default.meeting.create({
+            data: {
+                title,
+                description,
+                duration,
+                participants: Array.isArray(participants) ? participants : [],
+                userId: req.userId,
+                status: 'completed',
+                processingProgress: 100,
+                completedAt: new Date()
             }
-            doc.moveDown(0.3);
         });
+        res.status(201).json(meeting);
     }
-    // Footer
-    doc.moveDown(1);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#E0E0E0').stroke();
-    doc.moveDown(0.5);
-    doc.fontSize(8).font('Helvetica').fillColor('#AAA').text('Generated by Meetiva.ai', { align: 'center' });
-    doc.end();
-}));
-router.post('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(validation_1.createMeetingSchema), (0, errors_1.asyncHandler)(async (req, res) => {
-    await (0, subscription_1.checkMeetingCredits)(req.userId);
-    const { title, description, duration, participants } = req.body;
-    const meeting = await Meeting_1.default.create({
-        title,
-        description,
-        duration,
-        participants: participants,
-        userId: new mongoose_1.Types.ObjectId(req.userId),
-        status: 'completed',
-        processingProgress: 100,
-        completedAt: new Date(),
-    });
-    // Increment meeting counter
-    await (0, subscription_1.incrementMeetingCount)(req.userId);
-    res.status(201).json({ ...meeting.toObject(), id: meeting._id.toString() });
-}));
-router.patch('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(validation_1.updateMeetingSchema), (0, errors_1.asyncHandler)(async (req, res) => {
-    const { title, description, priority, status } = req.body;
-    const meeting = await Meeting_1.default.findById(req.params.id).lean();
-    if (!meeting) {
-        return res.status(404).json({ message: 'Meeting not found' });
+    catch (error) {
+        console.error('Error creating meeting:', error);
+        res.status(500).json({ message: 'Failed to create meeting' });
     }
-    // Only owner can modify
-    if (meeting.userId.toString() !== req.userId) {
-        return res.status(403).json({ message: 'You do not have permission to modify this meeting' });
+});
+router.patch('/:id', auth_1.authenticate, async (req, res) => {
+    try {
+        const { title, description, priority, status } = req.body;
+        const meeting = await prisma_1.default.meeting.findFirst({
+            where: { id: req.params.id }
+        });
+        if (!meeting) {
+            return res.status(404).json({ message: 'Meeting not found' });
+        }
+        // Only owner can modify
+        if (meeting.userId !== req.userId) {
+            return res.status(403).json({ message: 'You do not have permission to modify this meeting' });
+        }
+        const updated = await prisma_1.default.meeting.update({
+            where: { id: req.params.id },
+            data: {
+                ...(title ? { title } : {}),
+                ...(description !== undefined ? { description } : {}),
+                ...(priority ? { priority } : {}),
+                ...(status ? { status } : {})
+            }
+        });
+        res.json(updated);
     }
-    const updateData = {};
-    if (title !== undefined)
-        updateData.title = title;
-    if (description !== undefined)
-        updateData.description = description;
-    if (priority !== undefined)
-        updateData.priority = priority;
-    if (status !== undefined)
-        updateData.status = status;
-    await Meeting_1.default.findByIdAndUpdate(req.params.id, { $set: updateData });
-    await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(req.params.id);
-    const refreshed = await Meeting_1.default.findById(req.params.id).lean();
-    res.json(refreshed ? { ...refreshed, id: refreshed._id.toString() } : null);
-}));
-router.delete('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
-    const meeting = await Meeting_1.default.findById(req.params.id).lean();
-    if (!meeting) {
-        return res.status(404).json({ message: 'Meeting not found' });
+    catch (error) {
+        console.error('Error updating meeting:', error);
+        res.status(500).json({ message: 'Failed to update meeting' });
     }
-    // Only owner can delete
-    if (meeting.userId.toString() !== req.userId) {
-        return res.status(403).json({ message: 'You do not have permission to delete this meeting' });
+});
+router.delete('/:id', auth_1.authenticate, async (req, res) => {
+    try {
+        const meeting = await prisma_1.default.meeting.findFirst({
+            where: { id: req.params.id }
+        });
+        if (!meeting) {
+            return res.status(404).json({ message: 'Meeting not found' });
+        }
+        // Only owner can delete
+        if (meeting.userId !== req.userId) {
+            return res.status(403).json({ message: 'You do not have permission to delete this meeting' });
+        }
+        await prisma_1.default.meeting.delete({ where: { id: req.params.id } });
+        res.status(204).send();
     }
-    await Meeting_1.default.findByIdAndDelete(req.params.id);
-    res.status(204).send();
-}));
+    catch (error) {
+        console.error('Error deleting meeting:', error);
+        res.status(500).json({ message: 'Failed to delete meeting' });
+    }
+});
 exports.default = router;
 //# sourceMappingURL=meetings.js.map

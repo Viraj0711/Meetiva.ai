@@ -7,14 +7,12 @@ const ToastContainer: React.FC = () => {
 
   return (
     <div
-      className="pointer-events-none fixed right-6 top-6 z-50 flex flex-col gap-3 p-2 md:max-w-[420px]"
+      className="pointer-events-none fixed right-0 top-0 z-50 flex max-h-screen w-full flex-col-reverse gap-2 p-4 sm:flex-col md:max-w-[420px]"
       aria-live="polite"
       aria-label="Notifications"
     >
       {toasts.map((toast) => (
-        <div key={toast.id} className="pointer-events-auto"> 
-          <Toast {...toast} />
-        </div>
+        <Toast key={toast.id} {...toast} />
       ))}
     </div>
   );

@@ -28,12 +28,9 @@
     "alwaysStrict": true,
 
     /* Paths */
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@meetiva/shared-types": ["../shared/dist/index.d.ts"],
-      "@meetiva/shared-types/*": ["../shared/dist/*"],
-      "@shared/schemas": ["../backend/src/lib/schemas.ts"],
-      "@shared/*": ["../backend/src/lib/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"],

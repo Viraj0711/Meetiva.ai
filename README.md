@@ -140,34 +140,13 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 VITE_GROQ_API_KEY=gsk_your-groq-api-key
 ```
 
----
+### Team Setup Recommendation
 
-## Google Calendar Integration
+For a team setup, keep all keys in a shared secret manager (for example 1Password, Bitwarden, Doppler, or Infisical) and never commit `.env` files.
 
-1. Create OAuth credentials in Google Cloud Console
-2. Add redirect URI: `http://localhost:8000/auth/google/callback`
-3. Add scopes: `calendar.events`, `userinfo.profile`
-4. Set backend env vars:
-
-```env
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
-GOOGLE_TOKEN_ENCRYPTION_KEY=your-32-byte-base64-or-hex-key
-FRONTEND_APP_URL=http://localhost:5173
-```
-
----
-
-## API Endpoints
-
-- `POST /api/v1/meetings/upload` — upload audio/video
-- `GET /api/v1/meetings/:id` — meeting details
-- `GET /api/v1/meetings/:id/summary` — AI summary
-- `GET /api/v1/meetings/:id/action-items` — extracted tasks
-- `GET /api/v1/analytics/dashboard` — stats & trends
-
-Full API docs at `/docs`.
+Startup now includes preflight checks:
+* Backend fails fast if required keys are missing (`DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`).
+* Frontend fails fast if required keys are missing (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 
 ---
 
