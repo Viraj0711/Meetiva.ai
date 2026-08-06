@@ -1,8 +1,8 @@
-import type { MeetingPriority, ActionItemStatus } from './enums.js';
+import type { MeetingPriority, TaskStatus } from './enums.js';
 
-// ─── Action Item ────────────────────────────────────────────────────────────
+// ─── Task ────────────────────────────────────────────────────────────
 
-export interface ActionItem {
+export interface Task {
   id: string;
   meetingId: string;
   title: string;
@@ -10,7 +10,7 @@ export interface ActionItem {
   assignee?: string | null;
   dueDate?: string | null;
   priority: MeetingPriority;
-  status: ActionItemStatus;
+  status: TaskStatus;
   tags: string[];
   reminderSentAt?: string | null;
   completedAt?: string | null;
@@ -19,7 +19,7 @@ export interface ActionItem {
   userId?: string;
 }
 
-export interface CreateActionItemRequest {
+export interface CreateTaskRequest {
   meetingId: string;
   title: string;
   description?: string;
@@ -29,12 +29,12 @@ export interface CreateActionItemRequest {
   tags?: string[];
 }
 
-export interface UpdateActionItemRequest {
+export interface UpdateTaskRequest {
   title?: string;
   description?: string;
   assignee?: string;
   dueDate?: string;
   priority?: MeetingPriority;
-  status?: ActionItemStatus;
+  status?: TaskStatus;
   tags?: string[];
 }

@@ -14,7 +14,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "@meetiva/shared-types": "workspace:*",
+    "@meetiva/shared-types": "*",
     "@hookform/resolvers": "^5.4.0",
     "@reduxjs/toolkit": "^2.12.0",
     "@tanstack/react-query": "^5.101.2",

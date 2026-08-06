@@ -51,7 +51,7 @@ export interface UploadProgress {
 export interface Notification {
   id: string;
   userId: string;
-  actionItemId?: string | null;
+  taskId?: string | null;
   type: 'DEADLINE_REMINDER' | 'SYSTEM';
   title: string;
   message: string;

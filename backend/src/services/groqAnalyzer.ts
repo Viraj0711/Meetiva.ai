@@ -1,6 +1,6 @@
-import type { Sentiment, ActionItemStatus, MeetingPriority } from '../lib/shared';
+import type { Sentiment, TaskStatus, MeetingPriority } from '../lib/shared';
 import { AppError } from '../lib/errors';
-import { MEETING_SUMMARY_PROMPT, MEETING_MINUTES_PROMPT, TASK_EXTRACTION_PROMPT } from '../prompts';
+import { MEETING_SUMMARY_PROMPT, MEETING_SUMMARY_PROMPT_BRIEF, MEETING_SUMMARY_PROMPT_DETAILED, MEETING_MINUTES_PROMPT, TASK_EXTRACTION_PROMPT } from '../prompts';
 
 interface ExtractedTask {
   title: string;
@@ -31,7 +31,7 @@ const normalizePriority = (priority?: string): MeetingPriority => {
   return 'medium';
 };
 
-const normalizeStatus = (status?: string): ActionItemStatus => {
+const normalizeStatus = (status?: string): TaskStatus => {
   const value = (status || 'pending').toLowerCase();
   if (value === 'pending' || value === 'in_progress' || value === 'completed' || value === 'cancelled') {
     return value;
@@ -78,16 +78,29 @@ const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
 const GROQ_FETCH_TIMEOUT_MS = parseInt(process.env.GROQ_FETCH_TIMEOUT_MS || '60000', 10);
 
 /** Auto-generate Summary only (called on upload). Single Groq call. */
-export const generateSummaryOnly = async (transcript: string): Promise<string> => {
+export const generateSummaryOnly = async (transcript: string, summaryMode?: string): Promise<string> => {
   const apiKey = process.env.GROQ_API_KEY || process.env.WHISPER_API_KEY;
   if (!apiKey) return '';
 
   const model = process.env.LLM_MODEL || DEFAULT_MODEL;
-  const summaryPrompt = `${MEETING_SUMMARY_PROMPT}
+
+  // ponytail: map frontend pref to prompt; default = standard
+  const promptMap: Record<string, string> = {
+    brief: MEETING_SUMMARY_PROMPT_BRIEF,
+    standard: MEETING_SUMMARY_PROMPT,
+    detailed: MEETING_SUMMARY_PROMPT_DETAILED,
+  };
+  const resolvedMode = summaryMode || 'standard';
+  console.log('[generateSummaryOnly] summaryMode:', summaryMode, '→ resolved:', resolvedMode);
+  const summaryPrompt = `${promptMap[resolvedMode] || MEETING_SUMMARY_PROMPT}
 
 Transcript:
 
 ${transcript}`;
+
+  const systemMsg = summaryMode === 'brief'
+    ? 'You are an expert meeting analyst. Output a SHORT Markdown summary in plain prose only. NO bullet points. NO subheadings. NO lists. Write flowing paragraphs.'
+    : 'You are an expert meeting analyst. Output a Markdown summary. Follow the user instructions for length and format exactly.';
 
   try {
     const response = await fetch(`${GROQ_API_BASE}/chat/completions`, {
@@ -99,10 +112,10 @@ ${transcript}`;
       body: JSON.stringify({
         model,
         messages: [
-          { role: 'system', content: 'You are an expert meeting analyst. Output a comprehensive Markdown summary.' },
+          { role: 'system', content: systemMsg },
           { role: 'user', content: summaryPrompt },
         ],
-        temperature: 0.3,
+        temperature: summaryMode === 'brief' ? 0.1 : 0.3,
       }),
     });
     if (!response.ok) return '';

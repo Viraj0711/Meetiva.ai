@@ -2,7 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, Users, FileText, ScrollText, Target, BarChart2,
-  Upload, Layout, Settings, LogOut, ChevronDown,
+  Upload, Layout, Settings, LogOut,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
@@ -21,7 +21,7 @@ const NAV = [
   { id: 'teams',      label: 'Teams',          icon: Users,       path: '/dashboard/teams' },
   { id: 'meetings',   label: 'My Meetings',    icon: FileText,    path: '/dashboard/meetings' },
   { id: 'minutes',    label: 'Minutes',        icon: ScrollText,  path: '/dashboard/minutes' },
-  { id: 'actions',    label: 'Tasks',          icon: Target,      path: '/dashboard/action-items' },
+  { id: 'actions',    label: 'Tasks',          icon: Target,      path: '/dashboard/tasks' },
   { id: 'analytics', label: 'Analytics',       icon: BarChart2,   path: '/dashboard/analytics' },
   { id: 'upload',     label: 'Upload',         icon: Upload,      path: '/dashboard/upload' },
   { id: 'workspaces', label: 'Workspaces',     icon: Layout,      path: '/dashboard/workspace' },
@@ -60,21 +60,6 @@ const Sidebar: React.FC = () => {
           <span className="font-bold text-[#1D1B22] text-xl tracking-tight">Meetiva</span>
           <span className="text-[10px] text-[#64607A] font-medium">AI</span>
         </div>
-
-        {/* Workspace switcher */}
-        <button
-          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/70 transition-colors border border-[#E4E0F5]"
-          style={{ boxShadow: '0 1px 3px rgba(91,63,214,0.06), inset 0 1px 0 rgba(255,255,255,0.8)' }}
-        >
-          <div className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0" style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
-            A
-          </div>
-          <div className="flex-1 text-left min-w-0">
-            <div className="text-xs font-semibold text-[#1D1B22] truncate">Acme Corp</div>
-            <div className="text-[10px] text-[#64607A] truncate">Secure, synced, and live</div>
-          </div>
-          <ChevronDown size={11} className="text-[#64607A] flex-shrink-0" />
-        </button>
       </div>
 
       {/* Nav */}

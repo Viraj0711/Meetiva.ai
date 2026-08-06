@@ -27,7 +27,7 @@ router.get(
 
     const [notifications, total] = await Promise.all([
       Notification.find({ userId: new Types.ObjectId(req.userId!) })
-        .populate('actionItemId', 'title dueDate status')
+        .populate('taskId', 'title dueDate status')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -39,8 +39,8 @@ router.get(
       ...n,
       id: n._id.toString(),
       userId: n.userId.toString(),
-      actionItemId: n.actionItemId?._id?.toString() || n.actionItemId?.toString() || null,
-      actionItem: n.actionItemId || undefined,
+      taskId: n.taskId?._id?.toString() || n.taskId?.toString() || null,
+      task: n.taskId || undefined,
     }));
 
     return res.json({

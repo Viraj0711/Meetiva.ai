@@ -14,7 +14,7 @@ export type {
   SubscriptionTier,
   Sentiment,
   NotificationType,
-  ActionItemStatus,
+  ActionItemStatus as TaskStatus,
   MeetingStatus,
   MeetingPriority,
   IntegrationType,
@@ -35,10 +35,10 @@ export type {
   CreateMeetingRequest,
   UpdateMeetingRequest,
 
-  // ── Action Item types ───────────────────────────────────────────────
-  ActionItem,
-  CreateActionItemRequest,
-  UpdateActionItemRequest,
+  // ── Task types ─────────────────────────────────────────────────────
+  ActionItem as Task,
+  CreateActionItemRequest as CreateTaskRequest,
+  UpdateActionItemRequest as UpdateTaskRequest,
 
   // ── Team types ──────────────────────────────────────────────────────
   Team,

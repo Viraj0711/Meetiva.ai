@@ -1,14 +1,14 @@
 import Meeting from '../models/Meeting';
-import ActionItem from '../models/ActionItem';
+import Task from '../models/ActionItem';
 import { Types } from 'mongoose';
 
-export const syncMeetingStatusFromActionItems = async (meetingId: string): Promise<void> => {
-  const [meeting, totalActionItems, incompleteActionItems] = await Promise.all([
+export const syncMeetingStatusFromTasks = async (meetingId: string): Promise<void> => {
+  const [meeting, totalTasks, incompleteTasks] = await Promise.all([
     Meeting.findById(meetingId)
       .select('completedAt')
       .lean(),
-    ActionItem.countDocuments({ meetingId: new Types.ObjectId(meetingId) }),
-    ActionItem.countDocuments({
+    Task.countDocuments({ meetingId: new Types.ObjectId(meetingId) }),
+    Task.countDocuments({
       meetingId: new Types.ObjectId(meetingId),
       status: { $ne: 'completed' },
     }),
@@ -18,7 +18,7 @@ export const syncMeetingStatusFromActionItems = async (meetingId: string): Promi
     return;
   }
 
-  const shouldBeCompleted = totalActionItems > 0 && incompleteActionItems === 0;
+  const shouldBeCompleted = totalTasks > 0 && incompleteTasks === 0;
 
   await Meeting.findByIdAndUpdate(meetingId, {
     $set: {

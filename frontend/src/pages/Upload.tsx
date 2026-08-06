@@ -55,6 +55,20 @@ const Upload: React.FC = () => {
   const audioExtensions = ['mp3', 'wav', 'm4a', 'aac', 'mpeg'];
   const videoExtensions = ['mp4', 'mov', 'avi'];
 
+  // ponytail: read summary pref from localStorage, map to backend mode
+  const getSummaryMode = (): string => {
+    try {
+      const saved = localStorage.getItem('meetiva_general_prefs');
+      if (saved) {
+        const prefs = JSON.parse(saved);
+        const val: string = prefs.summaryLength || '';
+        if (val.startsWith('Brief')) return 'brief';
+        if (val.startsWith('Detailed')) return 'detailed';
+      }
+    } catch { /* ignore */ }
+    return 'standard';
+  };
+
   const getFileCategory = (file: File): 'audio' | 'video' | 'text' => {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     if (audioExtensions.includes(ext)) return 'audio';
@@ -129,7 +143,8 @@ const Upload: React.FC = () => {
       const result = await retryWithBackoff(() =>
         meetingService.uploadMeetingFile(uploadState.file!, meetingTitle || uploadState.file!.name,
           `Meeting uploaded on ${new Date().toLocaleDateString()}`, undefined,
-          (progress) => setUploadState((prev) => ({ ...prev, progress }))),
+          (progress) => setUploadState((prev) => ({ ...prev, progress })),
+          getSummaryMode()),
         { maxAttempts: 3 }
       );
       setUploadState((prev) => ({ ...prev, uploading: false, progress: 100, meetingId: result.data.id }));

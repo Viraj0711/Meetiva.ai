@@ -1,14 +1,14 @@
-import type { ActionItemStatus } from '../lib/shared';
+import type { TaskStatus } from '../lib/shared';
 import { Router, Response } from 'express';
 import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { canViewUserData } from '../middleware/authorize';
-import { syncMeetingStatusFromActionItems } from '../services/meetingStatus';
+import { syncMeetingStatusFromTasks } from '../services/meetingStatus';
 import { apiLimiter } from '../lib/rateLimiters';
 import {
   validate,
-  createActionItemSchema,
-  updateActionItemSchema,
+  createTaskSchema,
+  updateTaskSchema,
   paginationQuerySchema,
   statusFilterSchema,
 } from '../lib/validation';
@@ -29,9 +29,9 @@ router.param('id', (req, res, next, value) => {
 });
 
 // Helper to get the appropriate filter based on user's role
-const getActionItemsFilter = async (req: AuthRequest): Promise<Record<string, any>> => {
+const getTasksFilter = async (req: AuthRequest): Promise<Record<string, any>> => {
   try {
-    // For members or users with no team membership, only show their own action items
+    // For members or users with no team membership, only show their own tasks
     if (!req.userTeams || req.userTeams.length === 0) {
       return { userId: new Types.ObjectId(req.userId!) };
     }
@@ -69,27 +69,27 @@ const getActionItemsFilter = async (req: AuthRequest): Promise<Record<string, an
   }
 };
 
-const actionItemQuerySchema = paginationQuerySchema.merge(statusFilterSchema);
+const taskQuerySchema = paginationQuerySchema.merge(statusFilterSchema);
 
 router.get('/',
   apiLimiter,
   authenticate,
-  validate(actionItemQuerySchema, 'query'),
+  validate(taskQuerySchema, 'query'),
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const { page, limit, status } = req.query as unknown as {
       page: number;
       limit: number;
-      status?: ActionItemStatus;
+      status?: TaskStatus;
     };
     const skip = (page - 1) * limit;
 
-    let filter: Record<string, any> = await getActionItemsFilter(req);
+    let filter: Record<string, any> = await getTasksFilter(req);
 
     if (status) {
       filter.status = status;
     }
 
-    const [actionItems, total] = await Promise.all([
+    const [tasks, total] = await Promise.all([
       ActionItem.find(filter)
         .skip(skip)
         .limit(limit)
@@ -100,7 +100,7 @@ router.get('/',
     ]);
 
     res.json({
-      data: actionItems.map((item: any) => ({
+      data: tasks.map((item: any) => ({
         ...item,
         id: item._id.toString(),
         meeting: item.meetingId ? { id: item.meetingId._id.toString(), title: item.meetingId.title } : undefined,
@@ -116,24 +116,24 @@ router.get('/',
   }));
 
 router.get('/:id', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const actionItem = await ActionItem.findById(req.params.id)
+  const task = await ActionItem.findById(req.params.id)
     .populate('meetingId')
     .lean() as any;
 
-  if (!actionItem) {
-    return res.status(404).json({ message: 'Action item not found' });
+  if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
   }
 
-  // Check if user can view this action item
-  if (!(await canViewUserData(req.userId!, actionItem.userId.toString(), req.userTeams || []))) {
-    return res.status(403).json({ message: 'You do not have permission to view this action item' });
+  // Check if user can view this task
+  if (!(await canViewUserData(req.userId!, task.userId.toString(), req.userTeams || []))) {
+    return res.status(403).json({ message: 'You do not have permission to view this task' });
   }
 
-  res.json(actionItem);
+  res.json(task);
 }));
 
-router.post('/', apiLimiter, authenticate, validate(createActionItemSchema), asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { meetingId, title, description, assignee, dueDate, priority } = req.body as z.infer<typeof createActionItemSchema>;
+router.post('/', apiLimiter, authenticate, validate(createTaskSchema), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { meetingId, title, description, assignee, dueDate, priority } = req.body as z.infer<typeof createTaskSchema>;
 
   const meeting = await Meeting.findOne({
     _id: new Types.ObjectId(meetingId),
@@ -144,7 +144,7 @@ router.post('/', apiLimiter, authenticate, validate(createActionItemSchema), asy
     return res.status(404).json({ message: 'Meeting not found' });
   }
 
-  const actionItem = await ActionItem.create({
+  const task = await ActionItem.create({
     meetingId: meeting._id,
     title,
     description,
@@ -155,26 +155,26 @@ router.post('/', apiLimiter, authenticate, validate(createActionItemSchema), asy
     userId: new Types.ObjectId(req.userId!),
   });
 
-  await syncMeetingStatusFromActionItems(meetingId);
+  await syncMeetingStatusFromTasks(meetingId);
 
-  res.status(201).json(actionItem.toObject());
+  res.status(201).json(task.toObject());
 }));
 
-router.patch('/:id', apiLimiter, authenticate, validate(updateActionItemSchema), asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { title, description, assignee, dueDate, priority, status } = req.body as z.infer<typeof updateActionItemSchema>;
+router.patch('/:id', apiLimiter, authenticate, validate(updateTaskSchema), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { title, description, assignee, dueDate, priority, status } = req.body as z.infer<typeof updateTaskSchema>;
 
-  const actionItem = await ActionItem.findOne({
+  const task = await ActionItem.findOne({
     _id: new Types.ObjectId(req.params.id),
     userId: new Types.ObjectId(req.userId!),
   }).lean();
 
-  if (!actionItem) {
-    return res.status(404).json({ message: 'Action item not found' });
+  if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
   }
 
-  // Check if user can modify this action item (must be owner)
-  if (actionItem.userId.toString() !== req.userId!) {
-    return res.status(403).json({ message: 'You do not have permission to modify this action item' });
+  // Check if user can modify this task (must be owner)
+  if (task.userId.toString() !== req.userId!) {
+    return res.status(403).json({ message: 'You do not have permission to modify this task' });
   }
 
   const updateData: Record<string, any> = {};
@@ -190,7 +190,7 @@ router.patch('/:id', apiLimiter, authenticate, validate(updateActionItemSchema),
     updateData.reminderSentAt = null;
   }
 
-  if (status === 'completed' && !actionItem.completedAt) {
+  if (status === 'completed' && !task.completedAt) {
     updateData.completedAt = new Date();
   }
 
@@ -199,55 +199,55 @@ router.patch('/:id', apiLimiter, authenticate, validate(updateActionItemSchema),
   }
 
   const updated = await ActionItem.findByIdAndUpdate(
-    actionItem._id,
+    task._id,
     { $set: updateData },
     { returnDocument: 'after' }
   ).lean();
 
-  await syncMeetingStatusFromActionItems(actionItem.meetingId.toString());
+  await syncMeetingStatusFromTasks(task.meetingId.toString());
 
   res.json(updated ? { ...updated, id: updated._id.toString() } : null);
 }));
 
 router.delete('/:id', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const actionItem = await ActionItem.findOne({
+  const task = await ActionItem.findOne({
     _id: new Types.ObjectId(req.params.id),
     userId: new Types.ObjectId(req.userId!),
   }).lean();
 
-  if (!actionItem) {
-    return res.status(404).json({ message: 'Action item not found' });
+  if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
   }
 
-  // Check if user can delete this action item (must be owner)
-  if (actionItem.userId.toString() !== req.userId!) {
-    return res.status(403).json({ message: 'You do not have permission to delete this action item' });
+  // Check if user can delete this task (must be owner)
+  if (task.userId.toString() !== req.userId!) {
+    return res.status(403).json({ message: 'You do not have permission to delete this task' });
   }
 
-  await ActionItem.findByIdAndDelete(actionItem._id);
+  await ActionItem.findByIdAndDelete(task._id);
 
-  await syncMeetingStatusFromActionItems(actionItem.meetingId.toString());
+  await syncMeetingStatusFromTasks(task.meetingId.toString());
 
   res.status(204).send();
 }));
 
 router.post('/:id/complete', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const actionItem = await ActionItem.findOne({
+  const task = await ActionItem.findOne({
     _id: new Types.ObjectId(req.params.id),
     userId: new Types.ObjectId(req.userId!),
   }).lean();
 
-  if (!actionItem) {
-    return res.status(404).json({ message: 'Action item not found' });
+  if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
   }
 
   const updated = await ActionItem.findByIdAndUpdate(
-    actionItem._id,
+    task._id,
     { $set: { status: 'completed', completedAt: new Date() } },
     { returnDocument: 'after' }
   ).lean();
 
-  await syncMeetingStatusFromActionItems(actionItem.meetingId.toString());
+  await syncMeetingStatusFromTasks(task.meetingId.toString());
 
   res.json(updated ? { ...updated, id: updated._id.toString() } : null);
 }));

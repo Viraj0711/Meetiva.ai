@@ -2,11 +2,11 @@
  * End-to-end test for Mongoose models and service-layer functions.
  *
  * Verifies the Prisma → Mongoose migration by testing:
- *   - Model creation & querying (User, Meeting, Team, ActionItem, etc.)
+ *   - Model creation & querying (User, Meeting, Team, Task, etc.)
  *   - ObjectId references and populate()
  *   - Cascade deletes (Meeting → Transcript, Team → TeamMember)
  *   - Subscription service (checkMeetingCredits, incrementMeetingCount)
- *   - Meeting status sync (syncMeetingStatusFromActionItems)
+ *   - Meeting status sync (syncMeetingStatusFromTasks)
  *   - Unique constraints and validation
  *
  * Run with: npx tsx src/tests/mongoose-models.test.ts
@@ -23,7 +23,7 @@ import User from '../models/User';
 import Meeting from '../models/Meeting';
 import MeetingSummary from '../models/MeetingSummary';
 import Transcript from '../models/Transcript';
-import ActionItem from '../models/ActionItem';
+import Task from '../models/ActionItem';
 import Team from '../models/Team';
 import TeamMember from '../models/TeamMember';
 import TeamInvitation from '../models/TeamInvitation';
@@ -39,7 +39,7 @@ import {
   hasActiveSubscription,
   ensureMeetingCountReset,
 } from '../lib/subscription';
-import { syncMeetingStatusFromActionItems } from '../services/meetingStatus';
+import { syncMeetingStatusFromTasks } from '../services/meetingStatus';
 
 // ── Test helpers ────────────────────────────────────────────────────────────
 let passed = 0;
@@ -131,7 +131,7 @@ async function run(): Promise<void> {
     assert(deleted === null, 'User deleted successfully');
   }
 
-  // ─── 2. Meeting + Transcript + ActionItem cascade delete ───────────────────
+   // ─── 2. Meeting + Transcript + Task cascade delete ───────────────────
 
   {
     process.stdout.write('\nTest 2: Meeting cascade delete\n');
@@ -170,7 +170,7 @@ async function run(): Promise<void> {
       sentiment: 'positive',
     });
 
-    await ActionItem.create({
+    await Task.create({
       meetingId: meeting._id,
       userId: user._id,
       title: 'Action 1',
@@ -190,7 +190,7 @@ async function run(): Promise<void> {
       Meeting.findById(meeting._id).lean(),
       Transcript.findOne({ meetingId: meeting._id }).lean(),
       MeetingSummary.findOne({ meetingId: meeting._id }).lean(),
-      ActionItem.countDocuments({ meetingId: meeting._id }),
+      Task.countDocuments({ meetingId: meeting._id }),
     ]);
 
     assert(afterMeeting === null, 'Meeting cascade: meeting deleted');
@@ -332,13 +332,13 @@ async function run(): Promise<void> {
     });
 
     // Create action items - only completed ones
-    await ActionItem.create({
+    await Task.create({
       meetingId: meeting._id,
       userId: user._id,
       title: 'Done task',
       status: 'completed',
     });
-    await ActionItem.create({
+    await Task.create({
       meetingId: meeting._id,
       userId: user._id,
       title: 'Another done task',
@@ -346,30 +346,30 @@ async function run(): Promise<void> {
     });
 
     // Sync: all action items completed → meeting should be 'completed'
-    await syncMeetingStatusFromActionItems(meeting._id.toString());
+    await syncMeetingStatusFromTasks(meeting._id.toString());
     const synced = await Meeting.findById(meeting._id).lean();
     assert(synced!.status === 'completed', 'Meeting marked completed when all actions done');
     assert(synced!.completedAt !== null, 'completedAt set when meeting completed');
 
     // Add an incomplete action item → meeting should revert to 'pending'
-    await ActionItem.create({
+    await Task.create({
       meetingId: meeting._id,
       userId: user._id,
       title: 'Incomplete task',
       status: 'in_progress',
     });
 
-    await syncMeetingStatusFromActionItems(meeting._id.toString());
+    await syncMeetingStatusFromTasks(meeting._id.toString());
     const reverted = await Meeting.findById(meeting._id).lean();
     assert(reverted!.status === 'pending', 'Meeting reverted to pending when incomplete action exists');
     assert(reverted!.completedAt === null, 'completedAt cleared when meeting reverted');
 
     // Non-existent meeting should not throw
     const fakeId = new mongoose.Types.ObjectId();
-    await syncMeetingStatusFromActionItems(fakeId.toString());
-    assert(true, 'syncMeetingStatusFromActionItems handles non-existent meeting gracefully');
+    await syncMeetingStatusFromTasks(fakeId.toString());
+    assert(true, 'syncMeetingStatusFromTasks handles non-existent meeting gracefully');
 
-    await ActionItem.deleteMany({ meetingId: meeting._id });
+    await Task.deleteMany({ meetingId: meeting._id });
     await Meeting.findByIdAndDelete(meeting._id);
     await User.findByIdAndDelete(user._id);
   }

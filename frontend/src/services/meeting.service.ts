@@ -4,11 +4,11 @@ import {
   Meeting,
   MeetingSummary,
   Transcript,
-  ActionItem,
+  Task,
   CreateMeetingRequest,
   UpdateMeetingRequest,
-  CreateActionItemRequest,
-  UpdateActionItemRequest,
+  CreateTaskRequest,
+  UpdateTaskRequest,
   MeetingStats,
   PaginatedResponse,
   PaginationParams,
@@ -64,7 +64,8 @@ export const meetingService = {
     title?: string,
     description?: string,
     participants?: string[],
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    summaryMode?: string
   ): Promise<{ data: Meeting }> => {
     if (onProgress) onProgress(0);
     const formData = new FormData();
@@ -72,6 +73,7 @@ export const meetingService = {
     if (title) formData.append('title', title);
     if (description) formData.append('description', description);
     if (participants) formData.append('participants', JSON.stringify(participants));
+    if (summaryMode) formData.append('summaryMode', summaryMode);
 
     const token = getAccessToken();
 
@@ -131,11 +133,11 @@ export const meetingService = {
   },
 
   /**
-   * Get meeting action items
-   * Backend returns { data: ActionItem[], pagination: ... } — extract the array.
+   * Get meeting tasks
+   * Backend returns { data: Task[], pagination: ... } — extract the array.
    */
-  getMeetingActionItems: async (meetingId: string): Promise<ActionItem[]> => {
-    const response = await apiClient.get<{ data: ActionItem[] }>(`/meetings/${meetingId}/action-items`);
+  getMeetingTasks: async (meetingId: string): Promise<Task[]> => {
+    const response = await apiClient.get<{ data: Task[] }>(`/meetings/${meetingId}/action-items`);
     return response.data;
   },
 
@@ -148,55 +150,55 @@ export const meetingService = {
   },
 };
 
-export const actionItemService = {
+export const taskService = {
   /**
-   * Get all action items
+   * Get all tasks
    */
-  getActionItems: async (
+  getTasks: async (
     params?: PaginationParams & FilterParams
-  ): Promise<PaginatedResponse<ActionItem>> => {
-    const response = await apiClient.get<PaginatedResponse<ActionItem>>('/action-items', {
+  ): Promise<PaginatedResponse<Task>> => {
+    const response = await apiClient.get<PaginatedResponse<Task>>('/action-items', {
       params,
     });
     return response;
   },
 
   /**
-   * Get action item by ID
+   * Get task by ID
    */
-  getActionItemById: async (id: string): Promise<ActionItem> => {
-    const response = await apiClient.get<ActionItem>(`/action-items/${id}`);
+  getTaskById: async (id: string): Promise<Task> => {
+    const response = await apiClient.get<Task>(`/action-items/${id}`);
     return response;
   },
 
   /**
-   * Create action item
+   * Create task
    */
-  createActionItem: async (data: CreateActionItemRequest): Promise<ActionItem> => {
-    const response = await apiClient.post<ActionItem>('/action-items', data);
+  createTask: async (data: CreateTaskRequest): Promise<Task> => {
+    const response = await apiClient.post<Task>('/action-items', data);
     return response;
   },
 
   /**
-   * Update action item
+   * Update task
    */
-  updateActionItem: async (id: string, data: UpdateActionItemRequest): Promise<ActionItem> => {
-    const response = await apiClient.patch<ActionItem>(`/action-items/${id}`, data);
+  updateTask: async (id: string, data: UpdateTaskRequest): Promise<Task> => {
+    const response = await apiClient.patch<Task>(`/action-items/${id}`, data);
     return response;
   },
 
   /**
-   * Delete action item
+   * Delete task
    */
-  deleteActionItem: async (id: string): Promise<void> => {
+  deleteTask: async (id: string): Promise<void> => {
     await apiClient.delete(`/action-items/${id}`);
   },
 
   /**
-   * Mark action item as completed
+   * Mark task as completed
    */
-  completeActionItem: async (id: string): Promise<ActionItem> => {
-    const response = await apiClient.post<ActionItem>(`/action-items/${id}/complete`);
+  completeTask: async (id: string): Promise<Task> => {
+    const response = await apiClient.post<Task>(`/action-items/${id}/complete`);
     return response;
   },
 };

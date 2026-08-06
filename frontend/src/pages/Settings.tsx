@@ -8,6 +8,7 @@ import { authService, integrationService } from '@/services';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store';
 import { loginSuccess } from '@/store/slices/authSlice';
+import { useChangePassword, useLogout } from '@/hooks/useAuth';
 
 interface Integration {
   id: string;
@@ -26,7 +27,7 @@ const loadNotificationPrefs = () => {
   } catch { /* ignore */ }
   return {
     emailSummaries: true,
-    actionItemReminders: true,
+    taskReminders: true,
     overdueAlerts: true,
     weeklyReports: false,
     meetingProcessed: true,
@@ -45,13 +46,14 @@ const loadGeneralPrefs = () => {
     dateFormat: 'MM/DD/YYYY',
     defaultPriority: 'Medium',
     summaryLength: 'Standard (3-4 paragraphs)',
-    actionItemSensitivity: 'Balanced',
   };
 };
 
 const Settings: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const user = useAppSelector((state) => state.auth.user);
+  const changePasswordMutation = useChangePassword();
+  const logoutMutation = useLogout();
 
   const [activeTab, setActiveTab] = useState<'profile' | 'integrations' | 'notifications' | 'preferences'>('profile');
 
@@ -94,6 +96,44 @@ const Settings: React.FC = () => {
     };
     checkStatus();
   }, []);
+
+  // ── Change Password state ──────────────────────────────────────────────
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('All fields are required.');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match.');
+      return;
+    }
+
+    try {
+      await changePasswordMutation.mutateAsync({ currentPassword, newPassword });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      // Log out after successful password change
+      setTimeout(() => {
+        logoutMutation.mutate();
+      }, 1500);
+    } catch {
+      setPasswordError('Failed to change password. Please check your current password.');
+    }
+  };
 
   // ── Notifications state ────────────────────────────────────────────────
   const [notifications, setNotifications] = useState(loadNotificationPrefs);
@@ -201,7 +241,7 @@ const Settings: React.FC = () => {
       {/* Tabs */}
       <div className="border-b">
         <div className="flex gap-6">
-          {(['profile', 'integrations', 'notifications', 'preferences'] as const).map((tab) => (
+          {(['profile', 'integrations', 'preferences'] as const).map((tab) => (
             <button
               key={tab}
               className={`pb-3 px-1 font-medium border-b-2 transition-colors capitalize ${
@@ -299,19 +339,28 @@ const Settings: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Current Password</label>
-                <Input type="password" />
+                <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">New Password</label>
-                <Input type="password" />
+                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Confirm New Password</label>
-                <Input type="password" />
+                <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
               </div>
             </div>
+            {passwordError && (
+              <p className="text-sm text-destructive mt-3">{passwordError}</p>
+            )}
             <div className="flex justify-end mt-6">
-              <Button className="rounded-full" disabled title="Password change API endpoint coming soon">Update Password</Button>
+              <Button
+                className="rounded-full"
+                onClick={handleChangePassword}
+                disabled={changePasswordMutation.isPending}
+              >
+                {changePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+              </Button>
             </div>
           </Card>
         </div>
@@ -320,14 +369,14 @@ const Settings: React.FC = () => {
       {/* Integrations Tab */}
       {activeTab === 'integrations' && (
         <div className="space-y-6">
-          <Card className="p-6 border border-white/10 bg-white/[0.03]">
+          <Card className="p-6 border border-border bg-muted/30">
             <div className="flex items-start">
-              <svg className="w-6 h-6 text-cyan-300 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-cyan-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
-                <h3 className="font-semibold mb-1 text-white">Connect your tools</h3>
-                <p className="text-sm text-white/60">
+                <h3 className="font-semibold mb-1 text-foreground">Connect your tools</h3>
+                <p className="text-sm text-muted-foreground">
                   Integrate Meetiva with Google Calendar to streamline your scheduling workflow.
                 </p>
               </div>
@@ -339,24 +388,24 @@ const Settings: React.FC = () => {
 
             {/* Checking state */}
             {checkingCalendar && (
-              <Card className="p-8 text-center border border-white/10 bg-white/[0.03]">
+              <Card className="p-8 text-center border border-border bg-muted/30">
                 <div className="flex flex-col items-center gap-3">
-                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
-                  <p className="text-sm text-white/60">Checking integration status...</p>
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+                  <p className="text-sm text-muted-foreground">Checking integration status...</p>
                 </div>
               </Card>
             )}
 
             {/* Empty state — no integrations available */}
             {!checkingCalendar && integrations.length === 0 && (
-              <Card className="p-10 text-center border border-white/10 bg-white/[0.02]">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]">
-                  <svg className="h-6 w-6 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <Card className="p-10 text-center border border-border bg-muted/30">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-border bg-muted/50">
+                  <svg className="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                   </svg>
                 </div>
-                <h3 className="text-base font-semibold text-white mb-1">No integrations connected</h3>
-                <p className="text-sm text-white/50 max-w-sm mx-auto mb-6">
+                <h3 className="text-base font-semibold text-foreground mb-1">No integrations connected</h3>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
                   Connect Google Calendar to sync your meetings, set reminders, and manage your schedule directly from Meetiva.
                 </p>
                 <Button className="rounded-full" onClick={() => handleToggleIntegration('google-calendar')}>
@@ -415,7 +464,7 @@ const Settings: React.FC = () => {
             <div className="space-y-4">
               {([
                 { key: 'emailSummaries' as const, label: 'Meeting Summaries', desc: 'Receive email summaries after meetings are processed' },
-                { key: 'actionItemReminders' as const, label: 'Task Reminders', desc: 'Get reminded about upcoming task deadlines' },
+                { key: 'taskReminders' as const, label: 'Task Reminders', desc: 'Get reminded about upcoming task deadlines' },
                 { key: 'overdueAlerts' as const, label: 'Overdue Alerts', desc: 'Notifications when tasks become overdue' },
                 { key: 'weeklyReports' as const, label: 'Weekly Reports', desc: 'Receive a weekly summary of your meetings and tasks' },
                 { key: 'meetingProcessed' as const, label: 'Processing Complete', desc: 'Notify when meeting processing is finished' },
@@ -465,7 +514,8 @@ const Settings: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-2">Default Meeting Language</label>
                 <select
-                  className="w-full px-3 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22]"
+                  className="w-full pl-3 pr-8 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22] appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
                   value={generalPrefs.language}
                   onChange={(e) => handlePrefsChange('language', e.target.value)}
                 >
@@ -478,7 +528,8 @@ const Settings: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-2">Time Zone</label>
                 <select
-                  className="w-full px-3 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22]"
+                  className="w-full pl-3 pr-8 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22] appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
                   value={generalPrefs.timezone}
                   onChange={(e) => handlePrefsChange('timezone', e.target.value)}
                 >
@@ -491,7 +542,8 @@ const Settings: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-2">Date Format</label>
                 <select
-                  className="w-full px-3 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22]"
+                  className="w-full pl-3 pr-8 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22] appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
                   value={generalPrefs.dateFormat}
                   onChange={(e) => handlePrefsChange('dateFormat', e.target.value)}
                 >
@@ -514,7 +566,8 @@ const Settings: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium mb-2">Summary Length</label>
                 <select
-                  className="w-full px-3 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22]"
+                  className="w-full pl-3 pr-8 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22] appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
                   value={generalPrefs.summaryLength}
                   onChange={(e) => handlePrefsChange('summaryLength', e.target.value)}
                 >
@@ -522,22 +575,6 @@ const Settings: React.FC = () => {
                     <option key={opt}>{opt}</option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Task Sensitivity</label>
-                <select
-                  className="w-full px-3 py-2 border border-[#E4E0F5] rounded-md bg-white text-[#1D1B22]"
-                  value={generalPrefs.actionItemSensitivity}
-                  onChange={(e) => handlePrefsChange('actionItemSensitivity', e.target.value)}
-                >
-                  {['Conservative (fewer items)', 'Balanced', 'Aggressive (more items)'].map((opt) => (
-                    <option key={opt}>{opt}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Controls how many tasks are extracted from meetings
-                </p>
               </div>
             </div>
             <div className="flex justify-end mt-6">

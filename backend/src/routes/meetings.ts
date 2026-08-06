@@ -1,4 +1,4 @@
-import type { ActionItemStatus, MeetingPriority } from '../lib/shared';
+import type { TaskStatus, MeetingPriority } from '../lib/shared';
 import { Router, Response, NextFunction, Request } from 'express';
 import multer from 'multer';
 import ExcelJS from 'exceljs';
@@ -8,10 +8,11 @@ import { canViewUserData } from '../middleware/authorize';
 import { analyzeTranscriptWithLLM, generateSummaryOnly } from '../services/llmRouter';
 import {
   transcribeWithWhisper,
+  formatTranscript,
   isAudioOrVideoFile,
   WHISPER_MAX_BYTES,
 } from '../services/whisperTranscriber';
-import { syncMeetingStatusFromActionItems } from '../services/meetingStatus';
+import { syncMeetingStatusFromTasks } from '../services/meetingStatus';
 import { apiLimiter, uploadLimiter } from '../lib/rateLimiters';
 import {
   validate,
@@ -25,7 +26,7 @@ import { checkMeetingCredits, incrementMeetingCount } from '../lib/subscription'
 import Meeting, { IMeeting } from '../models/Meeting';
 import MeetingSummary from '../models/MeetingSummary';
 import Transcript from '../models/Transcript';
-import ActionItem from '../models/ActionItem';
+import Task from '../models/ActionItem';
 import TeamMember from '../models/TeamMember';
 import mongoose, { Types } from 'mongoose';
 import PDFDocument from 'pdfkit';
@@ -103,7 +104,7 @@ router.get('/stats', apiLimiter, authenticate, asyncHandler(async (req: AuthRequ
     completedMeetings,
     processingMeetings,
     durationAgg,
-    totalActionItems,
+    totalTasks,
     recentMeetings,
   ] = await Promise.all([
     Meeting.countDocuments(filter),
@@ -113,7 +114,7 @@ router.get('/stats', apiLimiter, authenticate, asyncHandler(async (req: AuthRequ
       { $match: filter },
       { $group: { _id: null, total: { $sum: '$duration' } } },
     ]),
-    ActionItem.countDocuments({
+    Task.countDocuments({
       ...filter,
     }),
     // Only fetch last 6 months for trends + top participants, with a limit.
@@ -126,7 +127,7 @@ router.get('/stats', apiLimiter, authenticate, asyncHandler(async (req: AuthRequ
 
   const totalDuration = durationAgg[0]?.total ?? 0;
   const avgDuration = totalMeetings > 0 ? Math.round(totalDuration / totalMeetings) : 0;
-  const avgActionItems = totalMeetings > 0 ? Number((totalActionItems / totalMeetings).toFixed(1)) : 0;
+  const avgTasks = totalMeetings > 0 ? Number((totalTasks / totalMeetings).toFixed(1)) : 0;
 
   // Monthly trends from recent meetings
   const monthMap = new Map<string, number>();
@@ -155,7 +156,7 @@ router.get('/stats', apiLimiter, authenticate, asyncHandler(async (req: AuthRequ
     processingMeetings,
     totalDuration,
     avgDuration,
-    avgActionItems,
+    avgTasks,
     trends,
     topParticipants,
   });
@@ -267,11 +268,13 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
           `Whisper API accepts a maximum of 25 MB. Please trim or compress your recording.`,
       });
     }
-    transcriptText = await transcribeWithWhisper(
+    const rawTranscript = await transcribeWithWhisper(
       req.file.buffer,
       req.file.originalname,
       req.file.mimetype
     );
+    // Post-process: reformat raw Whisper output into structured transcript with speaker labels
+    transcriptText = await formatTranscript(rawTranscript);
     transcribedByWhisper = true;
   }
 
@@ -349,7 +352,9 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
     });
 
     // ── Step 3b: auto-generate Summary (not Minutes/Tasks — those are manual) ──
-    const fullSummary = await generateSummaryOnly(transcriptText).catch(() => '');
+    const summaryMode = typeof req.body.summaryMode === 'string' ? req.body.summaryMode : undefined;
+    console.log('[upload] summaryMode received:', summaryMode, '| req.body keys:', Object.keys(req.body || {}));
+    const fullSummary = await generateSummaryOnly(transcriptText, summaryMode).catch(() => '');
     if (fullSummary) {
       await MeetingSummary.findOneAndUpdate(
         { meetingId: createdMeeting._id },
@@ -417,28 +422,43 @@ router.post('/:id/process', apiLimiter, authenticate, validate(processSchema), a
 
   try {
     if (mode === 'minutes' || mode === 'both') {
-      // Upsert: one summary per meeting
-      await MeetingSummary.findOneAndUpdate(
-        { meetingId: meeting._id },
-        {
-          meetingId: meeting._id,
-          executiveSummary: analysis.executiveSummary,
-          fullSummary: analysis.fullSummary,
-          minutesContent: analysis.minutesContent,
-          keyPoints: analysis.keyPoints,
-          decisions: analysis.decisions,
-          openQuestions: analysis.openQuestions,
-          sentiment: analysis.sentiment,
-        },
-        { upsert: true },
-      );
+      // Upsert: one summary per meeting — but skip if already generated during upload
+      const existingSummary = await MeetingSummary.findOne({ meetingId: meeting._id }).lean();
+      if (!existingSummary?.fullSummary) {
+        await MeetingSummary.findOneAndUpdate(
+          { meetingId: meeting._id },
+          {
+            meetingId: meeting._id,
+            executiveSummary: analysis.executiveSummary,
+            fullSummary: analysis.fullSummary,
+            minutesContent: analysis.minutesContent,
+            keyPoints: analysis.keyPoints,
+            decisions: analysis.decisions,
+            openQuestions: analysis.openQuestions,
+            sentiment: analysis.sentiment,
+          },
+          { upsert: true },
+        );
+      } else {
+        // Summary exists from upload — only update minutes-specific fields
+        await MeetingSummary.findOneAndUpdate(
+          { meetingId: meeting._id },
+          {
+            minutesContent: analysis.minutesContent,
+            keyPoints: analysis.keyPoints.length ? analysis.keyPoints : undefined,
+            decisions: analysis.decisions.length ? analysis.decisions : undefined,
+            openQuestions: analysis.openQuestions.length ? analysis.openQuestions : undefined,
+            sentiment: analysis.sentiment,
+          },
+        );
+      }
     }
 
     if (mode === 'tasks' || mode === 'both') {
-      // Replace all action items for this meeting
-      await ActionItem.deleteMany({ meetingId: meeting._id });
+      // Replace all tasks for this meeting
+      await Task.deleteMany({ meetingId: meeting._id });
       if (analysis.tasks.length > 0) {
-        await ActionItem.insertMany(
+        await Task.insertMany(
           analysis.tasks.map((task) => ({
             meetingId: meeting._id,
             userId: new Types.ObjectId(req.userId!),
@@ -447,7 +467,7 @@ router.post('/:id/process', apiLimiter, authenticate, validate(processSchema), a
             assignee: task.assignee,
             dueDate: task.dueDate ? new Date(task.dueDate) : null,
             priority: (task.priority as MeetingPriority) || 'medium',
-            status: (task.status as ActionItemStatus) || 'pending',
+            status: (task.status as TaskStatus) || 'pending',
             tags: task.tags || [],
           }))
         );
@@ -556,18 +576,18 @@ router.get('/:id/action-items', apiLimiter, authenticate, asyncHandler(async (re
   const limitNumber = Math.max(1, Math.min(parseInt(limit as string, 10) || 50, 200));
   const skip = (pageNumber - 1) * limitNumber;
 
-  const [actionItems, total] = await Promise.all([
-    ActionItem.find({ meetingId: meeting._id })
+  const [tasks, total] = await Promise.all([
+    Task.find({ meetingId: meeting._id })
       .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limitNumber)
       .select('meetingId title description assignee dueDate priority status tags createdAt updatedAt completedAt')
       .lean(),
-    ActionItem.countDocuments({ meetingId: meeting._id }),
+    Task.countDocuments({ meetingId: meeting._id }),
   ]);
 
   res.json({
-    data: actionItems.map((item) => ({
+    data: tasks.map((item) => ({
       id: item._id.toString(),
       meetingId: item.meetingId.toString(),
       title: item.title,
@@ -604,12 +624,12 @@ router.get('/:id/action-items/export', apiLimiter, authenticate, asyncHandler(as
     return res.status(403).json({ message: 'You do not have permission to export this meeting' });
   }
 
-  const actionItems = await ActionItem.find({ meetingId: meeting._id })
+  const tasks = await Task.find({ meetingId: meeting._id })
     .sort({ createdAt: 1 })
     .select('title description assignee priority status dueDate tags')
     .lean();
 
-  const rows = actionItems.map((item) => ({
+  const rows = tasks.map((item) => ({
     Task: item.title,
     Description: item.description || '',
     Assignee: item.assignee || '',
@@ -648,9 +668,9 @@ router.get('/:id/minutes/export', apiLimiter, authenticate, asyncHandler(async (
     return res.status(403).json({ message: 'You do not have permission to export this meeting' });
   }
 
-  const [summary, actionItems] = await Promise.all([
+  const [summary, tasks] = await Promise.all([
     MeetingSummary.findOne({ meetingId: meeting._id }).lean(),
-    ActionItem.find({ meetingId: meeting._id })
+    Task.find({ meetingId: meeting._id })
       .sort({ createdAt: 1 })
       .select('title description assignee dueDate priority status')
       .lean(),
@@ -665,12 +685,17 @@ router.get('/:id/minutes/export', apiLimiter, authenticate, asyncHandler(async (
   const doc = new PDFDocument({ size: 'A4', margins: { top: 50, bottom: 50, left: 50, right: 50 } });
   doc.pipe(res);
 
-  // Helper
+  // Helpers
   const section = (title: string) => {
-    doc.moveDown(0.5).fontSize(14).font('Helvetica-Bold').fillColor('#1D1B22').text(title);
-    doc.moveDown(0.3);
+    doc.moveDown(1.2).fontSize(14).font('Helvetica-Bold').fillColor('#1D1B22').text(title);
+    doc.moveDown(0.4);
   };
   const body = () => doc.fontSize(10).font('Helvetica').fillColor('#333');
+
+  // Strip Markdown bold syntax and render as plain text to avoid overlap issues
+  const stripMarkdown = (text: string): string => {
+    return text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
+  };
 
   // Title
   doc.fontSize(20).font('Helvetica-Bold').fillColor('#1D1B22').text(meeting.title || 'Meeting Minutes', { align: 'center' });
@@ -696,38 +721,72 @@ router.get('/:id/minutes/export', apiLimiter, authenticate, asyncHandler(async (
     doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
   }
 
-  // Executive Summary
-  if (summary?.executiveSummary) {
-    section('Executive Summary');
-    body().text(summary.executiveSummary, { lineGap: 4 });
-    doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+  // If minutesContent exists, render the full MoM directly from it
+  if (summary?.minutesContent) {
+    const lines = summary.minutesContent.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      // Heading: ## something
+      const headingMatch = trimmed.match(/^#{1,3}\s+(.+)$/);
+      if (headingMatch) {
+        doc.moveDown(1.0);
+        doc.fontSize(13).font('Helvetica-Bold').fillColor('#1D1B22').text(headingMatch[1]);
+        doc.moveDown(0.4);
+        continue;
+      }
+
+      // Horizontal rule: ---
+      if (/^---+$/.test(trimmed)) {
+        doc.moveDown(0.5);
+        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#E0E0E0').stroke();
+        doc.moveDown(0.5);
+        continue;
+      }
+
+      // Bullet point: - something or * something
+      const bulletMatch = trimmed.match(/^[\-*]\s+(.+)$/);
+      if (bulletMatch) {
+        body().text(`  \u2022  ${stripMarkdown(bulletMatch[1])}`);
+        continue;
+      }
+
+      // Regular text (strip markdown and render)
+      body().text(stripMarkdown(trimmed));
+    }
+  } else {
+    // Fallback: build from individual fields if minutesContent is missing
+    if (summary?.executiveSummary) {
+      section('Executive Summary');
+      body().text(summary.executiveSummary, { lineGap: 4 });
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+    }
+
+    if (summary?.keyPoints && summary.keyPoints.length > 0) {
+      section('Key Discussion Points');
+      summary.keyPoints.forEach((point, i) => {
+        doc.fontSize(10).font('Helvetica').fillColor('#333').text(`${i + 1}. ${point}`, { indent: 10, lineGap: 3 });
+      });
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+    }
+
+    if (summary?.decisions && summary.decisions.length > 0) {
+      section('Decisions Made');
+      summary.decisions.forEach((decision) => {
+        doc.fontSize(10).font('Helvetica').fillColor('#333').text(`✓  ${decision}`, { indent: 10, lineGap: 3 });
+      });
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+    }
   }
 
-  // Key Discussion Points
-  if (summary?.keyPoints && summary.keyPoints.length > 0) {
-    section('Key Discussion Points');
-    summary.keyPoints.forEach((point, i) => {
-      doc.fontSize(10).font('Helvetica').fillColor('#333').text(`${i + 1}. ${point}`, { indent: 10, lineGap: 3 });
-    });
-    doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
-  }
-
-  // Decisions Made
-  if (summary?.decisions && summary.decisions.length > 0) {
-    section('Decisions Made');
-    summary.decisions.forEach((decision) => {
-      doc.fontSize(10).font('Helvetica').fillColor('#333').text(`✓  ${decision}`, { indent: 10, lineGap: 3 });
-    });
-    doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
-  }
-
-  // Action Items
-  if (actionItems.length > 0) {
+  // Tasks from DB (always included)
+  if (tasks.length > 0) {
     section('Tasks');
-    actionItems.forEach((item, i) => {
+    tasks.forEach((item, i) => {
       const assignee = item.assignee || 'Unassigned';
       const due = item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not specified';
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#1D1B22').text(`${i + 1}. ${item.title}`);
@@ -793,7 +852,7 @@ router.patch('/:id', apiLimiter, authenticate, validate(updateMeetingSchema), as
 
   await Meeting.findByIdAndUpdate(req.params.id, { $set: updateData });
 
-  await syncMeetingStatusFromActionItems(req.params.id);
+  await syncMeetingStatusFromTasks(req.params.id);
 
   const refreshed = await Meeting.findById(req.params.id).lean();
 

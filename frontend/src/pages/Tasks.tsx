@@ -8,15 +8,15 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useAppSelector } from '@/store/hooks';
 import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
-import { actionItemService, meetingService } from '@/services';
-import { ActionItem, Meeting, CreateActionItemRequest, MeetingPriority } from '@/types';
+import { taskService, meetingService } from '@/services';
+import { Task, Meeting, CreateTaskRequest, MeetingPriority } from '@/types';
 import { formatDate } from '@/utils';
 
-const ActionItems: React.FC = () => {
+const Tasks: React.FC = () => {
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
-  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -41,18 +41,18 @@ const ActionItems: React.FC = () => {
   });
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const loadActionItems = useCallback(async () => {
+  const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await actionItemService.getActionItems({
+      const response = await taskService.getTasks({
         page: currentPage,
         limit: 20,
         status: filterStatus === 'all' ? undefined : filterStatus,
         priority: filterPriority === 'all' ? undefined : filterPriority,
       });
-      setActionItems(response.data || []);
+      setTasks(response.data || []);
     } catch (error) {
-      console.error('Failed to load action items:', error);
+      console.error('Failed to load tasks:', error);
     } finally {
       setLoading(false);
     }
@@ -60,8 +60,8 @@ const ActionItems: React.FC = () => {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard data-fetching pattern called from effect
-    loadActionItems();
-  }, [loadActionItems]);
+    loadTasks();
+  }, [loadTasks]);
 
   // Fetch meetings for the create modal meeting selector
   useEffect(() => {
@@ -97,7 +97,7 @@ const ActionItems: React.FC = () => {
     setCreateError(null);
   };
 
-  const handleCreateActionItem = async () => {
+  const handleCreateTask = async () => {
     if (!createForm.meetingId) {
       setCreateError('Please select a meeting.');
       return;
@@ -111,7 +111,7 @@ const ActionItems: React.FC = () => {
       setCreating(true);
       setCreateError(null);
 
-      const data: CreateActionItemRequest = {
+      const data: CreateTaskRequest = {
         meetingId: createForm.meetingId,
         title: createForm.title.trim(),
         description: createForm.description.trim() || undefined,
@@ -120,10 +120,10 @@ const ActionItems: React.FC = () => {
         priority: createForm.priority as MeetingPriority,
       };
 
-      await actionItemService.createActionItem(data);
+      await taskService.createTask(data);
       setShowCreateModal(false);
       resetCreateForm();
-      loadActionItems();
+      loadTasks();
     } catch (error: unknown) {
       setCreateError(error instanceof Error ? error.message : 'Failed to create task.');
     } finally {
@@ -140,16 +140,16 @@ const ActionItems: React.FC = () => {
     if (!selectedTaskId) return;
     
     try {
-      await actionItemService.completeActionItem(selectedTaskId);
+      await taskService.completeTask(selectedTaskId);
       setShowCompleteDialog(false);
       setSelectedTaskId(null);
-      loadActionItems();
+      loadTasks();
     } catch (error) {
       console.error('Failed to complete task:', error);
     }
   };
 
-  const filteredItems = actionItems.filter((item) =>
+  const filteredItems = tasks.filter((item) =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -263,7 +263,8 @@ const ActionItems: React.FC = () => {
                   Meeting <span className="text-red-500">*</span>
                 </label>
                 <select
-                  className="w-full rounded-xl border border-[#E4E0F5] bg-white px-4 py-2.5 text-sm text-[#1D1B22] outline-none transition-all focus:border-[#5B3FD6] focus:ring-2 focus:ring-[#5B3FD6]/20"
+                  className="w-full rounded-xl border border-[#E4E0F5] bg-white pl-4 pr-8 py-2.5 text-sm text-[#1D1B22] outline-none transition-all focus:border-[#5B3FD6] focus:ring-2 focus:ring-[#5B3FD6]/20 appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                   value={createForm.meetingId}
                   onChange={(e) => handleCreateFormChange('meetingId', e.target.value)}
                   disabled={creating}
@@ -326,7 +327,8 @@ const ActionItems: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-[#1D1B22] mb-1.5">Priority</label>
                 <select
-                  className="w-full rounded-xl border border-[#E4E0F5] bg-white px-4 py-2.5 text-sm text-[#1D1B22] outline-none transition-all focus:border-[#5B3FD6] focus:ring-2 focus:ring-[#5B3FD6]/20"
+                  className="w-full rounded-xl border border-[#E4E0F5] bg-white pl-4 pr-8 py-2.5 text-sm text-[#1D1B22] outline-none transition-all focus:border-[#5B3FD6] focus:ring-2 focus:ring-[#5B3FD6]/20 appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                   value={createForm.priority}
                   onChange={(e) => handleCreateFormChange('priority', e.target.value)}
                   disabled={creating}
@@ -344,7 +346,7 @@ const ActionItems: React.FC = () => {
               <Button variant="outline" className="rounded-full" onClick={() => { setShowCreateModal(false); resetCreateForm(); }} disabled={creating}>
                 Cancel
               </Button>
-              <Button className="rounded-full" onClick={handleCreateActionItem} isLoading={creating}>
+               <Button className="rounded-full" onClick={handleCreateTask} isLoading={creating}>
                 {creating ? 'Creating...' : 'Create Task'}
               </Button>
             </div>
@@ -370,7 +372,8 @@ const ActionItems: React.FC = () => {
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Status</label>
               <select
-                className="min-w-[140px] px-2 py-1 border rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                className="min-w-[140px] pl-3 pr-8 py-1 border rounded-full text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 appearance-none cursor-pointer"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
@@ -383,7 +386,8 @@ const ActionItems: React.FC = () => {
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Priority</label>
               <select
-                className="min-w-[140px] px-2 py-1 border rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+                className="min-w-[140px] pl-3 pr-8 py-1 border rounded-full text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 appearance-none cursor-pointer"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
               >
@@ -497,7 +501,8 @@ const ActionItems: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Status</label>
             <select
-              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+              className="w-full pl-3 pr-8 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 appearance-none cursor-pointer"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
               value={filterStatus}
               onChange={(e) => {
                 setFilterStatus(e.target.value);
@@ -512,7 +517,8 @@ const ActionItems: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Priority</label>
             <select
-              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
+              className="w-full pl-3 pr-8 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 appearance-none cursor-pointer"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
               value={filterPriority}
               onChange={(e) => {
                 setFilterPriority(e.target.value);
@@ -528,7 +534,7 @@ const ActionItems: React.FC = () => {
         </div>
       </Card>
 
-      {/* Action Items List */}
+      {/* Tasks List */}
       {loading ? (
         <div className="flex items-center justify-center h-96">
           <LoadingSpinner size="lg" />
@@ -740,6 +746,6 @@ const ActionItems: React.FC = () => {
   );
 };
 
-export default ActionItems;
+export default Tasks;
 
 
