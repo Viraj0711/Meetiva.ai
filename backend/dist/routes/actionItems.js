@@ -11,7 +11,7 @@ const router = (0, express_1.Router)();
 // Helper to get the appropriate where clause based on user's role
 const getActionItemsWhereClause = async (req) => {
     try {
-        // For members or users with no team membership, only show their own tasks
+        // For members or users with no team membership, only show their own action items
         if (!req.userTeams || req.userTeams.length === 0) {
             console.log(`[getActionItemsWhereClause] User ${req.userId} has no teams, returning own items only`);
             return { userId: req.userId };

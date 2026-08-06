@@ -10,6 +10,7 @@ const path_1 = __importDefault(require("path"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const ai_1 = __importDefault(require("./routes/ai"));
 const meetings_1 = __importDefault(require("./routes/meetings"));
+const actionItems_1 = __importDefault(require("./routes/actionItems"));
 const teams_1 = __importDefault(require("./routes/teams"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const env_1 = require("./lib/env");
@@ -52,10 +53,10 @@ app.get('/health', (req, res) => {
 app.use('/api/v1/auth', auth_1.default);
 app.use('/api/v1/ai', ai_1.default);
 app.use('/api/v1/meetings', meetings_1.default);
-app.use('/api/v1/action-items', actionItemsRoutes);
+app.use('/api/v1/action-items', actionItems_1.default);
 app.use('/api/v1/teams', teams_1.default);
 const frontendPath = path_1.default.join(__dirname, '../../frontend/dist');
-const indexPath = path_1.default.join(frontendPath, 'index.html');
+app.use(express_1.default.static(frontendPath));
 app.get('*', frontendLimiter, (req, res) => {
     res.sendFile(path_1.default.join(frontendPath, 'index.html'));
 });

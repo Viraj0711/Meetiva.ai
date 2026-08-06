@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authenticate = void 0;
 const jwt = __importStar(require("jsonwebtoken"));
+require("multer");
 const authenticate = (req, res, next) => {
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
