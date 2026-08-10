@@ -62,6 +62,23 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
+      {/* Workspace selector */}
+      <div className="relative px-4 pb-4">
+        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-[#E4E0F5] bg-white/60 hover:bg-white transition-all duration-150 cursor-pointer">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
+            style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
+            A
+          </div>
+          <div className="flex-1 min-w-0 text-left">
+            <div className="text-sm font-semibold text-[#1D1B22] truncate">Acme Corp</div>
+            <div className="text-[10px] text-[#64607A] truncate">Secure, synced, and ...</div>
+          </div>
+          <svg className="w-4 h-4 flex-shrink-0" style={{ color: '#64607A' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      </div>
+
       {/* Nav */}
       <nav className="relative flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
         {NAV.map((item) => (

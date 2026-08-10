@@ -1,0 +1,239 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* ── Meetiva Typography Scale ─────────────────────────────────────── */
+  --meetiva-display-xl-size: 64px;  --meetiva-display-xl-weight: 800;
+  --meetiva-display-l-size:  56px;  --meetiva-display-l-weight:  800;
+  --meetiva-h1-size:         44px;  --meetiva-h1-weight:         700;
+  --meetiva-h2-size:         36px;  --meetiva-h2-weight:         700;
+  --meetiva-h3-size:         28px;  --meetiva-h3-weight:         600;
+  --meetiva-title-size:      22px;  --meetiva-title-weight:      600;
+  --meetiva-body-lg-size:    16px;  --meetiva-body-lg-weight:    400;
+  --meetiva-body-size:       15px;  --meetiva-body-weight:       400;
+  --meetiva-small-size:      14px;  --meetiva-small-weight:      400;
+  --meetiva-caption-size:    12px;  --meetiva-caption-weight:    500;
+  --meetiva-button-size:     15px;  --meetiva-button-weight:     600;
+  --meetiva-nav-size:        14px;  --meetiva-nav-weight:        500;
+  --meetiva-lh-tight:        1.25;
+  --meetiva-lh-snug:         1.375;
+  --meetiva-lh-normal:       1.5;
+  --meetiva-ls-tight:        -0.02em;
+  --meetiva-ls-normal:       0em;
+  --font-size: 15px;
+  --background: #F5FEFF;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --primary: #06B6D4;
+  --primary-foreground: #ffffff;
+  --secondary: #E8FBFF;
+  --secondary-foreground: #111827;
+  --muted: #EFF9FB;
+  --muted-foreground: #94A3B8;
+  --accent: #4F46E5;
+  --accent-foreground: #ffffff;
+  --destructive: #EF4444;
+  --destructive-foreground: #ffffff;
+  --border: #E5F4F7;
+  --input: transparent;
+  --input-background: #F5FEFF;
+  --switch-background: #cbd5e1;
+  --font-weight-medium: 600;
+  --font-weight-normal: 400;
+  --ring: #06B6D4;
+  --chart-1: #06B6D4;
+  --chart-2: #4F46E5;
+  --chart-3: #F59E0B;
+  --chart-4: #16A34A;
+  --chart-5: #EF4444;
+  --radius: 1rem;
+  --sidebar: #E8FBFF;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #06B6D4;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #D0F5FC;
+  --sidebar-accent-foreground: #0891B2;
+  --sidebar-border: #D4EEF3;
+  --sidebar-ring: #06B6D4;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    font-size: var(--font-size); /* 15px base */
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: var(--meetiva-body-size);
+    font-weight: var(--meetiva-body-weight);
+    line-height: var(--meetiva-lh-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* ── Meetiva heading scale ─────────────────────────────────────── */
+  h1 {
+    font-size: var(--meetiva-h1-size);
+    font-weight: var(--meetiva-h1-weight);
+    line-height: var(--meetiva-lh-tight);
+    letter-spacing: var(--meetiva-ls-tight);
+  }
+
+  h2 {
+    font-size: var(--meetiva-h2-size);
+    font-weight: var(--meetiva-h2-weight);
+    line-height: var(--meetiva-lh-tight);
+    letter-spacing: var(--meetiva-ls-tight);
+  }
+
+  h3 {
+    font-size: var(--meetiva-h3-size);
+    font-weight: var(--meetiva-h3-weight);
+    line-height: var(--meetiva-lh-snug);
+  }
+
+  h4 {
+    font-size: var(--meetiva-title-size);
+    font-weight: var(--meetiva-title-weight);
+    line-height: var(--meetiva-lh-snug);
+  }
+
+  p {
+    font-size: var(--meetiva-body-size);
+    font-weight: var(--meetiva-body-weight);
+    line-height: var(--meetiva-lh-normal);
+  }
+
+  label {
+    font-size: var(--meetiva-caption-size);
+    font-weight: var(--meetiva-caption-weight);
+    line-height: var(--meetiva-lh-normal);
+  }
+
+  button {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: var(--meetiva-button-size);
+    font-weight: var(--meetiva-button-weight);
+    line-height: var(--meetiva-lh-normal);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  input, textarea, select {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: var(--meetiva-small-size);
+    font-weight: var(--meetiva-small-weight);
+    line-height: var(--meetiva-lh-normal);
+  }
+
+  /* ── Meetiva utility classes (Tailwind utilities override these) ── */
+  .meetiva-display-xl { font-size: var(--meetiva-display-xl-size); font-weight: var(--meetiva-display-xl-weight); line-height: var(--meetiva-lh-tight); letter-spacing: var(--meetiva-ls-tight); }
+  .meetiva-display-l  { font-size: var(--meetiva-display-l-size);  font-weight: var(--meetiva-display-l-weight);  line-height: var(--meetiva-lh-tight); letter-spacing: var(--meetiva-ls-tight); }
+  .meetiva-h1         { font-size: var(--meetiva-h1-size);         font-weight: var(--meetiva-h1-weight);         line-height: var(--meetiva-lh-tight); letter-spacing: var(--meetiva-ls-tight); }
+  .meetiva-h2         { font-size: var(--meetiva-h2-size);         font-weight: var(--meetiva-h2-weight);         line-height: var(--meetiva-lh-tight); letter-spacing: var(--meetiva-ls-tight); }
+  .meetiva-h3         { font-size: var(--meetiva-h3-size);         font-weight: var(--meetiva-h3-weight);         line-height: var(--meetiva-lh-snug);  }
+  .meetiva-title      { font-size: var(--meetiva-title-size);      font-weight: var(--meetiva-title-weight);      line-height: var(--meetiva-lh-snug);  }
+  .meetiva-body-lg    { font-size: var(--meetiva-body-lg-size);    font-weight: var(--meetiva-body-lg-weight);    line-height: var(--meetiva-lh-normal); }
+  .meetiva-body       { font-size: var(--meetiva-body-size);       font-weight: var(--meetiva-body-weight);       line-height: var(--meetiva-lh-normal); }
+  .meetiva-small      { font-size: var(--meetiva-small-size);      font-weight: var(--meetiva-small-weight);      line-height: var(--meetiva-lh-normal); }
+  .meetiva-caption    { font-size: var(--meetiva-caption-size);    font-weight: var(--meetiva-caption-weight);    line-height: var(--meetiva-lh-normal); }
+  .meetiva-button     { font-size: var(--meetiva-button-size);     font-weight: var(--meetiva-button-weight);     line-height: var(--meetiva-lh-normal); }
+  .meetiva-nav        { font-size: var(--meetiva-nav-size);        font-weight: var(--meetiva-nav-weight);        line-height: var(--meetiva-lh-normal); }
+}

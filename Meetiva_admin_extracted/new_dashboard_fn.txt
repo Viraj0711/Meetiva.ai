@@ -1,0 +1,376 @@
+function Dashboard({ onNav }: { onNav: (p: Page) => void }) {
+  const [period, setPeriod] = useState<"24H" | "7D" | "30D">("7D");
+  const [workspace, setWorkspace] = useState("Meetiva Global");
+  const [wsOpen, setWsOpen] = useState(false);
+  const wsRef = useRef<HTMLDivElement>(null);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wsRef.current && !wsRef.current.contains(e.target as Node)) setWsOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const workspaces = [
+    { name: "Meetiva Global", users: "13,847", plan: "Enterprise", color: "#06B6D4" },
+    { name: "Enterprise Org", users: "4,219",  plan: "Business",   color: "#4F46E5" },
+    { name: "Dev Sandbox",    users: "124",    plan: "Developer",  color: "#10B981" },
+  ];
+
+  const kpis = [
+    { label: "Total Users",         value: "13,847",  pct: "+8.4%",  up: true,  icon: Users,     color: "#06B6D4", spark: [42,55,49,68,61,84,91,84,99,114,128,138], uid: "k-tu" },
+    { label: "Individual Users",    value: "11,203",  pct: "+7.1%",  up: true,  icon: User,      color: "#4F46E5", spark: [30,38,34,50,46,60,64,70,78,90,98,112],   uid: "k-iu" },
+    { label: "Team Accounts",       value: "1,124",   pct: "+12.1%", up: true,  icon: Users2,    color: "#10B981", spark: [10,13,12,17,16,21,20,26,24,32,30,38],    uid: "k-ta" },
+    { label: "Meetings Processed",  value: "284,391", pct: "+22.3%", up: true,  icon: Video,     color: "#F59E0B", spark: [260,295,280,330,355,390,405,425,455,485,508,540], uid: "k-mp" },
+    { label: "Storage Used",        value: "7.9 TB",  pct: "+5.3%",  up: true,  icon: HardDrive, color: "#EF4444", spark: [20,25,28,32,36,41,45,52,57,63,69,79],    uid: "k-su" },
+    { label: "Today's AI Requests", value: "98,412",  pct: "+34.7%", up: true,  icon: Brain,     color: "#8B5CF6", spark: [50,75,62,88,80,106,111,104,118,134,140,148], uid: "k-ai" },
+  ];
+
+  const overviewData: Record<"24H" | "7D" | "30D", OvPoint[]> = {
+    "24H": [
+      { label: "00:00", users: 320,   meetings: 45,   ai: 2100  },
+      { label: "03:00", users: 180,   meetings: 20,   ai: 980   },
+      { label: "06:00", users: 290,   meetings: 38,   ai: 1600  },
+      { label: "09:00", users: 810,   meetings: 142,  ai: 5400  },
+      { label: "12:00", users: 1240,  meetings: 280,  ai: 9800  },
+      { label: "15:00", users: 1380,  meetings: 310,  ai: 12000 },
+      { label: "18:00", users: 980,   meetings: 201,  ai: 8200  },
+      { label: "21:00", users: 640,   meetings: 128,  ai: 5100  },
+    ],
+    "7D": [
+      { label: "Mon", users: 1820,  meetings: 284,  ai: 14200 },
+      { label: "Tue", users: 2140,  meetings: 390,  ai: 17800 },
+      { label: "Wed", users: 1980,  meetings: 341,  ai: 15600 },
+      { label: "Thu", users: 2380,  meetings: 471,  ai: 22400 },
+      { label: "Fri", users: 2620,  meetings: 520,  ai: 26100 },
+      { label: "Sat", users: 1540,  meetings: 190,  ai: 11800 },
+      { label: "Sun", users: 1260,  meetings: 148,  ai: 9400  },
+    ],
+    "30D": [
+      { label: "Wk 1", users: 8200,  meetings: 1420, ai: 62000 },
+      { label: "Wk 2", users: 9800,  meetings: 1680, ai: 74000 },
+      { label: "Wk 3", users: 11400, meetings: 2100, ai: 88000 },
+      { label: "Wk 4", users: 13847, meetings: 2841, ai: 98412 },
+    ],
+  };
+
+  const ugData: UGPoint[] = [
+    { label: "Feb", individual: 7200,  team: 720  },
+    { label: "Mar", individual: 8100,  team: 810  },
+    { label: "Apr", individual: 9000,  team: 890  },
+    { label: "May", individual: 9800,  team: 960  },
+    { label: "Jun", individual: 10600, team: 1020 },
+    { label: "Jul", individual: 11203, team: 1124 },
+  ];
+
+  const aiData: AIPoint[] = [
+    { label: "Mon", gpt4: 14200, claude: 8400,  llama: 3100 },
+    { label: "Tue", gpt4: 17800, claude: 10200, llama: 3800 },
+    { label: "Wed", gpt4: 15600, claude: 9100,  llama: 3400 },
+    { label: "Thu", gpt4: 22400, claude: 12800, llama: 5200 },
+    { label: "Fri", gpt4: 26100, claude: 14900, llama: 6200 },
+    { label: "Sat", gpt4: 11800, claude: 6900,  llama: 2800 },
+    { label: "Sun", gpt4: 9400,  claude: 5400,  llama: 2100 },
+  ];
+
+  const stData: StPoint[] = [
+    { label: "Feb", used: 4.2 }, { label: "Mar", used: 4.9 },
+    { label: "Apr", used: 5.6 }, { label: "May", used: 6.1 },
+    { label: "Jun", used: 7.0 }, { label: "Jul", used: 7.9 },
+  ];
+
+  const recentActivity = [
+    { id: "a1", icon: Users,       color: "#06B6D4", text: "Sarah Chen upgraded to Enterprise plan",     time: "2 min ago",  badge: "upgrade",  bc: "#4F46E5" },
+    { id: "a2", icon: AlertCircle, color: "#EF4444", text: "API rate limit hit — workspace NordicCo",    time: "8 min ago",  badge: "alert",    bc: "#EF4444" },
+    { id: "a3", icon: Users2,      color: "#10B981", text: "New team created: Design Systems Guild",     time: "14 min ago", badge: "new",      bc: "#10B981" },
+    { id: "a4", icon: Shield,      color: "#F59E0B", text: "Failed login attempts on user@latamhub.io", time: "22 min ago", badge: "security", bc: "#F59E0B" },
+    { id: "a5", icon: Brain,       color: "#8B5CF6", text: "AI model switched to Claude 3.5 Sonnet",    time: "35 min ago", badge: "system",   bc: "#64748B" },
+    { id: "a6", icon: CheckCircle, color: "#10B981", text: "Scheduled maintenance completed — DB01",    time: "1 hr ago",   badge: "done",     bc: "#10B981" },
+    { id: "a7", icon: HardDrive,   color: "#EF4444", text: "Storage quota warning: IndieStudio (92%)",  time: "2 hr ago",   badge: "warn",     bc: "#F59E0B" },
+    { id: "a8", icon: CreditCard,  color: "#4F46E5", text: "Invoice #8821 generated for 38 accounts",   time: "3 hr ago",   badge: "billing",  bc: "#4F46E5" },
+  ];
+
+  const quickActions = [
+    { icon: Plus,       label: "Add User",    color: "#06B6D4", bg: "#EFF9FB", onClick: () => onNav("users")    },
+    { icon: Users2,     label: "Create Team", color: "#4F46E5", bg: "#EEF2FF", onClick: () => onNav("teams")    },
+    { icon: BarChart3,  label: "Reports",     color: "#10B981", bg: "#F0FDF4", onClick: () => onNav("logs")     },
+    { icon: ScrollText, label: "System Logs", color: "#6B7280", bg: "#F9FAFB", onClick: () => onNav("logs")     },
+    { icon: Brain,      label: "AI Usage",    color: "#8B5CF6", bg: "#F5F3FF", onClick: () => onNav("ai")       },
+    { icon: HardDrive,  label: "Storage",     color: "#EF4444", bg: "#FEF2F2", onClick: () => onNav("settings") },
+    { icon: Shield,     label: "Security",    color: "#F59E0B", bg: "#FFFBEB", onClick: () => onNav("settings") },
+    { icon: Settings,   label: "Settings",    color: "#64748B", bg: "#F9FAFB", onClick: () => onNav("settings") },
+  ];
+
+  const activeWs = workspaces.find(w => w.name === workspace)!;
+
+  return (
+    <div className="min-h-screen bg-[#F5FEFF]">
+      <div className="max-w-[1440px] mx-auto px-8 py-7 space-y-6">
+
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-[26px] font-bold text-[#0F172A] leading-tight tracking-tight">
+              {greeting}, Alex 👋
+            </h1>
+            <p className="text-[13px] text-[#94A3B8] mt-0.5 font-medium">
+              {dateStr} · Meetiva Super Admin
+            </p>
+          </div>
+
+          {/* Custom workspace dropdown */}
+          <div className="relative" ref={wsRef}>
+            <button
+              onClick={() => setWsOpen(o => !o)}
+              className="flex items-center gap-3 px-4 py-3 bg-white border border-[#E5F4F7] rounded-2xl shadow-sm hover:border-[#B8E4F0] hover:shadow-md transition-all duration-200 cursor-pointer min-w-[220px]"
+            >
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: activeWs.color + "1A" }}>
+                <Building2 size={14} style={{ color: activeWs.color }} />
+              </div>
+              <div className="flex-1 text-left">
+                <div className="text-[13px] font-semibold text-[#0F172A] leading-tight">{workspace}</div>
+                <div className="text-[10.5px] text-[#94A3B8] mt-0.5">{activeWs.plan} · {activeWs.users} users</div>
+              </div>
+              <ChevronDown size={13}
+                className={`text-[#94A3B8] flex-shrink-0 transition-transform duration-200 ${wsOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {wsOpen && (
+              <div className="absolute right-0 top-full mt-2 w-[280px] bg-white border border-[#E5F4F7] rounded-2xl shadow-2xl z-50 overflow-hidden">
+                <div className="px-4 pt-3 pb-1.5">
+                  <p className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest">Switch Workspace</p>
+                </div>
+                <div className="p-2 space-y-0.5">
+                  {workspaces.map(ws => {
+                    const active = workspace === ws.name;
+                    return (
+                      <button key={ws.name}
+                        onClick={() => { setWorkspace(ws.name); setWsOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-150 cursor-pointer ${active ? "bg-[#EFF9FB] border border-[#D0EEF6]" : "hover:bg-[#F8FDFE]"}`}>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ background: ws.color + "1A" }}>
+                          <Building2 size={15} style={{ color: ws.color }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] font-semibold text-[#0F172A] truncate">{ws.name}</div>
+                          <div className="text-[10.5px] text-[#94A3B8] mt-0.5">{ws.users} users · {ws.plan}</div>
+                        </div>
+                        {active ? (
+                          <div className="w-5 h-5 rounded-full bg-[#06B6D4] flex items-center justify-center flex-shrink-0">
+                            <div className="w-2 h-2 rounded-full bg-white" />
+                          </div>
+                        ) : (
+                          <div className="w-5 h-5 rounded-full border-2 border-[#E5F4F7] flex-shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="border-t border-[#EDF7F9] mx-3 mb-1" />
+                <div className="p-2">
+                  <button
+                    onClick={() => { toast.info("Workspace creation coming soon"); setWsOpen(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#F8FDFE] transition-colors cursor-pointer">
+                    <div className="w-9 h-9 rounded-xl border-2 border-dashed border-[#CBD5E1] flex items-center justify-center flex-shrink-0">
+                      <Plus size={12} className="text-[#94A3B8]" />
+                    </div>
+                    <span className="text-[12.5px] font-medium text-[#94A3B8]">Add new workspace</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── KPI Cards ───────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-6 gap-4">
+          {kpis.map(k => {
+            const Icon = k.icon;
+            return (
+              <div key={k.label}
+                className="bg-white rounded-2xl border border-[#E5F4F7] p-4 shadow-sm hover:shadow-md hover:border-[#C8E8F2] transition-all duration-200 cursor-default group">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                    style={{ background: k.color + "18" }}>
+                    <Icon size={16} style={{ color: k.color }} />
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full leading-tight ${k.up ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}`}>
+                    {k.pct}
+                  </span>
+                </div>
+                <p className="text-[10.5px] text-[#94A3B8] font-semibold uppercase tracking-wider mb-1.5">{k.label}</p>
+                <p className="text-[22px] font-extrabold text-[#0F172A] leading-none tracking-tight mb-3">{k.value}</p>
+                <DashSparkline data={k.spark} color={k.color} uid={k.uid} />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Platform Overview + Recent Activity ─────────────────────────── */}
+        <div className="grid grid-cols-12 gap-5">
+          {/* Platform Overview */}
+          <div className="col-span-8 bg-white rounded-2xl border border-[#E5F4F7] p-6 shadow-sm">
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <h2 className="text-[16px] font-bold text-[#0F172A]">Platform Overview</h2>
+                <p className="text-[11.5px] text-[#94A3B8] mt-0.5">Active Users · Meetings · AI Requests · hover to inspect</p>
+              </div>
+              <div className="flex items-center gap-4 flex-shrink-0">
+                <div className="flex items-center gap-3.5">
+                  {[["Users", "#06B6D4"], ["Meetings", "#4F46E5"], ["AI Requests", "#10B981"]].map(([l, c]) => (
+                    <div key={l} className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full" style={{ background: c }} />
+                      <span className="text-[11px] text-[#94A3B8]">{l}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex bg-[#F5FEFF] border border-[#E5F4F7] rounded-xl overflow-hidden">
+                  {(["24H", "7D", "30D"] as const).map(p => (
+                    <button key={p} onClick={() => setPeriod(p)}
+                      className={`text-[11px] font-semibold px-3.5 py-1.5 transition-colors cursor-pointer ${period === p ? "bg-[#06B6D4] text-white" : "text-[#94A3B8] hover:text-[#374151]"}`}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <OverviewAreaChart data={overviewData[period]} period={period} />
+          </div>
+
+          {/* Recent Activity */}
+          <div className="col-span-4 bg-white rounded-2xl border border-[#E5F4F7] p-5 shadow-sm flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[15px] font-bold text-[#0F172A]">Recent Activity</h2>
+              <button onClick={() => onNav("logs")}
+                className="text-[12px] font-semibold text-[#06B6D4] hover:text-[#0891B2] cursor-pointer flex items-center gap-0.5 transition-colors">
+                View all <ArrowRight size={10} />
+              </button>
+            </div>
+            <div className="space-y-3.5 flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+              {recentActivity.map(a => {
+                const Icon = a.icon;
+                return (
+                  <div key={a.id} className="flex items-start gap-3 group">
+                    <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                      style={{ background: a.color + "15" }}>
+                      <Icon size={12} style={{ color: a.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] text-[#374151] leading-snug">{a.text}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-[#94A3B8]">{a.time}</span>
+                        <span className="text-[9.5px] font-semibold px-1.5 py-0.5 rounded-full"
+                          style={{ background: a.bc + "15", color: a.bc }}>{a.badge}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Analytics: User Growth + AI Usage + Storage ───────────────────── */}
+        <div className="grid grid-cols-3 gap-5">
+          {/* User Growth */}
+          <div className="bg-white rounded-2xl border border-[#E5F4F7] p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-[14px] font-bold text-[#0F172A]">User Growth</h3>
+              <span className="text-[10px] font-mono text-[#94A3B8]">Feb – Jul</span>
+            </div>
+            <p className="text-[11.5px] text-[#94A3B8] mb-4">Individual vs. Team accounts · hover bars</p>
+            <UserGrowthChart data={ugData} />
+            <div className="mt-3 pt-3 border-t border-[#EDF7F9] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#06B6D4]" /><span className="text-[10.5px] text-[#94A3B8]">Individual</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#4F46E5]" /><span className="text-[10.5px] text-[#94A3B8]">Teams</span></div>
+              </div>
+              <button onClick={() => onNav("users")}
+                className="text-[11px] font-semibold text-[#06B6D4] hover:text-[#0891B2] cursor-pointer flex items-center gap-0.5 transition-colors">
+                Details <ArrowRight size={10} />
+              </button>
+            </div>
+          </div>
+
+          {/* AI Usage */}
+          <div className="bg-white rounded-2xl border border-[#E5F4F7] p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-[14px] font-bold text-[#0F172A]">AI Usage</h3>
+              <span className="text-[10px] font-mono text-[#94A3B8]">This week</span>
+            </div>
+            <p className="text-[11.5px] text-[#94A3B8] mb-4">Requests by model · GPT-4 · Claude · LLaMA</p>
+            <AiUsageChart data={aiData} />
+            <div className="mt-3 pt-3 border-t border-[#EDF7F9] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {[["GPT-4", "#06B6D4"], ["Claude", "#4F46E5"], ["LLaMA", "#F59E0B"]].map(([l, c]) => (
+                  <div key={l} className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full" style={{ background: c }} />
+                    <span className="text-[10.5px] text-[#94A3B8]">{l}</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => onNav("ai")}
+                className="text-[11px] font-semibold text-[#06B6D4] hover:text-[#0891B2] cursor-pointer flex items-center gap-0.5 transition-colors">
+                Details <ArrowRight size={10} />
+              </button>
+            </div>
+          </div>
+
+          {/* Storage */}
+          <div className="bg-white rounded-2xl border border-[#E5F4F7] p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-[14px] font-bold text-[#0F172A]">Storage Usage</h3>
+              <span className="text-[10px] font-mono text-[#94A3B8]">Feb – Jul</span>
+            </div>
+            <p className="text-[11.5px] text-[#94A3B8] mb-4">Growth in TB · Cap 20 TB · hover to inspect</p>
+            <StorageAreaChart data={stData} />
+            <div className="mt-3 pt-3 border-t border-[#EDF7F9] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-bold text-[#0F172A]">7.9 / 20 TB</span>
+                <div className="h-1.5 w-24 bg-[#F5FEFF] rounded-full border border-[#E5F4F7] overflow-hidden">
+                  <div className="h-full rounded-full bg-[#EF4444]" style={{ width: "39.5%" }} />
+                </div>
+                <span className="text-[10px] text-[#94A3B8]">39.5%</span>
+              </div>
+              <button onClick={() => onNav("settings")}
+                className="text-[11px] font-semibold text-[#06B6D4] hover:text-[#0891B2] cursor-pointer flex items-center gap-0.5 transition-colors">
+                Manage <ArrowRight size={10} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Quick Actions ────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-[#E5F4F7] p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[15px] font-bold text-[#0F172A]">Quick Actions</h2>
+            <span className="text-[11px] text-[#94A3B8]">Common admin tasks</span>
+          </div>
+          <div className="grid grid-cols-8 gap-3">
+            {quickActions.map(qa => {
+              const Icon = qa.icon;
+              return (
+                <button key={qa.label} onClick={qa.onClick}
+                  className="flex flex-col items-center gap-2.5 px-2 py-4 rounded-2xl border border-[#E5F4F7] bg-white hover:border-[#C8E8F2] hover:bg-[#F8FDFE] hover:shadow-md transition-all duration-200 cursor-pointer group">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
+                    style={{ background: qa.bg }}>
+                    <Icon size={17} style={{ color: qa.color }} />
+                  </div>
+                  <span className="text-[11.5px] font-semibold text-[#374151] text-center leading-tight group-hover:text-[#0F172A] transition-colors">{qa.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
