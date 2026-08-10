@@ -27,7 +27,7 @@
     "prod:shutdown": "npx pm2 delete meetiva-backend"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0",
+    "concurrently": "^10.0.4",
     "pm2": "^7.0.3"
   },
   "engines": {
