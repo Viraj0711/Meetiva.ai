@@ -77,7 +77,7 @@ export const passwordResetSchema = z.object({
 });
 
 export const passwordResetConfirmSchema = z.object({
-  token: z.string().min(1, 'Token is required'),
+  token: z.string().length(64, 'Invalid reset token'),
   password: passwordField,
 });
 
