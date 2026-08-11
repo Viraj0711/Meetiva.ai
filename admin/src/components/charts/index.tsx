@@ -2,6 +2,13 @@ import React from "react";
 
 export function DashSparkline({ data, color, uid }: { data: number[]; color: string; uid: string }) {
   const W = 76, H = 28;
+  if (!data || data.length < 2) {
+    return (
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+        <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke={color} strokeWidth="1.5" strokeOpacity="0.3" />
+      </svg>
+    );
+  }
   const min = Math.min(...data), range = (Math.max(...data) - min) || 1;
   const pts = data.map((v, i) => [
     (i / (data.length - 1)) * W,
@@ -29,6 +36,13 @@ export function OverviewAreaChart({ data, period }: { data: { label: string; use
   const W = 500, H = 200, pL = 54, pR = 14, pT = 14, pB = 32;
   const cW = W - pL - pR, cH = H - pT - pB;
   const n = data.length;
+  if (n === 0) {
+    return (
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+        <text x={W / 2} y={H / 2} textAnchor="middle" fill="#94A3B8" fontSize="13" fontFamily="Inter, sans-serif">No data available</text>
+      </svg>
+    );
+  }
   const maxV = Math.max(...data.flatMap(d => [d.users, d.meetings, d.ai])) || 1;
   const px = (i: number) => pL + (i / Math.max(n - 1, 1)) * cW;
   const py = (v: number) => pT + cH - (v / maxV) * cH;
@@ -115,6 +129,13 @@ export function UserGrowthChart({ data }: { data: { label: string; individual: n
   const [hov, setHov] = React.useState<number | null>(null);
   const W = 480, H = 160, pL = 38, pR = 8, pT = 12, pB = 26;
   const cW = W - pL - pR, cH = H - pT - pB;
+  if (!data || data.length === 0) {
+    return (
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+        <text x={W / 2} y={H / 2} textAnchor="middle" fill="#94A3B8" fontSize="13" fontFamily="Inter, sans-serif">No data available</text>
+      </svg>
+    );
+  }
   const maxV = Math.max(...data.map(d => d.individual + d.team)) || 1;
   const n = data.length;
   const slotW = cW / n;
@@ -181,6 +202,13 @@ export function AiUsageChart({ data }: { data: { label: string; gpt4: number; cl
   const [hov, setHov] = React.useState<number | null>(null);
   const W = 480, H = 160, pL = 38, pR = 8, pT = 12, pB = 26;
   const cW = W - pL - pR, cH = H - pT - pB;
+  if (!data || data.length === 0) {
+    return (
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+        <text x={W / 2} y={H / 2} textAnchor="middle" fill="#94A3B8" fontSize="13" fontFamily="Inter, sans-serif">No data available</text>
+      </svg>
+    );
+  }
   const maxV = Math.max(...data.map(d => d.gpt4 + d.claude + d.llama)) || 1;
   const n = data.length;
   const slotW = cW / n;
@@ -255,6 +283,13 @@ export function StorageAreaChart({ data }: { data: { label: string; used: number
   const [hov, setHov] = React.useState<number | null>(null);
   const W = 480, H = 160, pL = 40, pR = 8, pT = 12, pB = 26;
   const cW = W - pL - pR, cH = H - pT - pB;
+  if (!data || data.length === 0) {
+    return (
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+        <text x={W / 2} y={H / 2} textAnchor="middle" fill="#94A3B8" fontSize="13" fontFamily="Inter, sans-serif">No data available</text>
+      </svg>
+    );
+  }
   const maxV = 20;
   const n = data.length;
   const px = (i: number) => pL + (i / Math.max(n - 1, 1)) * cW;

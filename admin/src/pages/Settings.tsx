@@ -111,80 +111,76 @@ export function Settings() {
 
   // ── General state ──
   const [general, setGeneral] = useState({
-    platformName: "Meetiva",
-    description: "AI-powered meeting intelligence platform",
-    contactEmail: "support@meetiva.com",
-    websiteUrl: "https://app.meetiva.com",
+    platformName: "",
+    description: "",
+    contactEmail: "",
+    websiteUrl: "",
     timezone: "UTC",
     language: "English (US)",
   });
 
   // ── Auth state ──
   const [auth, setAuth] = useState({
-    emailPassword: true,
-    googleSSO: true,
+    emailPassword: false,
+    googleSSO: false,
     microsoftSSO: false,
     saml: false,
-    twoFA: true,
-    passwordMinLength: "12",
-    passwordRequireSpecial: true,
-    passwordRequireNumbers: true,
-    passwordRequireUppercase: true,
-    sessionTimeout: "60",
-    maxLoginAttempts: "5",
+    twoFA: false,
+    passwordMinLength: "",
+    passwordRequireSpecial: false,
+    passwordRequireNumbers: false,
+    passwordRequireUppercase: false,
+    sessionTimeout: "",
+    maxLoginAttempts: "",
   });
 
   // ── AI state ──
   const [ai, setAi] = useState({
-    primaryModel: "GPT-4o (OpenAI)",
-    fallbackModel1: "Claude 3.5 Sonnet (Anthropic)",
-    fallbackModel2: "Gemini Pro (Google)",
-    monthlyTokenBudget: "500000000",
-    perOrgTokenLimit: "10000000",
-    rateLimitPerMin: "120",
-    dailyCostCap: "500",
-    enableCostAlerts: true,
+    primaryModel: "",
+    fallbackModel1: "",
+    fallbackModel2: "",
+    monthlyTokenBudget: "",
+    perOrgTokenLimit: "",
+    rateLimitPerMin: "",
+    dailyCostCap: "",
+    enableCostAlerts: false,
   });
 
   // ── Storage state ──
   const [storage, setStorage] = useState({
-    provider: "Amazon S3",
-    storageLimitPerUser: "50",
-    allowedFileTypes: "video/mp4, video/webm, audio/mpeg, application/pdf, image/*",
-    maxUploadSize: "500",
-    retentionDays: "365",
-    warningThreshold: "90",
-    totalPlatformLimit: "20",
+    provider: "",
+    storageLimitPerUser: "",
+    allowedFileTypes: "",
+    maxUploadSize: "",
+    retentionDays: "",
+    warningThreshold: "",
+    totalPlatformLimit: "",
   });
 
   // ── Uploads state ──
   const [uploads, setUploads] = useState({
-    defaultVideoQuality: "1080p",
-    autoTranscription: true,
-    recordingRetention: "90",
-    maxRecordingDuration: "240",
-    enableBackgroundProcessing: true,
-    transcriptionModel: "Whisper v3",
+    defaultVideoQuality: "",
+    autoTranscription: false,
+    recordingRetention: "",
+    maxRecordingDuration: "",
+    enableBackgroundProcessing: false,
+    transcriptionModel: "",
   });
 
   // ── Maintenance state ──
   const [maintenance, setMaintenance] = useState({
     maintenanceMode: false,
-    cacheStatus: "Healthy",
-    dbStatus: "Connected",
-    lastBackup: "2026-08-10 02:00 UTC",
-    cacheSize: "1.2 GB",
   });
 
   // ── Billing state ──
   const [billing, setBilling] = useState({
-    currentPlan: "Enterprise",
-    stripeKey: "pk_live_••••••••••••••••••••••••••••••••••",
-    stripeSecret: "sk_live_••••••••••••••••••••••••••••••••••",
-    webhookSecret: "whsec_••••••••••••••••••••••••••••••••",
-    monthlyBudget: "10000",
-    usageAlertThreshold: "80",
-    enableAutoRenewal: true,
+    currentPlan: "",
+    stripeKey: "",
+    stripeSecret: "",
+    webhookSecret: "",
+    monthlyBudget: "",
+    usageAlertThreshold: "",
+    enableAutoRenewal: false,
   });
 
   // ── Password visibility ──
@@ -255,16 +251,18 @@ export function Settings() {
                 <div>
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Platform Name</label>
                   <input
-                    defaultValue={general.platformName}
+                    value={general.platformName}
                     onChange={(e) => setGeneral({ ...general, platformName: e.target.value })}
+                    placeholder="Enter platform name"
                     className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827]"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Description</label>
                   <textarea
-                    defaultValue={general.description}
+                    value={general.description}
                     onChange={(e) => setGeneral({ ...general, description: e.target.value })}
+                    placeholder="Enter platform description"
                     rows={3}
                     className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] resize-none"
                   />
@@ -276,8 +274,9 @@ export function Settings() {
                       <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="email"
-                        defaultValue={general.contactEmail}
+                        value={general.contactEmail}
                         onChange={(e) => setGeneral({ ...general, contactEmail: e.target.value })}
+                        placeholder="admin@example.com"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827]"
                       />
                     </div>
@@ -288,8 +287,9 @@ export function Settings() {
                       <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="url"
-                        defaultValue={general.websiteUrl}
+                        value={general.websiteUrl}
                         onChange={(e) => setGeneral({ ...general, websiteUrl: e.target.value })}
+                        placeholder="https://example.com"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827]"
                       />
                     </div>
@@ -311,37 +311,37 @@ export function Settings() {
                   <div>
                     <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Default Timezone</label>
                     <select
-                      defaultValue={general.timezone}
+                      value={general.timezone}
                       onChange={(e) => setGeneral({ ...general, timezone: e.target.value })}
                       className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827]"
                     >
-                      <option>UTC</option>
-                      <option>America/New_York</option>
-                      <option>America/Chicago</option>
-                      <option>America/Los_Angeles</option>
-                      <option>Europe/London</option>
-                      <option>Europe/Berlin</option>
-                      <option>Asia/Tokyo</option>
-                      <option>Asia/Shanghai</option>
-                      <option>Australia/Sydney</option>
+                      <option value="UTC">UTC</option>
+                      <option value="America/New_York">America/New_York</option>
+                      <option value="America/Chicago">America/Chicago</option>
+                      <option value="America/Los_Angeles">America/Los_Angeles</option>
+                      <option value="Europe/London">Europe/London</option>
+                      <option value="Europe/Berlin">Europe/Berlin</option>
+                      <option value="Asia/Tokyo">Asia/Tokyo</option>
+                      <option value="Asia/Shanghai">Asia/Shanghai</option>
+                      <option value="Australia/Sydney">Australia/Sydney</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Default Language</label>
                     <select
-                      defaultValue={general.language}
+                      value={general.language}
                       onChange={(e) => setGeneral({ ...general, language: e.target.value })}
                       className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827]"
                     >
-                      <option>English (US)</option>
-                      <option>English (UK)</option>
-                      <option>Spanish</option>
-                      <option>French</option>
-                      <option>German</option>
-                      <option>Japanese</option>
-                      <option>Chinese (Simplified)</option>
-                      <option>Portuguese (BR)</option>
-                      <option>Arabic</option>
+                      <option value="English (US)">English (US)</option>
+                      <option value="English (UK)">English (UK)</option>
+                      <option value="Spanish">Spanish</option>
+                      <option value="French">French</option>
+                      <option value="German">German</option>
+                      <option value="Japanese">Japanese</option>
+                      <option value="Chinese (Simplified)">Chinese (Simplified)</option>
+                      <option value="Portuguese (BR)">Portuguese (BR)</option>
+                      <option value="Arabic">Arabic</option>
                     </select>
                   </div>
                 </div>
@@ -364,10 +364,7 @@ export function Settings() {
               <div className="space-y-0">
                 <Toggle
                   enabled={auth.emailPassword}
-                  onToggle={() => {
-                    const next = { ...auth, emailPassword: !auth.emailPassword };
-                    setAuth(next);
-                  }}
+                  onToggle={() => setAuth({ ...auth, emailPassword: !auth.emailPassword })}
                   label="Email & Password"
                   description="Allow users to sign in with email and password"
                 />
@@ -407,8 +404,9 @@ export function Settings() {
                       <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={auth.passwordMinLength}
+                        value={auth.passwordMinLength}
                         onChange={(e) => setAuth({ ...auth, passwordMinLength: e.target.value })}
+                        placeholder="8"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -419,8 +417,9 @@ export function Settings() {
                       <Timer size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={auth.sessionTimeout}
+                        value={auth.sessionTimeout}
                         onChange={(e) => setAuth({ ...auth, sessionTimeout: e.target.value })}
+                        placeholder="30"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -450,8 +449,9 @@ export function Settings() {
                     <Shield size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                     <input
                       type="number"
-                      defaultValue={auth.maxLoginAttempts}
+                      value={auth.maxLoginAttempts}
                       onChange={(e) => setAuth({ ...auth, maxLoginAttempts: e.target.value })}
+                      placeholder="5"
                       className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                     />
                   </div>
@@ -476,40 +476,43 @@ export function Settings() {
                 <div>
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Primary Model</label>
                   <select
-                    defaultValue={ai.primaryModel}
+                    value={ai.primaryModel}
                     onChange={(e) => setAi({ ...ai, primaryModel: e.target.value })}
                     className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827]"
                   >
-                    <option>GPT-4o (OpenAI)</option>
-                    <option>Claude 3.5 Sonnet (Anthropic)</option>
-                    <option>Gemini Pro (Google)</option>
-                    <option>Llama 3.1 (Meta)</option>
+                    <option value="">Select a model</option>
+                    <option value="GPT-4o (OpenAI)">GPT-4o (OpenAI)</option>
+                    <option value="Claude 3.5 Sonnet (Anthropic)">Claude 3.5 Sonnet (Anthropic)</option>
+                    <option value="Gemini Pro (Google)">Gemini Pro (Google)</option>
+                    <option value="Llama 3.1 (Meta)">Llama 3.1 (Meta)</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Fallback Model (1st)</label>
                   <select
-                    defaultValue={ai.fallbackModel1}
+                    value={ai.fallbackModel1}
                     onChange={(e) => setAi({ ...ai, fallbackModel1: e.target.value })}
                     className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827]"
                   >
-                    <option>Claude 3.5 Sonnet (Anthropic)</option>
-                    <option>GPT-4o (OpenAI)</option>
-                    <option>Gemini Pro (Google)</option>
-                    <option>Llama 3.1 (Meta)</option>
+                    <option value="">Select a model</option>
+                    <option value="Claude 3.5 Sonnet (Anthropic)">Claude 3.5 Sonnet (Anthropic)</option>
+                    <option value="GPT-4o (OpenAI)">GPT-4o (OpenAI)</option>
+                    <option value="Gemini Pro (Google)">Gemini Pro (Google)</option>
+                    <option value="Llama 3.1 (Meta)">Llama 3.1 (Meta)</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Fallback Model (2nd)</label>
                   <select
-                    defaultValue={ai.fallbackModel2}
+                    value={ai.fallbackModel2}
                     onChange={(e) => setAi({ ...ai, fallbackModel2: e.target.value })}
                     className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827]"
                   >
-                    <option>Gemini Pro (Google)</option>
-                    <option>GPT-4o (OpenAI)</option>
-                    <option>Claude 3.5 Sonnet (Anthropic)</option>
-                    <option>Llama 3.1 (Meta)</option>
+                    <option value="">Select a model</option>
+                    <option value="Gemini Pro (Google)">Gemini Pro (Google)</option>
+                    <option value="GPT-4o (OpenAI)">GPT-4o (OpenAI)</option>
+                    <option value="Claude 3.5 Sonnet (Anthropic)">Claude 3.5 Sonnet (Anthropic)</option>
+                    <option value="Llama 3.1 (Meta)">Llama 3.1 (Meta)</option>
                   </select>
                 </div>
               </div>
@@ -524,8 +527,9 @@ export function Settings() {
                       <Layers size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={ai.monthlyTokenBudget}
+                        value={ai.monthlyTokenBudget}
                         onChange={(e) => setAi({ ...ai, monthlyTokenBudget: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -536,8 +540,9 @@ export function Settings() {
                       <Layers size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={ai.perOrgTokenLimit}
+                        value={ai.perOrgTokenLimit}
                         onChange={(e) => setAi({ ...ai, perOrgTokenLimit: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -550,8 +555,9 @@ export function Settings() {
                       <Zap size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={ai.rateLimitPerMin}
+                        value={ai.rateLimitPerMin}
                         onChange={(e) => setAi({ ...ai, rateLimitPerMin: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -562,8 +568,9 @@ export function Settings() {
                       <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={ai.dailyCostCap}
+                        value={ai.dailyCostCap}
                         onChange={(e) => setAi({ ...ai, dailyCostCap: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -595,14 +602,15 @@ export function Settings() {
                 <div>
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Storage Provider</label>
                   <select
-                    defaultValue={storage.provider}
+                    value={storage.provider}
                     onChange={(e) => setStorage({ ...storage, provider: e.target.value })}
                     className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827]"
                   >
-                    <option>Amazon S3</option>
-                    <option>Google Cloud Storage</option>
-                    <option>Azure Blob Storage</option>
-                    <option>MinIO (Self-hosted)</option>
+                    <option value="">Select a provider</option>
+                    <option value="Amazon S3">Amazon S3</option>
+                    <option value="Google Cloud Storage">Google Cloud Storage</option>
+                    <option value="Azure Blob Storage">Azure Blob Storage</option>
+                    <option value="MinIO (Self-hosted)">MinIO (Self-hosted)</option>
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -612,8 +620,9 @@ export function Settings() {
                       <HardDrive size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={storage.totalPlatformLimit}
+                        value={storage.totalPlatformLimit}
                         onChange={(e) => setStorage({ ...storage, totalPlatformLimit: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -624,8 +633,9 @@ export function Settings() {
                       <HardDrive size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={storage.storageLimitPerUser}
+                        value={storage.storageLimitPerUser}
                         onChange={(e) => setStorage({ ...storage, storageLimitPerUser: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -638,8 +648,9 @@ export function Settings() {
                       <AlertTriangle size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={storage.warningThreshold}
+                        value={storage.warningThreshold}
                         onChange={(e) => setStorage({ ...storage, warningThreshold: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -650,8 +661,9 @@ export function Settings() {
                       <Timer size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={storage.retentionDays}
+                        value={storage.retentionDays}
                         onChange={(e) => setStorage({ ...storage, retentionDays: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -660,8 +672,9 @@ export function Settings() {
                 <div>
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Allowed File Types (MIME)</label>
                   <textarea
-                    defaultValue={storage.allowedFileTypes}
+                    value={storage.allowedFileTypes}
                     onChange={(e) => setStorage({ ...storage, allowedFileTypes: e.target.value })}
+                    placeholder="video/mp4, audio/mpeg, application/pdf"
                     rows={2}
                     className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827] font-mono tracking-tight resize-none"
                   />
@@ -690,8 +703,9 @@ export function Settings() {
                       <Upload size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={storage.maxUploadSize}
+                        value={storage.maxUploadSize}
                         onChange={(e) => setStorage({ ...storage, maxUploadSize: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -699,14 +713,15 @@ export function Settings() {
                   <div>
                     <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Default Video Quality</label>
                     <select
-                      defaultValue={uploads.defaultVideoQuality}
+                      value={uploads.defaultVideoQuality}
                       onChange={(e) => setUploads({ ...uploads, defaultVideoQuality: e.target.value })}
                       className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827]"
                     >
-                      <option>720p</option>
-                      <option>1080p</option>
-                      <option>1440p</option>
-                      <option>4K</option>
+                      <option value="">Select quality</option>
+                      <option value="720p">720p</option>
+                      <option value="1080p">1080p</option>
+                      <option value="1440p">1440p</option>
+                      <option value="4K">4K</option>
                     </select>
                   </div>
                 </div>
@@ -717,8 +732,9 @@ export function Settings() {
                       <Timer size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={uploads.maxRecordingDuration}
+                        value={uploads.maxRecordingDuration}
                         onChange={(e) => setUploads({ ...uploads, maxRecordingDuration: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -729,8 +745,9 @@ export function Settings() {
                       <HardDrive size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={uploads.recordingRetention}
+                        value={uploads.recordingRetention}
                         onChange={(e) => setUploads({ ...uploads, recordingRetention: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -739,14 +756,15 @@ export function Settings() {
                 <div>
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Transcription Model</label>
                   <select
-                    defaultValue={uploads.transcriptionModel}
+                    value={uploads.transcriptionModel}
                     onChange={(e) => setUploads({ ...uploads, transcriptionModel: e.target.value })}
                     className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827]"
                   >
-                    <option>Whisper v3</option>
-                    <option>Whisper v2</option>
-                    <option>AssemblyAI</option>
-                    <option>Deepgram</option>
+                    <option value="">Select a model</option>
+                    <option value="Whisper v3">Whisper v3</option>
+                    <option value="Whisper v2">Whisper v2</option>
+                    <option value="AssemblyAI">AssemblyAI</option>
+                    <option value="Deepgram">Deepgram</option>
                   </select>
                 </div>
                 <Toggle
@@ -803,48 +821,6 @@ export function Settings() {
               </div>
             </SectionCard>
 
-            <SectionCard title="System Status" subtitle="Current platform health indicators">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between py-3 border-b border-[#F1F9FB]">
-                  <div className="flex items-center gap-3">
-                    <Server size={16} className="text-green-500" />
-                    <span className="text-sm text-[#111827] font-medium">API Server</span>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    Operational
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-3 border-b border-[#F1F9FB]">
-                  <div className="flex items-center gap-3">
-                    <Database size={16} className="text-green-500" />
-                    <span className="text-sm text-[#111827] font-medium">Database</span>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    {maintenance.dbStatus}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-3 border-b border-[#F1F9FB]">
-                  <div className="flex items-center gap-3">
-                    <HardDrive size={16} className="text-green-500" />
-                    <span className="text-sm text-[#111827] font-medium">Cache</span>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    {maintenance.cacheStatus} ({maintenance.cacheSize})
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <div className="flex items-center gap-3">
-                    <FileText size={16} className="text-green-500" />
-                    <span className="text-sm text-[#111827] font-medium">Last Backup</span>
-                  </div>
-                  <span className="text-xs text-[#64748B] font-mono">{maintenance.lastBackup}</span>
-                </div>
-              </div>
-            </SectionCard>
-
             <SectionCard
               title="Danger Zone"
               subtitle="Irreversible platform-wide actions"
@@ -853,7 +829,7 @@ export function Settings() {
             >
               <div className="space-y-3">
                 <button
-                  onClick={() => toast.success("Rebuilding search indexes…")}
+                  onClick={() => toast.success("Rebuilding search indexes...")}
                   className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-colors cursor-pointer"
                 >
                   <Wrench size={14} />
@@ -885,17 +861,20 @@ export function Settings() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Current Plan</label>
-                  <div className="flex items-center gap-3 px-3 py-2.5 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl">
-                    <CreditCard size={14} className="text-[#06B6D4]" />
-                    <span className="text-sm font-semibold text-[#111827]">{billing.currentPlan}</span>
-                    <span className="ml-auto text-xs font-medium text-[#10B981] bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">Active</span>
-                  </div>
+                  <input
+                    value={billing.currentPlan}
+                    onChange={(e) => setBilling({ ...billing, currentPlan: e.target.value })}
+                    placeholder="Enter plan name"
+                    className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827]"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Stripe Publishable Key</label>
                   <input
-                    defaultValue={billing.stripeKey}
+                    value={billing.stripeKey}
+                    onChange={(e) => setBilling({ ...billing, stripeKey: e.target.value })}
                     type="text"
+                    placeholder="pk_..."
                     className="w-full px-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827] font-mono tracking-tight"
                   />
                 </div>
@@ -903,8 +882,10 @@ export function Settings() {
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Stripe Secret Key</label>
                   <div className="relative">
                     <input
-                      defaultValue={billing.stripeSecret}
+                      value={billing.stripeSecret}
+                      onChange={(e) => setBilling({ ...billing, stripeSecret: e.target.value })}
                       type={showSecrets.stripeSecret ? "text" : "password"}
+                      placeholder="sk_..."
                       className="w-full px-3 py-2.5 pr-10 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827] font-mono tracking-tight"
                     />
                     <button
@@ -920,8 +901,10 @@ export function Settings() {
                   <label className="block text-xs font-medium text-[#4B5563] mb-1.5">Webhook Signing Secret</label>
                   <div className="relative">
                     <input
-                      defaultValue={billing.webhookSecret}
+                      value={billing.webhookSecret}
+                      onChange={(e) => setBilling({ ...billing, webhookSecret: e.target.value })}
                       type={showSecrets.webhookSecret ? "text" : "password"}
+                      placeholder="whsec_..."
                       className="w-full px-3 py-2.5 pr-10 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] transition-all text-[#111827] font-mono tracking-tight"
                     />
                     <button
@@ -952,8 +935,9 @@ export function Settings() {
                       <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={billing.monthlyBudget}
+                        value={billing.monthlyBudget}
                         onChange={(e) => setBilling({ ...billing, monthlyBudget: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>
@@ -964,8 +948,9 @@ export function Settings() {
                       <AlertTriangle size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
                       <input
                         type="number"
-                        defaultValue={billing.usageAlertThreshold}
+                        value={billing.usageAlertThreshold}
                         onChange={(e) => setBilling({ ...billing, usageAlertThreshold: e.target.value })}
+                        placeholder="0"
                         className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all text-[#111827] font-mono tracking-tight"
                       />
                     </div>

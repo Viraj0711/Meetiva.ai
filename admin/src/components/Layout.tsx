@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Users, Users2, Brain, ScrollText, Settings,
   Bell, Search, LogOut, ChevronDown, User, Building2, Pencil,
 } from "lucide-react";
+import { authApi, clearToken } from "@/lib/api";
 import type { Page } from "@/types";
 
 const sidebarNav: { id: Page; label: string; icon: React.ElementType }[] = [
@@ -70,7 +71,7 @@ export function Sidebar({ current, onNav }: { current: Page; onNav: (p: Page) =>
   );
 }
 
-export function TopBar({ onNav }: { onNav?: (p: Page) => void }) {
+export function TopBar({ onNav, onLogout }: { onNav?: (p: Page) => void; onLogout?: () => void }) {
   const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   const [searchVal, setSearchVal] = useState("");
   const [searchFocus, setSearchFocus] = useState(false);
@@ -240,7 +241,12 @@ export function TopBar({ onNav }: { onNav?: (p: Page) => void }) {
               ))}
               <div className="mx-3 my-1 border-t border-[#EDF7F9]" />
               <button
-                onClick={() => { toast.error("Sign-out requires confirmation"); setAdminOpen(false); }}
+                onClick={async () => {
+                  try { await authApi.logout(); } catch {}
+                  clearToken();
+                  setAdminOpen(false);
+                  onLogout?.();
+                }}
                 className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#EF4444] hover:bg-[#FEF2F2] transition-colors cursor-pointer">
                 <LogOut size={13} /> Sign out
               </button>

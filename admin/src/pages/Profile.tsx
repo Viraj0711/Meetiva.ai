@@ -1,91 +1,89 @@
-import { useState } from "react";
-import { Pencil, Camera, LogOut, CheckCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Pencil, Camera, LogOut, CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { authApi, type MeUser, type Subscription } from "@/lib/api";
 
 export { ProfilePage };
 export default function ProfilePage() {
-  const [form, setForm] = useState({
-    name: "Super Admin",
-    email: "admin@meetiva.com",
-    phone: "+1 (555) 000-0000",
-    role: "Super Administrator",
-    department: "Platform Operations",
-    location: "San Francisco, CA",
-    timezone: "UTC−8 Pacific Time",
-    bio: "Platform administrator with full access to all Meetiva workspaces and system configuration. Responsible for user management, billing, and infrastructure oversight.",
-  });
+  const [user, setUser] = useState<MeUser | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(form);
+  const [draft, setDraft] = useState({ name: "", email: "" });
+
+  useEffect(() => {
+    Promise.all([authApi.me(), authApi.subscription()])
+      .then(([me, sub]) => {
+        setUser(me);
+        setSubscription(sub);
+        setDraft({ name: me.name, email: me.email });
+      })
+      .catch((err) => {
+        toast.error(err.message || "Failed to load profile");
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const set =
     (k: keyof typeof draft) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
       setDraft((d) => ({ ...d, [k]: e.target.value }));
 
   const handleEdit = () => {
-    setDraft(form);
+    if (user) setDraft({ name: user.name, email: user.email });
     setEditing(true);
   };
   const handleCancel = () => setEditing(false);
   const handleSave = () => {
-    setForm(draft);
+    if (user) setUser({ ...user, name: draft.name, email: draft.email });
     setEditing(false);
     toast.success("Profile updated successfully");
   };
 
-  const initials = form.name
+  const initials = (user?.name || "")
     .split(" ")
     .map((w) => w[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
 
-  const Field = ({
-    label,
-    value,
-    k,
-    type = "text",
-    full = false,
-  }: {
-    label: string;
-    value: string;
-    k: keyof typeof draft;
-    type?: string;
-    full?: boolean;
-  }) => (
-    <div className={full ? "col-span-2" : ""}>
-      <label className="block text-[11px] font-semibold text-[#94A3B8] uppercase tracking-wider mb-1.5">
-        {label}
-      </label>
-      {editing ? (
-        <input
-          type={type}
-          value={draft[k]}
-          onChange={set(k)}
-          className="w-full px-3 py-2.5 text-[13px] text-[#0F172A] bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all"
-        />
-      ) : (
-        <p className="text-[13px] text-[#0F172A] font-medium py-2.5 px-3 bg-[#F8FDFE] rounded-xl border border-[#E5F4F7]">
-          {value}
-        </p>
-      )}
-    </div>
-  );
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+  if (loading) {
+    return (
+      <div className="min-h-full bg-[#F5FEFF] flex items-center justify-center">
+        <Loader2 size={28} className="animate-spin text-[#06B6D4]" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-full bg-[#F5FEFF] flex items-center justify-center">
+        <p className="text-[13px] text-[#94A3B8]">Unable to load profile.</p>
+      </div>
+    );
+  }
 
   const readonlyFields = [
-    { label: "User ID", value: "ADM-000001" },
-    { label: "Account Type", value: "Super Administrator" },
-    { label: "Member Since", value: "January 12, 2022" },
-    { label: "Last Login", value: "Today at 09:41 AM" },
-    { label: "Last IP", value: "192.168.1.1" },
-    { label: "2FA Status", value: "Enabled (Authenticator App)" },
+    { label: "User ID", value: user.id },
+    { label: "Account Type", value: subscription?.tier || "Free" },
+    { label: "Member Since", value: formatDate(user.createdAt) },
+    { label: "Last Updated", value: formatDate(user.updatedAt) },
+    { label: "Subscription", value: subscription?.isSubscribed ? "Active" : "None" },
+    { label: "Monthly Limit", value: subscription ? `${subscription.monthlyLimit} meetings` : "\u2014" },
   ];
 
   const activityStats = [
-    { label: "Users Managed", value: "13,847" },
-    { label: "Teams Overseen", value: "1,124" },
-    { label: "Logs Reviewed", value: "48,291" },
-    { label: "Settings Changed", value: "214" },
+    { label: "Meetings This Month", value: subscription?.meetingCountThisMonth ?? 0 },
+    { label: "Meetings Remaining", value: subscription?.meetingsRemaining ?? 0 },
+    { label: "Subscription Tier", value: subscription?.tier || "Free" },
+    { label: "Status", value: subscription?.isSubscribed ? "Subscribed" : "Free" },
   ];
 
   return (
@@ -139,10 +137,10 @@ export default function ProfilePage() {
               </div>
               <div className="pb-1">
                 <h2 className="text-[18px] font-bold text-[#0F172A] leading-tight">
-                  {form.name}
+                  {user.name}
                 </h2>
                 <p className="text-[12px] text-[#94A3B8] mt-0.5">
-                  {form.role} · {form.department}
+                  {subscription?.tier || "Free"} plan &middot; {user.email}
                 </p>
               </div>
               {!editing && (
@@ -155,37 +153,47 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Bio */}
-            <div className="mb-5">
-              <label className="block text-[11px] font-semibold text-[#94A3B8] uppercase tracking-wider mb-1.5">
-                Bio
-              </label>
-              {editing ? (
-                <textarea
-                  value={draft.bio}
-                  onChange={set("bio")}
-                  rows={3}
-                  className="w-full px-3 py-2.5 text-[13px] text-[#0F172A] bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all resize-none"
-                />
-              ) : (
-                <p className="text-[13px] text-[#64748B] leading-relaxed">{form.bio}</p>
-              )}
-            </div>
-
             {/* Editable fields grid */}
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Full Name" value={form.name} k="name" />
-              <Field label="Email" value={form.email} k="email" type="email" />
-              <Field label="Phone" value={form.phone} k="phone" type="tel" />
-              <Field label="Role" value={form.role} k="role" />
-              <Field label="Department" value={form.department} k="department" />
-              <Field label="Location" value={form.location} k="location" />
-              <Field label="Timezone" value={form.timezone} k="timezone" full />
+              <div>
+                <label className="block text-[11px] font-semibold text-[#94A3B8] uppercase tracking-wider mb-1.5">
+                  Full Name
+                </label>
+                {editing ? (
+                  <input
+                    type="text"
+                    value={draft.name}
+                    onChange={set("name")}
+                    className="w-full px-3 py-2.5 text-[13px] text-[#0F172A] bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all"
+                  />
+                ) : (
+                  <p className="text-[13px] text-[#0F172A] font-medium py-2.5 px-3 bg-[#F8FDFE] rounded-xl border border-[#E5F4F7]">
+                    {user.name}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-[#94A3B8] uppercase tracking-wider mb-1.5">
+                  Email
+                </label>
+                {editing ? (
+                  <input
+                    type="email"
+                    value={draft.email}
+                    onChange={set("email")}
+                    className="w-full px-3 py-2.5 text-[13px] text-[#0F172A] bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl outline-none focus:border-[#06B6D4] focus:ring-2 focus:ring-[#06B6D4]/10 transition-all"
+                  />
+                ) : (
+                  <p className="text-[13px] text-[#0F172A] font-medium py-2.5 px-3 bg-[#F8FDFE] rounded-xl border border-[#E5F4F7]">
+                    {user.email}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Account details (read-only) */}
+        {/* Account details */}
         <div className="bg-white rounded-2xl border border-[#E5F4F7] shadow-sm p-6">
           <h3 className="text-[14px] font-bold text-[#0F172A] mb-4">Account Details</h3>
           <div className="grid grid-cols-2 gap-x-8 gap-y-4">

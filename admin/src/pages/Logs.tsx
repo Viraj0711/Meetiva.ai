@@ -6,21 +6,19 @@ import {
   CheckCircle,
   AlertTriangle,
   Info,
-  Clock,
   Download,
   X,
-  Filter,
   Server,
   Database,
   Brain,
   Key,
   DollarSign,
   Video,
-  ArrowUpDown,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { notificationsApi } from "@/lib/api";
+import { notificationsApi, Notification } from "@/lib/api";
 
 interface LogEntry {
   id: string;
@@ -30,20 +28,8 @@ interface LogEntry {
   event: string;
   status: "ok" | "error" | "warn" | "info";
   latency: string;
+  notification: Notification;
 }
-
-const mockLogs: LogEntry[] = [
-  { id: "l1", ts: "2024-08-01 14:32:17", user: "sarah.chen@acme.com", service: "meeting-service", event: "Meeting session ended cleanly", status: "ok", latency: "124ms" },
-  { id: "l2", ts: "2024-08-01 14:31:02", user: "system", service: "ai-gateway", event: "Token limit exceeded for org acme-corp", status: "error", latency: "2301ms" },
-  { id: "l3", ts: "2024-08-01 14:29:44", user: "priya@nexus.tech", service: "auth-service", event: "Login successful via SSO", status: "ok", latency: "48ms" },
-  { id: "l4", ts: "2024-08-01 14:27:11", user: "system", service: "storage-service", event: "Bucket quota at 90% for mitsuko-digital", status: "warn", latency: "89ms" },
-  { id: "l5", ts: "2024-08-01 14:24:58", user: "m.williams@orion.io", service: "meeting-service", event: "Recording started (1080p)", status: "ok", latency: "203ms" },
-  { id: "l6", ts: "2024-08-01 14:22:33", user: "system", service: "billing-service", event: "Invoice generation failed — Stripe timeout", status: "error", latency: "5012ms" },
-  { id: "l7", ts: "2024-08-01 14:20:19", user: "tom.e@nordic.se", service: "auth-service", event: "Password reset requested", status: "ok", latency: "67ms" },
-  { id: "l8", ts: "2024-08-01 14:18:07", user: "system", service: "ai-gateway", event: "Primary model fallback triggered → GPT-4o-mini", status: "warn", latency: "890ms" },
-  { id: "l9", ts: "2024-08-01 14:15:44", user: "aiko.tanaka@mitsuko.jp", service: "meeting-service", event: "Meeting scheduled for 2024-08-05 09:00 JST", status: "ok", latency: "156ms" },
-  { id: "l10", ts: "2024-08-01 14:12:28", user: "system", service: "storage-service", event: "Multipart upload completed (2.3 GB)", status: "ok", latency: "412ms" },
-];
 
 const serviceIcons: Record<string, React.ReactNode> = {
   "meeting-service": <Video className="w-3.5 h-3.5" />,
@@ -51,6 +37,7 @@ const serviceIcons: Record<string, React.ReactNode> = {
   "auth-service": <Key className="w-3.5 h-3.5" />,
   "storage-service": <Database className="w-3.5 h-3.5" />,
   "billing-service": <DollarSign className="w-3.5 h-3.5" />,
+  "system": <Server className="w-3.5 h-3.5" />,
 };
 
 const statusConfig: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
@@ -60,36 +47,50 @@ const statusConfig: Record<string, { bg: string; text: string; icon: React.React
   info: { bg: "bg-blue-50", text: "text-blue-600", icon: <Info className="w-3.5 h-3.5" /> },
 };
 
-export function Logs() {
+function mapNotificationToLog(n: Notification): LogEntry {
+  const status: LogEntry["status"] = n.type === "DEADLINE_REMINDER" ? "warn" : "ok";
+  const service =
+    n.type === "DEADLINE_REMINDER"
+      ? "meeting-service"
+      : n.type === "SYSTEM"
+        ? "system"
+        : "auth-service";
+
+  return {
+    id: n._id || n.id,
+    ts: n.createdAt
+      ? new Date(n.createdAt).toISOString().replace("T", " ").slice(0, 19)
+      : "Unknown",
+    user: "system",
+    service,
+    event: n.title ? `${n.title} — ${n.message || ""}` : "System event",
+    status,
+    latency: `${Math.floor(Math.random() * 500) + 50}ms`,
+    notification: n,
+  };
+}
+
+function Logs() {
   const [search, setSearch] = useState("");
   const [serviceFilter, setServiceFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
   const [sortOpen, setSortOpen] = useState(false);
-  const [logs, setLogs] = useState<LogEntry[]>(mockLogs);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchLogs = async () => {
       try {
         const res = await notificationsApi.list(1, 50);
-        const notifs = (res as { data: unknown[] }).data;
+        const notifs = res.data;
         if (notifs && notifs.length > 0) {
-          const mapped: LogEntry[] = notifs.map((n: unknown, i: number) => {
-            const notif = n as { _id?: string; title?: string; message?: string; type?: string; createdAt?: string; isRead?: boolean };
-            return {
-              id: notif._id || `l${i}`,
-              ts: notif.createdAt ? new Date(notif.createdAt).toISOString().replace("T", " ").slice(0, 19) : "Unknown",
-              user: "system",
-              service: notif.type === "DEADLINE_REMINDER" ? "meeting-service" : "auth-service",
-              event: notif.title ? `${notif.title} — ${notif.message || ""}` : "System event",
-              status: notif.isRead ? "ok" : "warn",
-              latency: `${Math.floor(Math.random() * 500) + 50}ms`,
-            };
-          });
-          setLogs(mapped);
+          setLogs(notifs.map(mapNotificationToLog));
         }
       } catch {
-        // API unavailable, keep mock data
+        // API unavailable
+      } finally {
+        setLoading(false);
       }
     };
     fetchLogs();
@@ -104,7 +105,12 @@ export function Logs() {
     return true;
   });
 
-  const counts = { total: logs.length, error: logs.filter((l) => l.status === "error").length, warn: logs.filter((l) => l.status === "warn").length, ok: logs.filter((l) => l.status === "ok").length };
+  const counts = {
+    total: logs.length,
+    error: logs.filter((l) => l.status === "error").length,
+    warn: logs.filter((l) => l.status === "warn").length,
+    ok: logs.filter((l) => l.status === "ok").length,
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -168,49 +174,57 @@ export function Logs() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E5F4F7] overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-[#E5F4F7]">
-              <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">Timestamp</th>
-              <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">User</th>
-              <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">Service</th>
-              <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">Event</th>
-              <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">Status</th>
-              <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">Latency</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((log) => {
-              const cfg = statusConfig[log.status];
-              return (
-                <tr key={log.id} onClick={() => setSelectedLog(log)} className="border-b border-[#E5F4F7]/50 hover:bg-[#F8FDFE] cursor-pointer transition-all">
-                  <td className="px-6 py-3 text-sm font-mono text-[#94A3B8]">{log.ts}</td>
-                  <td className="px-6 py-3">
-                    <span className={`text-sm font-medium ${log.user === "system" ? "text-[#4F46E5] font-mono" : "text-[#0F172A]"}`}>{log.user}</span>
-                  </td>
-                  <td className="px-6 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[#94A3B8]">{serviceIcons[log.service]}</span>
-                      <span className="text-sm text-[#0F172A]">{log.service}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-3 text-sm text-[#0F172A] max-w-md truncate">{log.event}</td>
-                  <td className="px-6 py-3">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>
-                      {cfg.icon} {log.status.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3 text-sm font-mono text-[#94A3B8]">{log.latency}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {filtered.length === 0 && (
-          <div className="text-center py-12">
-            <ScrollText className="w-10 h-10 text-[#E5F4F7] mx-auto mb-3" />
-            <p className="text-sm text-[#94A3B8]">No logs found</p>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-6 h-6 text-[#06B6D4] animate-spin" />
           </div>
+        ) : (
+          <>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#E5F4F7]">
+                  <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">Timestamp</th>
+                  <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">User</th>
+                  <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">Service</th>
+                  <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">Event</th>
+                  <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">Status</th>
+                  <th className="text-left text-xs font-medium text-[#94A3B8] uppercase tracking-wider px-6 py-3">Latency</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((log) => {
+                  const cfg = statusConfig[log.status];
+                  return (
+                    <tr key={log.id} onClick={() => setSelectedLog(log)} className="border-b border-[#E5F4F7]/50 hover:bg-[#F8FDFE] cursor-pointer transition-all">
+                      <td className="px-6 py-3 text-sm font-mono text-[#94A3B8]">{log.ts}</td>
+                      <td className="px-6 py-3">
+                        <span className={`text-sm font-medium ${log.user === "system" ? "text-[#4F46E5] font-mono" : "text-[#0F172A]"}`}>{log.user}</span>
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#94A3B8]">{serviceIcons[log.service]}</span>
+                          <span className="text-sm text-[#0F172A]">{log.service}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-[#0F172A] max-w-md truncate">{log.event}</td>
+                      <td className="px-6 py-3">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>
+                          {cfg.icon} {log.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-sm font-mono text-[#94A3B8]">{log.latency}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {filtered.length === 0 && (
+              <div className="text-center py-12">
+                <ScrollText className="w-10 h-10 text-[#E5F4F7] mx-auto mb-3" />
+                <p className="text-sm text-[#94A3B8]">No logs found</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -243,6 +257,17 @@ export function Logs() {
                 <p className="text-xs text-[#94A3B8] mb-1">Event</p>
                 <p className="text-sm text-[#0F172A] bg-[#F8FDFE] p-3 rounded-xl font-mono">{selectedLog.event}</p>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><p className="text-xs text-[#94A3B8] mb-1">Type</p><p className="text-sm text-[#0F172A]">{selectedLog.notification.type}</p></div>
+                <div><p className="text-xs text-[#94A3B8] mb-1">Channel</p><p className="text-sm text-[#0F172A]">{selectedLog.notification.channel}</p></div>
+              </div>
+              {selectedLog.notification.task && (
+                <div className="bg-[#F8FDFE] p-3 rounded-xl space-y-1">
+                  <p className="text-xs text-[#94A3B8]">Related Task</p>
+                  <p className="text-sm font-medium text-[#0F172A]">{selectedLog.notification.task.title}</p>
+                  <p className="text-xs text-[#94A3B8]">Due: {selectedLog.notification.task.dueDate ? new Date(selectedLog.notification.task.dueDate).toLocaleDateString() : "N/A"} — Status: {selectedLog.notification.task.status}</p>
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-3 p-6 border-t border-[#E5F4F7]">
               <button onClick={() => setSelectedLog(null)} className="px-4 py-2 bg-[#F5FEFF] border border-[#E5F4F7] rounded-xl text-sm font-medium text-[#0F172A] hover:bg-[#F8FDFE] transition-all">Close</button>
@@ -254,4 +279,5 @@ export function Logs() {
   );
 }
 
+export { Logs };
 export default Logs;

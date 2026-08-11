@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Building2,
   Users,
@@ -10,70 +10,104 @@ import {
   X,
   Upload,
   Plus,
-  FileText,
   CreditCard,
   ScrollText,
-  ChevronDown,
   Globe,
   Mail,
-  Phone,
-  MapPin,
   Clock,
-  Info,
   Send,
-  CheckCircle,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { authApi, teamsApi, workspaceApi } from "@/lib/api";
+import type { MeUser, Team, WorkspaceOverview } from "@/lib/api";
 
-const defaultOrg = {
-  name: "Meetiva Global HQ",
-  industry: "Technology / SaaS",
-  size: "201-500 employees",
-  founded: "2019",
-  website: "https://meetiva.com",
-  email: "admin@meetiva.com",
-  phone: "+1 (415) 000-1234",
-  timezone: "America/Los_Angeles",
-  address: "1 Market Street, San Francisco, CA 94105",
-  description:
-    "Meetiva is an AI-powered meeting intelligence platform helping teams collaborate smarter with automated summaries, action items, and analytics.",
-};
-
-const defaultDepartments = [
-  { id: "d1", name: "Engineering", lead: "Priya Patel", members: 142, color: "#06B6D4", initials: "EN" },
-  { id: "d2", name: "Product", lead: "Marcus Williams", members: 38, color: "#8B5CF6", initials: "PR" },
-  { id: "d3", name: "Design", lead: "Aiko Tanaka", members: 24, color: "#10B981", initials: "DE" },
-  { id: "d4", name: "Marketing", lead: "Sarah Chen", members: 31, color: "#F59E0B", initials: "MA" },
-  { id: "d5", name: "Sales", lead: "Tom Eriksson", members: 67, color: "#06B6D4", initials: "SA" },
-  { id: "d6", name: "Finance", lead: "Fatima Al-Hassan", members: 18, color: "#F43F5E", initials: "FI" },
-];
+const DEPT_COLORS = ["#06B6D4", "#8B5CF6", "#10B981", "#F59E0B", "#F43F5E", "#4F46E5"];
 
 export function Organization() {
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<MeUser | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [workspace, setWorkspace] = useState<WorkspaceOverview | null>(null);
   const [editing, setEditing] = useState(false);
-  const [org, setOrg] = useState(defaultOrg);
-  const [departments, setDepartments] = useState(defaultDepartments);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [showAddDept, setShowAddDept] = useState(false);
-  const [newDept, setNewDept] = useState({ name: "", lead: "", members: 0 });
+  const [newDeptName, setNewDeptName] = useState("");
+  const [newDeptLead, setNewDeptLead] = useState("");
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [me, teamsRes, ws] = await Promise.all([
+          authApi.me(),
+          teamsApi.list(),
+          workspaceApi.overview(),
+        ]);
+        setUser(me);
+        setTeams(teamsRes.teams ?? []);
+        setWorkspace(ws.data);
+        setEditName(me.name);
+        setEditEmail(me.email);
+      } catch {
+        toast.error("Failed to load organization data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
   const handleSave = () => {
+    if (user) {
+      setUser({ ...user, name: editName, email: editEmail });
+    }
     setEditing(false);
     toast.success("Organization profile updated");
   };
 
   const handleCancel = () => {
-    setOrg(defaultOrg);
+    if (user) {
+      setEditName(user.name);
+      setEditEmail(user.email);
+    }
     setEditing(false);
   };
 
   const addDepartment = () => {
-    if (!newDept.name) return;
-    const initials = newDept.name.slice(0, 2).toUpperCase();
-    const colors = ["#06B6D4", "#8B5CF6", "#10B981", "#F59E0B", "#F43F5E", "#4F46E5"];
-    setDepartments([...departments, { ...newDept, id: `d${departments.length + 1}`, initials, color: colors[departments.length % colors.length] }]);
-    setNewDept({ name: "", lead: "", members: 0 });
+    if (!newDeptName) return;
+    const dept: Team = {
+      id: `local-${Date.now()}`,
+      name: newDeptName,
+      description: null,
+      inviteCode: "",
+      role: "lead",
+      status: "active",
+      joinedAt: new Date().toISOString(),
+    };
+    setTeams((prev) => [...prev, dept]);
+    setNewDeptName("");
+    setNewDeptLead("");
     setShowAddDept(false);
     toast.success("Department added");
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-[#06B6D4]" />
+          <p className="text-sm text-[#94A3B8]">Loading organization data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const totalUsers = workspace?.teamSize ?? 0;
+  const activeTeams = teams.length;
+  const meetingsCount = workspace?.ongoingProjects?.length ?? 0;
+  const orgName = user?.name ?? "Organization";
+  const initials = orgName.charAt(0).toUpperCase();
 
   return (
     <div className="p-6 space-y-6">
@@ -93,10 +127,10 @@ export function Organization() {
 
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: "Total Users", value: "13,847", icon: <Users className="w-5 h-5" />, color: "from-[#06B6D4] to-[#0891B2]" },
-          { label: "Active Teams", value: "1,124", icon: <Users2 className="w-5 h-5" />, color: "from-[#4F46E5] to-[#6366F1]" },
-          { label: "Meetings / mo", value: "48,291", icon: <Video className="w-5 h-5" />, color: "from-[#10B981] to-[#059669]" },
-          { label: "Storage Used", value: "2.4 TB", icon: <HardDrive className="w-5 h-5" />, color: "from-[#F59E0B] to-[#D97706]" },
+          { label: "Total Users", value: totalUsers.toLocaleString(), icon: <Users className="w-5 h-5" />, color: "from-[#06B6D4] to-[#0891B2]" },
+          { label: "Active Teams", value: activeTeams.toLocaleString(), icon: <Users2 className="w-5 h-5" />, color: "from-[#4F46E5] to-[#6366F1]" },
+          { label: "Ongoing Projects", value: meetingsCount.toLocaleString(), icon: <Video className="w-5 h-5" />, color: "from-[#10B981] to-[#059669]" },
+          { label: "Velocity Score", value: (workspace?.cumulativeVelocity ?? 0).toLocaleString(), icon: <HardDrive className="w-5 h-5" />, color: "from-[#F59E0B] to-[#D97706]" },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-2xl border border-[#E5F4F7] p-5 flex items-center gap-4">
             <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center text-white`}>
@@ -116,60 +150,41 @@ export function Organization() {
             <div className="h-28 bg-gradient-to-r from-[#06B6D4] via-[#0891B2] to-[#4F46E5]" />
             <div className="px-6 pb-6">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#06B6D4] to-[#4F46E5] flex items-center justify-center text-white text-2xl font-bold border-4 border-white -mt-8 shadow-lg">
-                M
+                {initials}
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-5">
                 {[
-                  { label: "ORGANIZATION NAME", key: "name", icon: <Building2 className="w-3.5 h-3.5" /> },
-                  { label: "INDUSTRY", key: "industry", icon: <Globe className="w-3.5 h-3.5" /> },
-                  { label: "COMPANY SIZE", key: "size", icon: <Users className="w-3.5 h-3.5" /> },
-                  { label: "FOUNDED", key: "founded", icon: <Clock className="w-3.5 h-3.5" /> },
-                  { label: "WEBSITE", key: "website", icon: <Globe className="w-3.5 h-3.5" /> },
-                  { label: "CONTACT EMAIL", key: "email", icon: <Mail className="w-3.5 h-3.5" /> },
-                  { label: "PHONE", key: "phone", icon: <Phone className="w-3.5 h-3.5" /> },
-                  { label: "TIMEZONE", key: "timezone", icon: <Clock className="w-3.5 h-3.5" /> },
+                  { label: "ORGANIZATION NAME", key: "name" as const },
+                  { label: "CONTACT EMAIL", key: "email" as const },
+                  { label: "MEMBER SINCE", key: "createdAt" as const },
+                  { label: "LAST UPDATED", key: "updatedAt" as const },
                 ].map((f) => (
                   <div key={f.key}>
                     <p className="text-[11px] font-semibold text-[#94A3B8] uppercase tracking-wider mb-1">{f.label}</p>
-                    {editing ? (
-                      <input
-                        value={org[f.key as keyof typeof org]}
-                        onChange={(e) => setOrg({ ...org, [f.key]: e.target.value })}
-                        className="w-full px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-lg text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all"
-                      />
+                    {editing && (f.key === "name" || f.key === "email") ? (
+                      f.key === "name" ? (
+                        <input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="w-full px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-lg text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all"
+                        />
+                      ) : (
+                        <input
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          className="w-full px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-lg text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all"
+                        />
+                      )
                     ) : (
-                      <p className="text-sm font-medium text-[#0F172A]">{org[f.key as keyof typeof org]}</p>
+                      <p className="text-sm font-medium text-[#0F172A]">
+                        {f.key === "createdAt" || f.key === "updatedAt"
+                          ? user?.[f.key] ? new Date(user[f.key]).toLocaleDateString() : "N/A"
+                          : user?.[f.key as keyof MeUser] ?? "N/A"}
+                      </p>
                     )}
                   </div>
                 ))}
-              </div>
-
-              <div className="mt-5">
-                <p className="text-[11px] font-semibold text-[#94A3B8] uppercase tracking-wider mb-1">ADDRESS</p>
-                {editing ? (
-                  <input
-                    value={org.address}
-                    onChange={(e) => setOrg({ ...org, address: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-lg text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all"
-                  />
-                ) : (
-                  <p className="text-sm font-medium text-[#0F172A]">{org.address}</p>
-                )}
-              </div>
-
-              <div className="mt-5">
-                <p className="text-[11px] font-semibold text-[#94A3B8] uppercase tracking-wider mb-1">DESCRIPTION</p>
-                {editing ? (
-                  <textarea
-                    value={org.description}
-                    onChange={(e) => setOrg({ ...org, description: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-lg text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all resize-none"
-                  />
-                ) : (
-                  <p className="text-sm text-[#64748B] leading-relaxed">{org.description}</p>
-                )}
               </div>
 
               {editing && (
@@ -198,22 +213,33 @@ export function Organization() {
               </button>
             </div>
             <div className="space-y-3">
-              {departments.map((d) => (
-                <div key={d.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#F8FDFE] transition-all">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: d.color }}
-                  >
-                    {d.initials}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#0F172A] truncate">{d.name}</p>
-                    <p className="text-xs text-[#94A3B8]">Lead: {d.lead}</p>
-                  </div>
-                  <span className="text-sm font-semibold text-[#0F172A]">{d.members}</span>
-                  <span className="text-xs text-[#94A3B8]">members</span>
+              {teams.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users2 className="w-10 h-10 mx-auto text-[#CBD5E1] mb-2" />
+                  <p className="text-sm text-[#94A3B8]">No teams yet</p>
+                  <p className="text-xs text-[#CBD5E1]">Teams you join will appear here</p>
                 </div>
-              ))}
+              ) : (
+                teams.map((t, i) => (
+                  <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#F8FDFE] transition-all">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold"
+                      style={{ backgroundColor: DEPT_COLORS[i % DEPT_COLORS.length] }}
+                    >
+                      {t.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#0F172A] truncate">{t.name}</p>
+                      <p className="text-xs text-[#94A3B8]">Role: {t.role}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      t.status === "active" ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"
+                    }`}>
+                      {t.status}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -253,8 +279,8 @@ export function Organization() {
               <div>
                 <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Department Name</label>
                 <input
-                  value={newDept.name}
-                  onChange={(e) => setNewDept({ ...newDept, name: e.target.value })}
+                  value={newDeptName}
+                  onChange={(e) => setNewDeptName(e.target.value)}
                   className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all"
                   placeholder="e.g. Human Resources"
                 />
@@ -262,19 +288,10 @@ export function Organization() {
               <div>
                 <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Lead</label>
                 <input
-                  value={newDept.lead}
-                  onChange={(e) => setNewDept({ ...newDept, lead: e.target.value })}
+                  value={newDeptLead}
+                  onChange={(e) => setNewDeptLead(e.target.value)}
                   className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all"
                   placeholder="e.g. John Doe"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Members</label>
-                <input
-                  type="number"
-                  value={newDept.members}
-                  onChange={(e) => setNewDept({ ...newDept, members: Number(e.target.value) })}
-                  className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all"
                 />
               </div>
             </div>

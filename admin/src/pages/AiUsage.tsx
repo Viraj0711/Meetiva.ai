@@ -1,87 +1,19 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   Brain,
-  Zap,
-  Database,
-  DollarSign,
-  Timer,
-  XCircle,
+  Users,
+  CheckCircle,
+  Clock,
+  BarChart3,
+  Calendar,
   RefreshCw,
+  Loader2,
 } from "lucide-react";
-import { SvgAreaChart, SvgLineChart, SvgDonutChart } from "@/components/charts";
+import { meetingsApi, MeetingsStats, Meeting, PaginatedResponse } from "@/lib/api";
+import { SvgBarChart } from "@/components/charts";
 
-const modelUsageData = [
-  { name: "GPT-4o", value: 48, color: "#06B6D4" },
-  { name: "Claude 3.5", value: 31, color: "#4F46E5" },
-  { name: "Gemini Pro", value: 14, color: "#F59E0B" },
-  { name: "Llama 3.1", value: 7, color: "#16A34A" },
-];
-
-const costTrendData = [
-  { month: "Feb", cost: 1240 },
-  { month: "Mar", cost: 1890 },
-  { month: "Apr", cost: 2340 },
-  { month: "May", cost: 3120 },
-  { month: "Jun", cost: 4280 },
-  { month: "Jul", cost: 5640 },
-  { month: "Aug", cost: 7184 },
-];
-
-const responseTimeData = [
-  { hour: "00:00", p50: 210, p95: 680 },
-  { hour: "04:00", p50: 180, p95: 520 },
-  { hour: "08:00", p50: 340, p95: 1100 },
-  { hour: "12:00", p50: 290, p95: 890 },
-  { hour: "16:00", p50: 270, p95: 810 },
-  { hour: "20:00", p50: 220, p95: 640 },
-];
-
-const aiWeekData = [
-  { day: "Mon", requests: 12400, tokens: 890 },
-  { day: "Tue", requests: 15200, tokens: 1100 },
-  { day: "Wed", requests: 13800, tokens: 950 },
-  { day: "Thu", requests: 18900, tokens: 1380 },
-  { day: "Fri", requests: 21200, tokens: 1560 },
-  { day: "Sat", requests: 9800, tokens: 710 },
-  { day: "Sun", requests: 7400, tokens: 530 },
-];
-
-const mockAIRequests = [
-  { id: "req-001", ts: "14:32:07", user: "sarah.chen@acme.com", model: "GPT-4o", tokens: 2847, latency: "312ms", status: "ok", cost: "$0.014" },
-  { id: "req-002", ts: "14:31:54", user: "m.williams@orion.io", model: "Claude 3.5", tokens: 1203, latency: "198ms", status: "ok", cost: "$0.006" },
-  { id: "req-003", ts: "14:31:41", user: "priya.patel@nexus.co", model: "GPT-4o", tokens: 5120, latency: "541ms", status: "ok", cost: "$0.026" },
-  { id: "req-004", ts: "14:31:28", user: "james@startco.io", model: "Gemini Pro", tokens: 892, latency: "2,104ms", status: "error", cost: "$0.000" },
-  { id: "req-005", ts: "14:31:15", user: "a.tanaka@mitsuko.jp", model: "Claude 3.5", tokens: 3641, latency: "287ms", status: "ok", cost: "$0.018" },
-  { id: "req-006", ts: "14:30:59", user: "fatima@gulfventures.ae", model: "Llama 3.1", tokens: 1740, latency: "445ms", status: "ok", cost: "$0.003" },
-  { id: "req-007", ts: "14:30:44", user: "r.kovacs@influx.eu", model: "GPT-4o", tokens: 4291, latency: "612ms", status: "warn", cost: "$0.022" },
-  { id: "req-008", ts: "14:30:31", user: "l.santos@quanta.br", model: "Claude 3.5", tokens: 987, latency: "176ms", status: "ok", cost: "$0.005" },
-  { id: "req-009", ts: "14:30:18", user: "k.oduya@centrix.ng", model: "GPT-4o", tokens: 3308, latency: "389ms", status: "ok", cost: "$0.017" },
-  { id: "req-010", ts: "14:30:04", user: "e.berg@nordic.se", model: "Gemini Pro", tokens: 1547, latency: "1,830ms", status: "warn", cost: "$0.004" },
-];
-
-const modelColor = (model: string) =>
-  model === "GPT-4o" ? "#06B6D4" :
-  model === "Claude 3.5" ? "#4F46E5" :
-  model === "Gemini Pro" ? "#F59E0B" : "#16A34A";
-
-const modelBg = (model: string) =>
-  model === "GPT-4o" ? "bg-[#F0FDFF] text-[#0891B2] border-cyan-200" :
-  model === "Claude 3.5" ? "bg-purple-50 text-purple-700 border-purple-200" :
-  model === "Gemini Pro" ? "bg-amber-50 text-amber-700 border-amber-200" :
-    "bg-emerald-50 text-emerald-700 border-emerald-200";
-
-const statusDot = (s: string) =>
-  s === "ok" ? "bg-emerald-400" :
-  s === "warn" ? "bg-amber-400" : "bg-red-400";
-
-const statusLabel = (s: string) =>
-  s === "ok" ? "text-emerald-600 bg-emerald-50 border-emerald-100" :
-  s === "warn" ? "text-amber-600 bg-amber-50 border-amber-100" :
-    "text-red-600 bg-red-50 border-red-100";
-
-function DashKPI({ label, value, sub, icon: Icon, trend, trendUp, uid }: {
+function DashKPI({ label, value, sub, icon: Icon }: {
   label: string; value: string; sub: string; icon: React.ElementType;
-  trend?: string; trendUp?: boolean; uid: string;
 }) {
   return (
     <div className="bg-white rounded-2xl border border-[#E5F4F7] p-5 shadow-sm hover:shadow-md hover:border-[#C8E8F2] transition-all duration-200 cursor-default">
@@ -89,11 +21,6 @@ function DashKPI({ label, value, sub, icon: Icon, trend, trendUp, uid }: {
         <div className="w-8 h-8 rounded-xl bg-[#F0FAFE] flex items-center justify-center border border-[#E0F3F8]">
           <Icon size={14} className="text-[#06B6D4]" />
         </div>
-        {trend && (
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${trendUp ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}`}>
-            {trend}
-          </span>
-        )}
       </div>
       <p className="text-[10.5px] font-semibold text-[#94A3B8] uppercase tracking-[0.12em] mb-1.5">{label}</p>
       <p className="text-[22px] font-extrabold text-[#0F172A] leading-none tracking-tight mb-2">{value}</p>
@@ -102,13 +29,87 @@ function DashKPI({ label, value, sub, icon: Icon, trend, trendUp, uid }: {
   );
 }
 
+const statusDot = (s: string) =>
+  s === "completed" ? "bg-emerald-400" :
+  s === "processing" ? "bg-amber-400" : "bg-slate-300";
+
+const statusLabel = (s: string) =>
+  s === "completed" ? "text-emerald-600 bg-emerald-50 border-emerald-100" :
+  s === "processing" ? "text-amber-600 bg-amber-50 border-amber-100" :
+    "text-slate-500 bg-slate-50 border-slate-100";
+
+const priorityColor = (p: string) =>
+  p === "high" ? "text-red-600 bg-red-50 border-red-100" :
+  p === "medium" ? "text-amber-600 bg-amber-50 border-amber-100" :
+    "text-slate-500 bg-slate-50 border-slate-100";
+
+function formatDuration(seconds: number | null): string {
+  if (seconds === null) return "--";
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
 export { AiUsage };
 export default function AiUsage() {
-  const [reqFilter, setReqFilter] = useState("All");
+  const [stats, setStats] = useState<MeetingsStats | null>(null);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredReqs = useMemo(() =>
-    reqFilter === "All" ? mockAIRequests : mockAIRequests.filter(r => r.status === reqFilter.toLowerCase())
-  , [reqFilter]);
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [statsRes, meetingsRes] = await Promise.all([
+        meetingsApi.stats(),
+        meetingsApi.list(1, 10),
+      ]);
+      setStats(statsRes);
+      setMeetings(meetingsRes.data);
+      setPagination(meetingsRes.pagination);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const trendData = stats?.trends ?? [];
+  const topParticipants = stats?.topParticipants ?? [];
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={32} className="animate-spin text-[#06B6D4]" />
+          <p className="text-[13px] text-[#94A3B8] font-mono">Loading AI usage data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-[14px] text-red-500">{error}</p>
+          <button onClick={fetchData}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#06B6D4] text-white text-[12px] font-semibold hover:bg-[#0891B2] transition-colors cursor-pointer">
+            <RefreshCw size={12} /> Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const isEmpty = meetings.length === 0 && !stats;
 
   return (
     <div className="h-full overflow-y-auto scrollbar-hide">
@@ -125,179 +126,161 @@ export default function AiUsage() {
               Platform-wide AI consumption &middot; Live
             </p>
           </div>
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#E5F4F7] bg-white text-[12px] text-[#475569]">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-medium">Streaming</span>
+          <button onClick={fetchData}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#E5F4F7] bg-white text-[12px] text-[#475569] hover:border-[#C8E8F2] transition-colors cursor-pointer">
+            <RefreshCw size={12} />
+            <span className="font-medium">Refresh</span>
+          </button>
+        </div>
+
+        {isEmpty ? (
+          <div className="bg-white border border-[#E5F4F7] rounded-2xl p-16 text-center">
+            <Brain size={48} className="mx-auto text-[#CBD5E1] mb-4" />
+            <p className="text-[16px] font-semibold text-[#0F172A] mb-2">No meetings yet</p>
+            <p className="text-[13px] text-[#94A3B8]">Create your first meeting to start tracking AI usage.</p>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* KPI cards */}
+            <div className="grid grid-cols-5 gap-4">
+              <DashKPI label="Total Meetings" value={String(stats?.totalMeetings ?? 0)} sub="All time" icon={BarChart3} />
+              <DashKPI label="Completed" value={String(stats?.completedMeetings ?? 0)} sub="Finished successfully" icon={CheckCircle} />
+              <DashKPI label="Processing" value={String(stats?.processingMeetings ?? 0)} sub="In progress" icon={Clock} />
+              <DashKPI label="Avg Duration" value={formatDuration(stats?.avgDuration ?? null)} sub="Per meeting" icon={Calendar} />
+              <DashKPI label="Avg Tasks" value={String(stats?.avgTasks ?? 0)} sub="Per meeting" icon={Users} />
+            </div>
 
-        {/* KPI cards */}
-        <div className="grid grid-cols-5 gap-4">
-          <DashKPI label="Total Requests" value="98,412" sub="AI API calls processed" icon={Zap} trend="+34.7%" trendUp={true} uid="ai-kpi-req" />
-          <DashKPI label="Tokens Consumed" value="2.4M" sub="This month" icon={Database} trend="+28.1%" trendUp={true} uid="ai-kpi-tok" />
-          <DashKPI label="Total Cost" value="$7,184" sub="This month" icon={DollarSign} trend="+22.4%" trendUp={false} uid="ai-kpi-cost" />
-          <DashKPI label="Avg Latency" value="342ms" sub="p50 median" icon={Timer} trend="-12ms" trendUp={true} uid="ai-kpi-lat" />
-          <DashKPI label="Failed Requests" value="23" sub="0.02% error rate" icon={XCircle} trend="-0.3%" trendUp={true} uid="ai-kpi-err" />
-        </div>
-
-        {/* Charts row */}
-        <div className="grid grid-cols-2 gap-5">
-          {/* Model Usage donut */}
-          <div className="bg-white border border-[#E5F4F7] rounded-2xl p-7">
-            <p className="text-[10.5px] font-mono font-semibold text-[#9CA3AF] uppercase tracking-[0.12em] mb-1.5">Model Usage</p>
-            <p className="text-[20px] font-bold text-[#0F172A] tracking-[-0.02em] mb-6">Distribution</p>
-            <div className="flex flex-col items-center gap-5">
-              <SvgDonutChart data={modelUsageData} uid="ai-mdl-donut" />
-              <div className="w-full space-y-2">
-                {modelUsageData.map(m => (
-                  <div key={m.name} className="flex items-center gap-2.5">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: m.color }} />
-                    <span className="text-[12.5px] text-[#374151] flex-1">{m.name}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 h-1 bg-[#EDF7F9] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${m.value}%`, background: m.color }} />
-                      </div>
-                      <span className="text-[11.5px] font-mono font-semibold text-[#0F172A] w-7 text-right">{m.value}%</span>
-                    </div>
+            {/* Charts row */}
+            <div className="grid grid-cols-2 gap-5">
+              {/* Trends bar chart */}
+              <div className="bg-white border border-[#E5F4F7] rounded-2xl p-7">
+                <p className="text-[10.5px] font-mono font-semibold text-[#9CA3AF] uppercase tracking-[0.12em] mb-1.5">Meeting Trends</p>
+                <p className="text-[20px] font-bold text-[#0F172A] tracking-[-0.02em] mb-6">Monthly Activity</p>
+                {trendData.length > 0 ? (
+                  <SvgBarChart data={trendData} dataKey="count" color="#06B6D4" uid="ai-trends-bar" />
+                ) : (
+                  <div className="flex items-center justify-center h-[160px]">
+                    <p className="text-[12px] text-[#94A3B8]">No trend data available</p>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Cost Trend area */}
-          <div className="bg-white border border-[#E5F4F7] rounded-2xl p-7">
-            <div className="mb-6">
-              <p className="text-[10.5px] font-mono font-semibold text-[#9CA3AF] uppercase tracking-[0.12em] mb-1.5">Cost Trend</p>
-              <p className="text-[20px] font-bold text-[#0F172A] tracking-[-0.02em]">
-                $7,184 <span className="text-[13px] font-medium text-[#64748B] tracking-normal">this month</span>
-              </p>
-            </div>
-            <SvgAreaChart data={costTrendData} keys={["cost"]} colors={["#4F46E5"]} labels={["Cost ($)"]} uid="ai-cost-area" />
-          </div>
-        </div>
-
-        {/* Recent AI Requests */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-[10.5px] font-mono font-semibold text-[#9CA3AF] uppercase tracking-[0.12em] mb-1">Recent AI Requests</p>
-              <p className="text-[18px] font-bold text-[#0F172A] tracking-[-0.02em]">Live Feed</p>
-            </div>
-            <div className="flex items-center bg-[#F5FEFF] border border-[#E5F4F7] rounded-xl p-0.5 gap-0.5">
-              {["All", "Ok", "Warn", "Error"].map(f => (
-                <button key={f} onClick={() => setReqFilter(f)}
-                  className={`px-3 py-1.5 rounded-[9px] text-[11.5px] font-semibold transition-all duration-150 cursor-pointer ${
-                    reqFilter === f
-                      ? "bg-white text-[#0F172A] shadow-sm border border-[#E5F4F7]"
-                      : "text-[#9CA3AF] hover:text-[#475569]"
-                  }`}>
-                  {f}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white border border-[#E5F4F7] rounded-2xl overflow-hidden">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-[#EDF7F9] bg-[#F9FCFD]">
-                  {(["Request ID", "Timestamp", "User", "Model", "Tokens", "Latency", "Status", "Cost"] as const).map(h => (
-                    <th key={h} className="px-5 py-3.5 text-left text-[10.5px] font-mono font-semibold text-[#9CA3AF] uppercase tracking-[0.12em] whitespace-nowrap">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredReqs.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-5 py-16 text-center">
-                      <p className="text-[13px] text-[#94A3B8]">No requests match this filter.</p>
-                    </td>
-                  </tr>
                 )}
-                {filteredReqs.map((r, idx) => {
-                  const isLast = idx === filteredReqs.length - 1;
-                  return (
-                    <tr key={r.id}
-                      className={`transition-colors hover:bg-[#FAFCFD] ${isLast ? "" : "border-b border-[#F0F9FB]"}`}>
-                      <td className="px-5 py-3.5">
-                        <span className="text-[11.5px] font-mono text-[#94A3B8]">{r.id}</span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="text-[11.5px] font-mono text-[#94A3B8]">{r.ts}</span>
-                      </td>
-                      <td className="px-5 py-3.5 max-w-[200px]">
-                        <span className="text-[12.5px] text-[#374151] truncate block">{r.user}</span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: modelColor(r.model) }} />
-                          <span className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded-lg border ${modelBg(r.model)}`}>
-                            {r.model}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="text-[12px] font-mono tabular-nums text-[#475569]">{r.tokens.toLocaleString()}</span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className={`text-[12px] font-mono tabular-nums ${
-                          parseInt(r.latency) > 1000 ? "text-red-500" :
-                          parseInt(r.latency) > 500 ? "text-amber-600" : "text-[#475569]"
-                        }`}>{r.latency}</span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${statusDot(r.status)}`} />
-                          <span className={`text-[10.5px] font-mono font-semibold uppercase px-1.5 py-0.5 rounded-md border ${statusLabel(r.status)}`}>
-                            {r.status}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="text-[12px] font-mono tabular-nums text-[#0F172A] font-semibold">{r.cost}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+              </div>
 
-            <div className="flex items-center justify-between px-5 py-3.5 border-t border-[#EDF7F9]">
-              <span className="text-[11.5px] font-mono text-[#94A3B8]">
-                Showing {filteredReqs.length} of {mockAIRequests.length} requests &middot; Today
-              </span>
-              <button onClick={() => {}} className="flex items-center gap-1.5 text-[11.5px] font-mono text-[#94A3B8] hover:text-[#06B6D4] transition-colors cursor-pointer">
-                <RefreshCw size={11} /> Refresh
-              </button>
+              {/* Top Participants */}
+              <div className="bg-white border border-[#E5F4F7] rounded-2xl p-7">
+                <p className="text-[10.5px] font-mono font-semibold text-[#9CA3AF] uppercase tracking-[0.12em] mb-1.5">Top Participants</p>
+                <p className="text-[20px] font-bold text-[#0F172A] tracking-[-0.02em] mb-6">Most Active</p>
+                {topParticipants.length > 0 ? (
+                  <div className="space-y-3">
+                    {topParticipants.slice(0, 5).map((p, i) => {
+                      const maxCount = topParticipants[0]?.meetingCount ?? 1;
+                      const pct = (p.meetingCount / maxCount) * 100;
+                      return (
+                        <div key={i} className="flex items-center gap-3">
+                          <span className="text-[12px] font-mono text-[#94A3B8] w-5 text-right">{i + 1}</span>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[12.5px] text-[#374151] font-medium truncate max-w-[180px]">{p.name}</span>
+                              <span className="text-[11px] font-mono text-[#94A3B8]">{p.meetingCount} meetings</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-[#EDF7F9] rounded-full overflow-hidden">
+                              <div className="h-full rounded-full bg-[#06B6D4]" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-[160px]">
+                    <p className="text-[12px] text-[#94A3B8]">No participant data available</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Response Time chart */}
-        <div className="bg-white border border-[#E5F4F7] rounded-2xl p-7">
-          <div className="flex items-start justify-between mb-6">
+            {/* Meetings table */}
             <div>
-              <p className="text-[10.5px] font-mono font-semibold text-[#9CA3AF] uppercase tracking-[0.12em] mb-1.5">Response Latency</p>
-              <p className="text-[20px] font-bold text-[#0F172A] tracking-[-0.02em]">
-                342ms <span className="text-[13px] font-medium text-[#64748B] tracking-normal">p50 today</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#06B6D4]" />
-                <span className="text-[10.5px] font-mono text-[#9CA3AF]">p50</span>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-[10.5px] font-mono font-semibold text-[#9CA3AF] uppercase tracking-[0.12em] mb-1">Recent Meetings</p>
+                  <p className="text-[18px] font-bold text-[#0F172A] tracking-[-0.02em]">All Sessions</p>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
-                <span className="text-[10.5px] font-mono text-[#9CA3AF]">p95</span>
+
+              <div className="bg-white border border-[#E5F4F7] rounded-2xl overflow-hidden">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#EDF7F9] bg-[#F9FCFD]">
+                      {(["Title", "Status", "Priority", "Duration", "Participants", "Date"] as const).map(h => (
+                        <th key={h} className="px-5 py-3.5 text-left text-[10.5px] font-mono font-semibold text-[#9CA3AF] uppercase tracking-[0.12em] whitespace-nowrap">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {meetings.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-5 py-16 text-center">
+                          <p className="text-[13px] text-[#94A3B8]">No meetings found.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      meetings.map((m, idx) => {
+                        const isLast = idx === meetings.length - 1;
+                        return (
+                          <tr key={m.id}
+                            className={`transition-colors hover:bg-[#FAFCFD] ${isLast ? "" : "border-b border-[#F0F9FB]"}`}>
+                            <td className="px-5 py-3.5 max-w-[240px]">
+                              <span className="text-[12.5px] text-[#374151] truncate block font-medium">{m.title}</span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${statusDot(m.status)}`} />
+                                <span className={`text-[10.5px] font-mono font-semibold uppercase px-1.5 py-0.5 rounded-md border ${statusLabel(m.status)}`}>
+                                  {m.status}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className={`text-[10.5px] font-mono font-semibold uppercase px-1.5 py-0.5 rounded-md border ${priorityColor(m.priority)}`}>
+                                {m.priority}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="text-[12px] font-mono tabular-nums text-[#475569]">{formatDuration(m.duration)}</span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-1">
+                                <Users size={11} className="text-[#94A3B8]" />
+                                <span className="text-[12px] font-mono text-[#475569]">{m.participants.length}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="text-[11.5px] font-mono text-[#94A3B8]">
+                                {new Date(m.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+
+                <div className="flex items-center justify-between px-5 py-3.5 border-t border-[#EDF7F9]">
+                  <span className="text-[11.5px] font-mono text-[#94A3B8]">
+                    Showing {meetings.length} of {pagination.total} meetings
+                  </span>
+                  <button onClick={fetchData}
+                    className="flex items-center gap-1.5 text-[11.5px] font-mono text-[#94A3B8] hover:text-[#06B6D4] transition-colors cursor-pointer">
+                    <RefreshCw size={11} /> Refresh
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-          <SvgLineChart data={responseTimeData} keys={["p50", "p95"]} colors={["#06B6D4", "#F59E0B"]} labels={["p50 ms", "p95 ms"]} uid="ai-lat-line" />
-        </div>
+          </>
+        )}
 
       </div>
     </div>
