@@ -183,7 +183,7 @@ async function run(): Promise<void> {
       'Urgent priority has red background'
     );
     assert(
-      patternFgColor(highCell.fill) === 'FFFEDD5',
+      patternFgColor(highCell.fill) === 'FFFED7AA',
       'High priority has orange background'
     );
     assert(
