@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "24"
   # Lockfiles are standardized on npm 11 (latest stable major).
   # Pinning npm keeps `npm ci` strict-sync checks identical to local dev.
   NPM_VERSION: "11"
