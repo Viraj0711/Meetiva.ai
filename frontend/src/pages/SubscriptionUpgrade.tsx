@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -57,6 +57,7 @@ const TIERS = [
 
 const SubscriptionUpgrade: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { data: subscription } = useSubscription();
   const { data: currentUser } = useCurrentUser();
   const upgradeMutation = useUpgradeToPro();
@@ -78,8 +79,30 @@ const SubscriptionUpgrade: React.FC = () => {
     }
   };
 
+  // Auto-redirected here after a blocked action (MEETING_LIMIT_REACHED) —
+  // show why the user landed on the upgrade page.
+  const limitRedirected =
+    (location.state as { reason?: string } | null)?.reason === 'meeting-limit';
+
   return (
     <div className="relative mx-auto max-w-6xl space-y-10">
+      {limitRedirected && (
+        <div className="flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+          <div className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-100">
+            <Sparkles className="h-5 w-5 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-amber-900">
+              You've reached your free meeting limit
+            </p>
+            <p className="mt-1 text-sm leading-6 text-amber-700">
+              You've used all 5 free meetings this month, so that action was
+              blocked. Upgrade to PRO for unlimited meetings, team
+              collaboration, and calendar sync.
+            </p>
+          </div>
+        </div>
+      )}
       <ConfirmDialog
         isOpen={showConfirm}
         title="Upgrade to PRO?"

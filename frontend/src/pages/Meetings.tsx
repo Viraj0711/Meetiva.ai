@@ -10,9 +10,6 @@ import { selectIsManagerOrLead } from '@/store/selectors/authSelectors';
 import { useMeetings, useDeleteMeeting } from '@/hooks';
 import { formatDate } from '@/utils';
 
-const GRAD = '#5B3FD6';
-const GRAD2 = '#8B5CF6';
-
 const Meetings: React.FC = () => {
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -227,11 +224,7 @@ const Meetings: React.FC = () => {
 
                   <div className="flex gap-2">
                     <Link to={`/dashboard/meetings/${meeting.id}`}>
-                      <Button
-                        size="sm"
-                        className="rounded-full font-bold text-white border-0"
-                        style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}
-                      >
+                      <Button size="sm" className="rounded-full font-bold text-white border-0">
                         View Details
                       </Button>
                     </Link>

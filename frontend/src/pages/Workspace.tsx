@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { CalendarClock, CheckCircle2, Link2, Loader2, PlusCircle, Rocket, Users } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -84,7 +84,7 @@ const Workspace: React.FC = () => {
     return localDate.toISOString().slice(0, 16);
   };
 
-  const loadWorkspace = async () => {
+  const loadWorkspace = useCallback(async () => {
     try {
       setLoading(true);
       const [overviewData, status] = await Promise.all([
@@ -101,16 +101,17 @@ const Workspace: React.FC = () => {
       } else {
         setEvents([]);
       }
-    } catch (error: any) {
-      dispatch(addToast({ type: 'error', message: error.message || 'Failed loading workspace.' }));
+    } catch (error: unknown) {
+      const apiError = error as { message?: string };
+      dispatch(addToast({ type: 'error', message: apiError?.message || 'Failed loading workspace.' }));
     } finally {
       setLoading(false);
     }
-  };
+  }, [dispatch]);
 
   useEffect(() => {
     loadWorkspace();
-  }, []);
+  }, [loadWorkspace]);
 
   useEffect(() => {
     if (googleConnectionQueryFlag === '1') {
@@ -120,16 +121,17 @@ const Workspace: React.FC = () => {
     if (googleConnectionQueryFlag === '0') {
       dispatch(addToast({ type: 'error', message: 'Google Calendar connection failed.' }));
     }
-  }, [googleConnectionQueryFlag]);
+  }, [googleConnectionQueryFlag, loadWorkspace, dispatch]);
 
   const handleConnectGoogle = async (forceReconnect = false) => {
     try {
       setIsConnecting(true);
       const authUrl = await integrationService.getGoogleConnectUrl(forceReconnect);
       window.location.href = authUrl;
-    } catch (error: any) {
+    } catch (error: unknown) {
       setIsConnecting(false);
-      dispatch(addToast({ type: 'error', message: error.message || 'Unable to start OAuth flow.' }));
+      const apiError = error as { message?: string };
+      dispatch(addToast({ type: 'error', message: apiError?.message || 'Unable to start OAuth flow.' }));
     }
   };
 
@@ -148,8 +150,9 @@ const Workspace: React.FC = () => {
       }));
       const upcoming = await integrationService.getUpcomingEvents();
       setEvents(upcoming);
-    } catch (error: any) {
-      dispatch(addToast({ type: 'error', message: error.message || 'Event creation failed.' }));
+    } catch (error: unknown) {
+      const apiError = error as { message?: string };
+      dispatch(addToast({ type: 'error', message: apiError?.message || 'Event creation failed.' }));
     } finally {
       setIsCreatingEvent(false);
     }

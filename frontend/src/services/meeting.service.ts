@@ -94,7 +94,15 @@ export const meetingService = {
         throw duplicateError;
       }
 
-      throw new Error(errorData.message || 'Upload failed');
+      // Preserve the backend error code (e.g. MEETING_LIMIT_REACHED) and HTTP
+      // status so callers can branch on them instead of parsing message text.
+      const uploadError = new Error(errorData.message || 'Upload failed') as Error & {
+        code?: string;
+        status?: number;
+      };
+      uploadError.code = errorData.code;
+      uploadError.status = response.status;
+      throw uploadError;
     }
 
     const result = await response.json();

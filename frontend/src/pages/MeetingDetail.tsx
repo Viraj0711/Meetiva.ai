@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -32,13 +32,7 @@ const MeetingDetail: React.FC = () => {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      loadMeetingDetails();
-    }
-  }, [id]);
-
-  const loadMeetingDetails = async () => {
+  const loadMeetingDetails = useCallback(async () => {
     if (!id) return;
 
     try {
@@ -60,7 +54,13 @@ const MeetingDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      loadMeetingDetails();
+    }
+  }, [id, loadMeetingDetails]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {

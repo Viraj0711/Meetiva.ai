@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -28,13 +28,34 @@ const Processing: React.FC = () => {
   const completedCount = Math.min(currentStep, steps.length);
   const completionPercent = Math.round(progress);
 
+  const checkMeetingStatus = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      const meetingData = await meetingService.getMeetingById(id);
+      setMeeting(meetingData);
+
+      if (meetingData.status === 'completed') {
+        setProgress(100);
+        setCurrentStep(6);
+        setTimeout(() => {
+          navigate(`/dashboard/meetings/${id}`);
+        }, 2000);
+      } else if (meetingData.status === 'failed') {
+        console.error('Processing failed');
+      }
+    } catch (error) {
+      console.error('Failed to check meeting status:', error);
+    }
+  }, [id, navigate]);
+
   useEffect(() => {
     if (id) {
       checkMeetingStatus();
       const interval = setInterval(checkMeetingStatus, 3000);
       return () => clearInterval(interval);
     }
-  }, [id]);
+  }, [id, checkMeetingStatus]);
 
   useEffect(() => {
     const progressInterval = setInterval(() => {
@@ -54,27 +75,6 @@ const Processing: React.FC = () => {
     const step = Math.min(Math.floor(progress / 16.67), 5);
     setCurrentStep(step);
   }, [progress]);
-
-  const checkMeetingStatus = async () => {
-    if (!id) return;
-
-    try {
-      const meetingData = await meetingService.getMeetingById(id);
-      setMeeting(meetingData);
-
-      if (meetingData.status === 'completed') {
-        setProgress(100);
-        setCurrentStep(6);
-        setTimeout(() => {
-          navigate(`/dashboard/meetings/${id}`);
-        }, 2000);
-      } else if (meetingData.status === 'failed') {
-        console.error('Processing failed');
-      }
-    } catch (error) {
-      console.error('Failed to check meeting status:', error);
-    }
-  };
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-6 lg:px-8">

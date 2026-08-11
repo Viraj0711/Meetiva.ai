@@ -114,7 +114,7 @@ const DashboardHome: React.FC = () => {
   const { data: tasksData } = useTasks({ page: 1, limit: 100 });
 
   const loading = statsLoading;
-  const meetings: Meeting[] = meetingsData?.data || [];
+  const meetings = useMemo<Meeting[]>(() => meetingsData?.data || [], [meetingsData]);
   const allTasks: Task[] = tasksData?.data || [];
   const completedActions = allTasks.filter((item: Task) => item.status === 'completed').length;
   const totalTasks = allTasks.length;

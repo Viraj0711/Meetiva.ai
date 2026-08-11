@@ -11,18 +11,35 @@ import {
   upsertGoogleTokens,
 } from '../services/googleCalendar';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { authLimiter, apiLimiter } from '../lib/rateLimiters';
+import { authLimiter, apiLimiter, otpLimiter } from '../lib/rateLimiters';
 import {
   validate,
   registerSchema,
   loginSchema,
   passwordResetSchema,
   passwordResetConfirmSchema,
+  verifyOtpSchema,
+  resendOtpSchema,
   changePasswordSchema,
   updateProfileSchema,
 } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
-import { setResetToken, getResetToken, deleteResetToken } from '../lib/redis';
+import {
+  setResetToken,
+  getResetToken,
+  deleteResetToken,
+  setOtp,
+  verifyOtp,
+  getOtpCooldown,
+  getOtpFailedAttempts,
+  incrementOtpFailedAttempts,
+  clearOtpFailedAttempts,
+  MAX_OTP_ATTEMPTS,
+  getOtpResendCount,
+  incrementOtpResendCount,
+  clearOtpResendCount,
+  MAX_OTP_RESENDS,
+} from '../lib/redis';
 import User from '../models/User';
 import TeamMember from '../models/TeamMember';
 import RefreshToken from '../models/RefreshToken';
@@ -170,7 +187,7 @@ const validateAndRotateRefreshToken = async (
  */
 const sendAuthResponse = async (
   res: Response,
-  user: { _id: any; email: string; name: string; createdAt: Date; updatedAt: Date },
+  user: { _id: any; email: string; name: string; isVerified: boolean; createdAt: Date; updatedAt: Date },
   statusCode = 200
 ): Promise<void> => {
   const userId = user._id.toString();
@@ -183,6 +200,7 @@ const sendAuthResponse = async (
       id: userId,
       email: user.email,
       name: user.name,
+      isVerified: user.isVerified,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     },
@@ -190,6 +208,40 @@ const sendAuthResponse = async (
 };
 
 // ── Auth routes ────────────────────────────────────────────────────────────
+
+// ── OTP generation helper ──────────────────────────────────────────────────
+const generateOtp = (): string =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+
+// ── SMTP email helper for verification OTP ─────────────────────────────────
+const sendVerificationEmail = async (email: string, otp: string): Promise<void> => {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPassword = process.env.SMTP_PASSWORD;
+  const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
+
+  if (smtpHost && smtpUser && smtpPassword) {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: process.env.SMTP_PORT === '465',
+      auth: {
+        user: smtpUser,
+        pass: smtpPassword,
+      },
+    });
+
+    await transporter.sendMail({
+      from: emailFrom,
+      to: email,
+      subject: 'Verify your Meetiva.ai email',
+      text: `Your verification code is: ${otp}\n\nThis code expires in 5 minutes.`,
+      html: `<p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${otp}</p><p>This code expires in 5 minutes.</p>`,
+    });
+  } else {
+    console.log(`[DEV] Verification OTP for ${email}: ${otp}`);
+  }
+};
 
 // ── Open registration ──────────────────────────────────────────────────────
 // Any user can create an account with a FREE tier (5 meetings/month).
@@ -208,6 +260,11 @@ router.post('/register',
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({ email, name, hashedPassword });
+
+    // Generate and send verification OTP
+    const otp = generateOtp();
+    await setOtp(email, otp);
+    await sendVerificationEmail(email, otp);
 
     await sendAuthResponse(res, user, 201);
   })
@@ -264,7 +321,7 @@ router.post('/login',
 // Get current authenticated user (access token required)
 router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = await User.findById(req.userId!)
-    .select('email name createdAt updatedAt')
+    .select('email name isVerified createdAt updatedAt')
     .lean();
 
   if (!user) {
@@ -275,6 +332,7 @@ router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest
     id: user._id.toString(),
     email: user.email,
     name: user.name,
+    isVerified: user.isVerified,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   });
@@ -338,7 +396,7 @@ router.post('/refresh', authLimiter, asyncHandler(async (req: Request, res: Resp
   }
 
   const user = await User.findById(userId)
-    .select('email name isActive createdAt updatedAt')
+    .select('email name isActive isVerified createdAt updatedAt')
     .lean();
   if (!user) {
     return res.status(401).json({ message: 'User not found' });
@@ -356,6 +414,7 @@ router.post('/refresh', authLimiter, asyncHandler(async (req: Request, res: Resp
       id: user._id.toString(),
       email: user.email,
       name: user.name,
+      isVerified: user.isVerified,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     },
@@ -446,6 +505,95 @@ router.post('/password-reset/confirm',
     res.clearCookie(SESSION_COOKIE, { path: '/' });
 
     return res.json({ message: 'Password updated successfully. Please log in again.' });
+  })
+);
+
+// ── Email verification OTP ──────────────────────────────────────────────────
+// Stricter per-IP limit (otpLimiter) + per-email failed-attempt lockout so a
+// 6-digit code can't be brute-forced by rotating IPs.
+router.post('/verify-otp',
+  otpLimiter,
+  validate(verifyOtpSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { email, otp } = req.body as z.infer<typeof verifyOtpSchema>;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired code' });
+    }
+
+    if (user.isVerified) {
+      return res.json({ message: 'Email already verified' });
+    }
+
+    // Per-email brute-force guard: block once the attempt budget is exhausted.
+    const failedAttempts = await getOtpFailedAttempts(email);
+    if (failedAttempts >= MAX_OTP_ATTEMPTS) {
+      return res.status(429).json({
+        message: 'Too many incorrect codes. Request a new code or try again in 15 minutes.',
+      });
+    }
+
+    const valid = await verifyOtp(email, otp);
+    if (!valid) {
+      await incrementOtpFailedAttempts(email);
+      return res.status(400).json({ message: 'Invalid or expired code' });
+    }
+
+    await clearOtpFailedAttempts(email);
+    await clearOtpResendCount(email);
+    await User.findByIdAndUpdate(user._id, { isVerified: true });
+
+    return res.json({ message: 'Email verified successfully' });
+  })
+);
+
+// ── Resend verification OTP ────────────────────────────────────────────────
+router.post('/verify-otp/resend',
+  authLimiter,
+  validate(resendOtpSchema),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { email } = req.body as z.infer<typeof resendOtpSchema>;
+    const user = await User.findOne({ email }).lean();
+
+    // Always return success to avoid revealing whether the email exists
+    if (!user) {
+      return res.json({ message: 'If the email is registered, a new code has been sent.' });
+    }
+
+    if (user.isVerified) {
+      return res.json({ message: 'If the email is registered, a new code has been sent.' });
+    }
+
+    // Check cooldown
+    const cooldownMs = await getOtpCooldown(email);
+    if (cooldownMs > 0) {
+      return res.status(429).json({
+        message: `Please wait ${Math.ceil(cooldownMs / 1000)} seconds before requesting a new code.`,
+        retryAfterMs: cooldownMs,
+      });
+    }
+
+    // Cap resends per window — a fresh code resets the failed-attempt budget,
+    // so without this cap an attacker could farm unlimited fresh codes by
+    // rotating IPs to keep brute-forcing the 6-digit code.
+    const resendCount = await getOtpResendCount(email);
+    if (resendCount >= MAX_OTP_RESENDS) {
+      return res.status(429).json({
+        message: 'Too many verification code requests. Please try again later.',
+      });
+    }
+
+    // Generate new OTP (old one is automatically discarded by setOtp)
+    const otp = generateOtp();
+    await setOtp(email, otp);
+    await sendVerificationEmail(email, otp);
+
+    // A fresh code resets the failed-attempt budget for this email.
+    await clearOtpFailedAttempts(email);
+    await incrementOtpResendCount(email);
+
+    return res.json({ message: 'If the email is registered, a new code has been sent.' });
   })
 );
 

@@ -128,6 +128,20 @@ export const authService = {
   },
 
   /**
+   * Verify email with OTP code
+   */
+  verifyOtp: async (email: string, otp: string): Promise<void> => {
+    await apiClient.post('/auth/verify-otp', { email, otp });
+  },
+
+  /**
+   * Resend verification OTP
+   */
+  resendOtp: async (email: string): Promise<void> => {
+    await apiClient.post('/auth/verify-otp/resend', { email });
+  },
+
+  /**
    * Upgrade the authenticated user's subscription tier.
    * Gated by ADMIN_EMAIL on the server — only the configured admin user can self-upgrade.
    */

@@ -85,6 +85,15 @@ export const changePasswordSchema = z.object({
   newPassword: passwordField,
 });
 
+export const verifyOtpSchema = z.object({
+  email: emailField,
+  otp: z.string().regex(/^\d{6}$/, 'OTP must be a 6-digit code'),
+});
+
+export const resendOtpSchema = z.object({
+  email: emailField,
+});
+
 export const updateProfileSchema = z.object({
   name: z
     .string()

@@ -16,6 +16,17 @@ import express from 'express';
 import { type Express } from 'express';
 import request from 'supertest';
 import rateLimit from 'express-rate-limit';
+import { otpLimiter } from '../lib/rateLimiters';
+import {
+  MAX_OTP_ATTEMPTS,
+  MAX_OTP_RESENDS,
+  getOtpFailedAttempts,
+  incrementOtpFailedAttempts,
+  clearOtpFailedAttempts,
+  getOtpResendCount,
+  incrementOtpResendCount,
+  clearOtpResendCount,
+} from '../lib/redis';
 
 // ── Custom test helpers (matches existing test style) ───────────────────────
 
@@ -224,6 +235,70 @@ async function run(): Promise<void> {
       const res = await request(app).get('/free');
       assert(res.status === 200,      `Request ${i + 1} on unlimited route → 200`);
     }
+  }
+
+  // ── Test 7: Real otpLimiter (5 / 5 min per IP) ───────────────────────────
+  // NOTE: uses the real limiter; its store falls back to in-memory when no
+  // REDIS_URL is set (the test-run assumption). With Redis enabled, counters
+  // persist across runs, so re-running within the window would 429 early.
+
+  {
+    process.stdout.write('\nTest 7: otpLimiter — blocks after 5 attempts per IP\n');
+
+    const app = createApp(otpLimiter);
+
+    for (let i = 0; i < 5; i++) {
+      const res = await request(app).get('/test');
+      assert(res.status === 200, `Attempt ${i + 1} → 200`);
+    }
+
+    const blocked = await request(app).get('/test');
+    assert(blocked.status === 429, '6th attempt → 429');
+    assert(
+      blocked.body.message === 'Too many verification attempts. Please try again after 5 minutes.',
+      '429 carries OTP-specific message',
+    );
+  }
+
+  // ── Test 8: OTP failed-attempt lockout helpers (in-memory fallback) ──────
+  // These run against the in-memory fallback because no REDIS_URL is set in
+  // the test environment. With Redis configured they'd hit Redis instead.
+
+  {
+    process.stdout.write('\nTest 8: OTP failed-attempt lockout helpers\n');
+
+    const email = 'otp-lockout@test.com';
+    await clearOtpFailedAttempts(email);
+
+    assert((await getOtpFailedAttempts(email)) === 0, 'Starts at 0 attempts');
+
+    const first = await incrementOtpFailedAttempts(email);
+    assert(first === 1, 'First failure → count 1');
+
+    await incrementOtpFailedAttempts(email);
+    const third = await incrementOtpFailedAttempts(email);
+    assert(third === 3, 'Three failures → count 3');
+
+    assert((await getOtpFailedAttempts(email)) === 3, 'get returns current count');
+    assert(MAX_OTP_ATTEMPTS === 5, 'Lockout threshold is 5');
+
+    await clearOtpFailedAttempts(email);
+    assert((await getOtpFailedAttempts(email)) === 0, 'clear resets count to 0');
+
+    // Resend-cap helpers
+    const resendEmail = 'otp-resend@test.com';
+    await clearOtpResendCount(resendEmail);
+    assert((await getOtpResendCount(resendEmail)) === 0, 'Resend count starts at 0');
+
+    const r1 = await incrementOtpResendCount(resendEmail);
+    assert(r1 === 1, 'First resend → count 1');
+
+    await incrementOtpResendCount(resendEmail);
+    assert((await getOtpResendCount(resendEmail)) === 2, 'Two resends → count 2');
+    assert(MAX_OTP_RESENDS === 3, 'Resend cap is 3');
+
+    await clearOtpResendCount(resendEmail);
+    assert((await getOtpResendCount(resendEmail)) === 0, 'clear resets resend count');
   }
 
   // ── Summary ──────────────────────────────────────────────────────────────

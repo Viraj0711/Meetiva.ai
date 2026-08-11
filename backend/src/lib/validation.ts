@@ -14,6 +14,8 @@ export {
   loginSchema,
   passwordResetSchema,
   passwordResetConfirmSchema,
+  verifyOtpSchema,
+  resendOtpSchema,
   changePasswordSchema,
   updateProfileSchema,
   createMeetingSchema,

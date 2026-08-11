@@ -169,8 +169,9 @@ const Settings: React.FC = () => {
       // response.token is automatically stored in-memory by authService.updateProfile
       dispatch(loginSuccess({ user: response.user, token: response.token }));
       setProfileMessage({ type: 'success', text: 'Profile updated successfully.' });
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to save profile changes.';
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg = apiError?.response?.data?.message || apiError?.message || 'Failed to save profile changes.';
       setProfileMessage({ type: 'error', text: msg });
     } finally {
       setSavingProfile(false);

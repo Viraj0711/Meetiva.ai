@@ -10,6 +10,31 @@ interface FetchConfig {
   signal?: AbortSignal;
 }
 
+// ── Free-tier meeting limit ───────────────────────────────────────────────
+// The backend returns 403 with code MEETING_LIMIT_REACHED when a FREE user
+// hits the monthly meeting cap (see backend/src/lib/subscription.ts). Any
+// API call can surface it — a global handler lets the app respond centrally
+// (e.g. auto-redirect to the upgrade page) instead of every call site
+// parsing message text.
+
+export const MEETING_LIMIT_CODE = 'MEETING_LIMIT_REACHED';
+
+/** True if the error is the free-tier meeting limit (403 MEETING_LIMIT_REACHED). */
+export const isMeetingLimitReached = (error: unknown): boolean =>
+  (error as { code?: string } | null)?.code === MEETING_LIMIT_CODE;
+
+type MeetingLimitHandler = (error: ApiError) => void;
+
+let meetingLimitHandler: MeetingLimitHandler | null = null;
+
+/**
+ * Register a global handler fired whenever any API call fails with
+ * MEETING_LIMIT_REACHED. Pass null to unregister.
+ */
+export const setMeetingLimitHandler = (handler: MeetingLimitHandler | null): void => {
+  meetingLimitHandler = handler;
+};
+
 // ── In-memory access token ─────────────────────────────────────────────────
 // The token is stored in a module-level variable — NOT in localStorage.
 // This prevents theft via XSS or browser DevTools.
@@ -112,7 +137,7 @@ class ApiClient {
       data !== undefined ? JSON.stringify(data) : undefined;
 
     const doFetch = (): Promise<Response> =>
-      fetch(fullUrl, { method, headers, body, signal: config?.signal });
+      fetch(fullUrl, { method, headers, body, signal: config?.signal, credentials: 'include' });
 
     let response = await doFetch();
 
@@ -165,7 +190,13 @@ class ApiClient {
     }
 
     if (!response.ok) {
-      throw await buildApiError(response);
+      const apiError = await buildApiError(response);
+      // Surface the free-tier meeting limit centrally so the app can
+      // auto-redirect to the upgrade page from any blocked action.
+      if (apiError.code === MEETING_LIMIT_CODE) {
+        meetingLimitHandler?.(apiError);
+      }
+      throw apiError;
     }
 
     // Handle 204 No Content (e.g. DELETE responses)

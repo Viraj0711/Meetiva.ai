@@ -21,8 +21,12 @@ const LoginPage: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      await loginMutation.mutateAsync({ email, password: pw });
-      navigate('/dashboard');
+      const result = await loginMutation.mutateAsync({ email, password: pw });
+      if (result.user && !result.user.isVerified) {
+        navigate(`/verify-email?email=${encodeURIComponent(result.user.email)}`);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       const e = err as { message?: string };
       toast.error(e?.message || 'Invalid email or password.');

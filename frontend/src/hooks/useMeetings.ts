@@ -16,6 +16,7 @@ import {
 } from '@/types';
 import { useAppDispatch } from '@/store/hooks';
 import { addToast } from '@/store/slices/uiSlice';
+import { isMeetingLimitReached } from '@/services/api.client';
 
 /**
  * Hook to get all meetings
@@ -53,6 +54,8 @@ export const useCreateMeeting = () => {
       dispatch(addToast({ type: 'success', message: 'Meeting created successfully' }));
     },
     onError: (error: Error) => {
+      // Free-tier limit: the global gate auto-redirects to the upgrade page.
+      if (isMeetingLimitReached(error)) return;
       dispatch(addToast({ type: 'error', message: error.message }));
     },
   });
@@ -118,6 +121,9 @@ export const useUploadMeetingFile = () => {
       dispatch(addToast({ type: 'success', message: 'File uploaded successfully' }));
     },
     onError: (error: Error) => {
+      // NOTE: the upload endpoint uses raw fetch, so the global meeting-limit
+      // gate never fires for it — the toast is this path's only feedback.
+      // (The real Upload page renders a dedicated inline upgrade card.)
       dispatch(addToast({ type: 'error', message: error.message }));
     },
   });

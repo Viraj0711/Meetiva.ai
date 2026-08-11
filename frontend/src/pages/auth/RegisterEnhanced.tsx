@@ -28,7 +28,7 @@ const RegisterPage: React.FC = () => {
     }
     try {
       await registerMutation.mutateAsync({ name, email, password: pw });
-      navigate('/dashboard');
+      navigate(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err) {
       const e = err as { message?: string };
       toast.error(e?.message || 'Registration failed.');

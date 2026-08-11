@@ -93,8 +93,10 @@ export const checkMeetingCredits = async (userId: string): Promise<void> => {
   const isSubscribed = hasActiveSubscription(subscriptionTier, subscriptionExpiresAt);
 
   if (!isSubscribed && meetingCountThisMonth >= limit) {
-    throw new AppError(403,
-      `You've used all ${limit} free meetings this month. Upgrade to PRO for unlimited meetings.`
+    throw new AppError(
+      403,
+      `You've used all ${limit} free meetings this month. Upgrade to PRO for unlimited meetings.`,
+      'MEETING_LIMIT_REACHED'
     );
   }
 };

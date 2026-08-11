@@ -56,7 +56,7 @@ const Tasks: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, filterStatus, filterPriority, showTeamItems]);
+  }, [currentPage, filterStatus, filterPriority]);
 
   useEffect(() => {
     loadTasks();
