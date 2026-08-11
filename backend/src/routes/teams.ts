@@ -8,6 +8,7 @@ import { apiLimiter } from '../lib/rateLimiters';
 import { createLogger } from '../lib/logger';
 import {
   validate,
+  validateObjectIdParam,
   createTeamSchema,
   inviteMemberSchema,
   updateMemberRoleSchema,
@@ -30,24 +31,9 @@ const log = createLogger('meetiva:teams');
 const router = Router();
 
 // Validate all route params as MongoDB ObjectId
-router.param('teamId', (req, res, next, value) => {
-  if (!Types.ObjectId.isValid(value)) {
-    return res.status(400).json({ message: 'Invalid teamId: must be a valid ObjectId' });
-  }
-  next();
-});
-router.param('userId', (req, res, next, value) => {
-  if (!Types.ObjectId.isValid(value)) {
-    return res.status(400).json({ message: 'Invalid userId: must be a valid ObjectId' });
-  }
-  next();
-});
-router.param('invitationId', (req, res, next, value) => {
-  if (!Types.ObjectId.isValid(value)) {
-    return res.status(400).json({ message: 'Invalid invitationId: must be a valid ObjectId' });
-  }
-  next();
-});
+router.param('teamId', validateObjectIdParam('teamId'));
+router.param('userId', validateObjectIdParam('userId'));
+router.param('invitationId', validateObjectIdParam('invitationId'));
 
 const buildDefaultNameFromEmail = (email: string): string => {
   const localPart = email.split('@')[0] || 'Member';

@@ -677,12 +677,12 @@
 }
 
 .btn-primary {
-  background: #2f5d46;
+  background: linear-gradient(135deg, #5B3FD6, #8B5CF6);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #254939;
+  background: linear-gradient(135deg, #4A32B0, #7C4FE0);
 }
 
 .btn-secondary {

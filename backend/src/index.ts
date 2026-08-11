@@ -23,6 +23,7 @@ import { startRefreshTokenCleanup, stopRefreshTokenCleanup } from './jobs/refres
 import { requestLogger } from './lib/requestLogger';
 import { errorHandler } from './middleware/errorHandler';
 import { connectMongoose, disconnectMongoose } from './lib/mongoose';
+import { applyQuerySafetyPlugin } from './lib/querySafetyPlugin';
 import { disconnectRedis } from './lib/redis';
 import { createLogger } from './lib/logger';
 
@@ -131,6 +132,7 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
   log.info('Server started successfully', { port: PORT, environment: env, demoMode });
 
   await connectMongoose();
+  applyQuerySafetyPlugin();
   startDeadlineNotifier();
   startRefreshTokenCleanup();
 

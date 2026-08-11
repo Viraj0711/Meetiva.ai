@@ -1,0 +1,17 @@
+# Gitleaks configuration for Meetiva.ai
+#
+# The security-scan CI job scans full git history. Old commits contain
+# vendored `node_modules` and lockfiles, which produce false positives
+# (bundled SDK strings that look like keys). Allowlist those paths; real
+# secrets anywhere else will still fail the build.
+
+title = "Meetiva.ai gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Vendored / generated dependency files in history"
+paths = [
+  "node_modules",
+]

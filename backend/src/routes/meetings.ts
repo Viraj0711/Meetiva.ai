@@ -1,7 +1,7 @@
 import type { TaskStatus, MeetingPriority } from '../lib/shared';
 import { Router, Response, NextFunction, Request } from 'express';
 import multer from 'multer';
-import ExcelJS from 'exceljs';
+import { createStyledWorkbook } from '../lib/excelFormatter';
 import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { canViewUserData } from '../middleware/authorize';
@@ -16,6 +16,7 @@ import { syncMeetingStatusFromTasks } from '../services/meetingStatus';
 import { apiLimiter, uploadLimiter } from '../lib/rateLimiters';
 import {
   validate,
+  validateObjectIdParam,
   updateMeetingSchema,
   createMeetingSchema,
   paginationQuerySchema,
@@ -34,12 +35,7 @@ import PDFDocument from 'pdfkit';
 const router = Router();
 
 // Validate all :id route params as MongoDB ObjectId
-router.param('id', (req, res, next, value) => {
-  if (!Types.ObjectId.isValid(value)) {
-    return res.status(400).json({ message: `Invalid id: must be a valid ObjectId` });
-  }
-  next();
-});
+router.param('id', validateObjectIdParam('id'));
 
 // Multer: keep limit at Whisper's hard cap (25 MB).
 const upload = multer({
@@ -58,7 +54,24 @@ const handleMulterError = (err: any, _req: Request, _res: Response, next: NextFu
 };
 
 // Helper to get the appropriate filter based on user's role
-const getMeetingsFilter = async (req: AuthRequest): Promise<Record<string, any>> => {
+const getMeetingsFilter = async (req: AuthRequest, teamId?: string): Promise<Record<string, any>> => {
+  // If a specific teamId is provided, filter by that team's members
+  if (teamId) {
+    // Verify user is a member of this team
+    const membership = req.userTeams?.find(t => t.teamId === teamId);
+    if (!membership) {
+      return { userId: new Types.ObjectId(req.userId!) };
+    }
+
+    // Get all members of this team
+    const teamMembers = await TeamMember.find({ teamId: new Types.ObjectId(teamId) })
+      .select('userId')
+      .lean();
+    
+    const memberUserIds = teamMembers.map(tm => tm.userId);
+    return { userId: { $in: memberUserIds } };
+  }
+
   // For members or users with no team membership, only show their own meetings
   if (!req.userTeams || req.userTeams.length === 0) {
     return { userId: new Types.ObjectId(req.userId!) };
@@ -95,7 +108,8 @@ const getMeetingsFilter = async (req: AuthRequest): Promise<Record<string, any>>
 };
 
 router.get('/stats', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const filter = await getMeetingsFilter(req);
+  const { teamId } = req.query as { teamId?: string };
+  const filter = await getMeetingsFilter(req, teamId);
   const now = new Date();
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
@@ -167,10 +181,10 @@ router.get('/',
   authenticate,
   validate(paginationQuerySchema, 'query'),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { page, limit } = req.query as unknown as { page: number; limit: number };
+    const { page, limit, teamId } = req.query as unknown as { page: number; limit: number; teamId?: string };
     const skip = (page - 1) * limit;
 
-    const filter = await getMeetingsFilter(req);
+    const filter = await getMeetingsFilter(req, teamId);
 
     const [meetings, total] = await Promise.all([
       Meeting.find(filter)
@@ -639,11 +653,19 @@ router.get('/:id/action-items/export', apiLimiter, authenticate, asyncHandler(as
     Tags: Array.isArray(item.tags) ? item.tags.join(', ') : '',
   }));
 
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Tasks');
-
-  worksheet.columns = Object.keys(rows[0] ?? {}).map((key) => ({ header: key, key, width: 20 }));
-  worksheet.addRows(rows);
+  const workbook = createStyledWorkbook({
+    sheetName: 'Tasks',
+    columns: [
+      { header: 'Task', key: 'Task', width: 30 },
+      { header: 'Description', key: 'Description', width: 40, wrap: true },
+      { header: 'Assignee', key: 'Assignee', width: 18 },
+      { header: 'Priority', key: 'Priority', width: 12 },
+      { header: 'Status', key: 'Status', width: 15 },
+      { header: 'Due Date', key: 'DueDate', width: 14 },
+      { header: 'Tags', key: 'Tags', width: 25 },
+    ],
+    data: rows,
+  });
 
   const fileBuffer = await workbook.xlsx.writeBuffer();
 

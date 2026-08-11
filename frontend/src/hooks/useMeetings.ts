@@ -14,7 +14,7 @@ import {
   PaginationParams,
   FilterParams,
 } from '@/types';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addToast } from '@/store/slices/uiSlice';
 import { isMeetingLimitReached } from '@/services/api.client';
 
@@ -22,9 +22,11 @@ import { isMeetingLimitReached } from '@/services/api.client';
  * Hook to get all meetings
  */
 export const useMeetings = (params?: PaginationParams & FilterParams) => {
+  const activeTeamId = useAppSelector((state) => state.workspace.activeTeamId);
+  
   return useQuery<PaginatedResponse<Meeting>, Error>({
-    queryKey: ['meetings', params],
-    queryFn: () => meetingService.getMeetings(params),
+    queryKey: ['meetings', { ...params, teamId: activeTeamId }],
+    queryFn: () => meetingService.getMeetings({ ...params, teamId: activeTeamId ?? undefined }),
     staleTime: 30 * 1000, // 30 seconds
   });
 };
@@ -166,9 +168,11 @@ export const useMeetingTasks = (meetingId: string) => {
  * Hook to get meeting stats
  */
 export const useMeetingStats = () => {
+  const activeTeamId = useAppSelector((state) => state.workspace.activeTeamId);
+  
   return useQuery<MeetingStats, Error>({
-    queryKey: ['meetings', 'stats'],
-    queryFn: () => meetingService.getMeetingStats(),
+    queryKey: ['meetings', 'stats', { teamId: activeTeamId }],
+    queryFn: () => meetingService.getMeetingStats(activeTeamId ?? undefined),
     staleTime: 60 * 1000, // 1 minute
   });
 };
@@ -177,9 +181,11 @@ export const useMeetingStats = () => {
  * Hook to get all tasks
  */
 export const useTasks = (params?: PaginationParams & FilterParams) => {
+  const activeTeamId = useAppSelector((state) => state.workspace.activeTeamId);
+  
   return useQuery<PaginatedResponse<Task>, Error>({
-    queryKey: ['tasks', params],
-    queryFn: () => taskService.getTasks(params),
+    queryKey: ['tasks', { ...params, teamId: activeTeamId }],
+    queryFn: () => taskService.getTasks({ ...params, teamId: activeTeamId ?? undefined }),
     staleTime: 30 * 1000,
   });
 };

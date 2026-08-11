@@ -2,12 +2,16 @@ import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { apiLimiter } from '../lib/rateLimiters';
 import { asyncHandler } from '../lib/errors';
+import { validateObjectIdParam } from '../lib/validation';
 import Meeting from '../models/Meeting';
 import Task from '../models/ActionItem';
 import TeamMember from '../models/TeamMember';
 import { Types } from 'mongoose';
 
 const router = Router();
+
+// Validate any future :id route params as MongoDB ObjectId
+router.param('id', validateObjectIdParam('id'));
 
 router.get('/overview', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const memberships = await TeamMember.find({ userId: new Types.ObjectId(req.userId!) })

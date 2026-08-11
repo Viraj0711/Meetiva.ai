@@ -23,6 +23,7 @@ interface TeamMemberStats {
 const TeamReport: React.FC = () => {
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
   const userTeams = useAppSelector(selectUserTeams);
+  const activeTeamId = useAppSelector((state) => state.workspace.activeTeamId);
 
   const [stats, setStats] = useState<MeetingStats | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -38,7 +39,7 @@ const TeamReport: React.FC = () => {
     }
 
     loadTeamData();
-  }, [isManagerOrLead]);
+  }, [isManagerOrLead, activeTeamId]);
 
   const loadTeamData = async () => {
     try {
@@ -47,9 +48,9 @@ const TeamReport: React.FC = () => {
 
       // Fetch stats, meetings, and tasks
       const [statsData, meetingsData, tasksData] = await Promise.all([
-        meetingService.getMeetingStats(),
-        meetingService.getMeetings({ limit: 100 }),
-        taskService.getTasks({ limit: 100 }),
+        meetingService.getMeetingStats(activeTeamId ?? undefined),
+        meetingService.getMeetings({ limit: 100, teamId: activeTeamId ?? undefined }),
+        taskService.getTasks({ limit: 100, teamId: activeTeamId ?? undefined }),
       ]);
 
       setStats(statsData);

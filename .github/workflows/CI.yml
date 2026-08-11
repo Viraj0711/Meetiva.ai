@@ -2,12 +2,21 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
     branches: [main]
 
+# Run CI on every branch push, but cancel superseded runs for the same
+# branch so rapid pushes don't queue redundant jobs.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "24"
+  # Lockfiles are standardized on npm 11 (latest stable major).
+  # Pinning npm keeps `npm ci` strict-sync checks identical to local dev.
+  NPM_VERSION: "11"
 
 jobs:
   security-scan:
@@ -23,12 +32,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   frontend:
-    name: Frontend — typecheck & test
+    name: Frontend — typecheck, test & build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-
     steps:
       - uses: actions/checkout@v4
 
@@ -38,27 +43,49 @@ jobs:
           cache: "npm"
           cache-dependency-path: package-lock.json
 
-      - name: Build shared types package
-        run: |
-          cd ../shared
-          npm install
-          npx tsc --noEmit
-          npx tsc
+      - name: Pin npm version
+        run: npm i -g npm@${{ env.NPM_VERSION }}
 
-      - name: Install dependencies
+      # shared + frontend (+ admin) are npm workspaces — the lockfile lives at
+      # the repo root, so install must run there (npm ci in frontend/ alone
+      # would fail with "no package-lock.json").
+      - name: Install workspace dependencies
         run: npm ci
 
-      - name: Create .env from example
+      # Fail the build on high/critical vulnerabilities before Dependabot
+      # even reports them (audits the whole workspace: shared/frontend/admin).
+      - name: Audit dependencies (high+)
+        run: npm audit --audit-level=high
+
+      # Static scan for input validation gaps — flags direct fetch() calls
+      # that bypass apiClient, as any casts on payloads, and unvalidated
+      # API URLs.
+      - name: Input safety scan
+        working-directory: frontend
+        run: npx tsx scripts/check-input-safety.ts
+
+      - name: Build shared types package
+        run: cd shared && npx tsc
+
+      - name: Create frontend .env from example
+        working-directory: frontend
         run: cp .env.example .env
 
       - name: TypeScript check
+        working-directory: frontend
         run: npx tsc --noEmit
 
+      - name: Production build (tsc + vite)
+        working-directory: frontend
+        run: npm run build
+
       - name: Unit tests
+        working-directory: frontend
         run: npm test
 
       - name: Lint
-        run: npx eslint . --ext ts,tsx --max-warnings 5
+        working-directory: frontend
+        run: npm run lint
 
   backend:
     name: Backend — typecheck & build
@@ -76,6 +103,9 @@ jobs:
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
 
+      - name: Pin npm version
+        run: npm i -g npm@${{ env.NPM_VERSION }}
+
       - name: Build shared types package
         run: |
           cd ../shared
@@ -86,11 +116,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Fail the build on high/critical vulnerabilities in backend deps.
+      - name: Audit dependencies (high+)
+        run: npm audit --audit-level=high
+
+      # Static scan for NoSQL injection risks — flags any req.body passed
+      # directly to a MongoDB query. Fails the build on violations.
+      - name: NoSQL injection safety scan
+        run: npx tsx scripts/check-query-safety.ts
+
       - name: Create .env from example
         run: cp .env.example .env
 
       - name: TypeScript check
         run: npx tsc --noEmit
+
+      - name: Security unit tests
+        run: npm run test:security
 
       - name: Build
         run: npm run build

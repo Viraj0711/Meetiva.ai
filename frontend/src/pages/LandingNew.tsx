@@ -395,13 +395,6 @@ const LandingNew: React.FC = () => {
             ))}
           </div>
 
-          <div className="text-center mt-8">
-            <button onClick={() => navigate('/register')}
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 hover:scale-[1.015] active:scale-[0.98]"
-              style={{ background: `linear-gradient(135deg, ${LP}, ${LS})`, boxShadow: `0 8px 32px ${LP}40` }}>
-              Get started — it's free <ArrowRight size={15} />
-            </button>
-          </div>
         </div>
       </section>
 
@@ -517,50 +510,6 @@ const LandingNew: React.FC = () => {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── FINAL CTA ── */}
-      <section className="px-6 py-6 pb-14">
-        <div className="max-w-6xl mx-auto">
-          <div className="relative rounded-[32px] overflow-hidden py-16 px-8 text-center"
-            style={{ background: '#0F0A1E', boxShadow: '0 40px 100px rgba(0,0,0,0.32)' }}>
-            <div className="absolute -top-32 left-1/4 w-[600px] h-[400px] rounded-full pointer-events-none"
-              style={{ background: `radial-gradient(ellipse, ${LP}55 0%, transparent 60%)`, filter: 'blur(80px)', opacity: 0.6 }} />
-            <div className="absolute -bottom-24 right-1/4 w-[500px] h-[400px] rounded-full pointer-events-none"
-              style={{ background: `radial-gradient(ellipse, ${LA}40 0%, transparent 60%)`, filter: 'blur(80px)', opacity: 0.4 }} />
-            <div className="absolute inset-0 pointer-events-none"
-              style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1.5px, transparent 1.5px)', backgroundSize: '28px 28px' }} />
-            <div className="hidden md:flex absolute top-7 left-9 items-center gap-2.5 px-4 py-2.5 rounded-2xl"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', backdropFilter: 'blur(8px)' }}>
-              <div className="w-5 h-5 rounded-lg flex items-center justify-center" style={{ background: `${LP}30` }}>
-                <Brain size={11} style={{ color: LS }} />
-              </div>
-              <span className="text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.65)' }}>Meetiva Intelligence</span>
-            </div>
-
-            <div className="relative">
-              <div className="text-[11px] font-bold uppercase tracking-widest mb-5" style={{ color: 'rgba(255,255,255,0.28)' }}>Ready to ship</div>
-              <h2 className="text-[48px] font-bold text-white tracking-tight mb-5 leading-tight">Make every meeting count.</h2>
-              <p className="text-[17px] mb-7 max-w-md mx-auto leading-relaxed" style={{ color: 'rgba(255,255,255,0.42)' }}>
-                Join 10,000+ teams who've replaced messy notes and forgotten tasks with Meetiva's AI workspace.
-              </p>
-              <div className="flex items-center justify-center gap-4 flex-wrap">
-                <button onClick={() => navigate('/register')}
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold text-white transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
-                  style={{ background: `linear-gradient(135deg, ${LP}, ${LS})`, boxShadow: `0 8px 32px ${LP}60` }}>
-                  Start for free <ArrowRight size={16} />
-                </button>
-                <button onClick={() => navigate('/login')}
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-semibold transition-all"
-                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.11)' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.12)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; }}>
-                  Sign in
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </section>
