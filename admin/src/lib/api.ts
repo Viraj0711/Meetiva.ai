@@ -49,6 +49,11 @@ export interface MeUser {
   id: string;
   email: string;
   name: string;
+  isVerified: boolean;
+  accountType: string;
+  orgRole: string | null;
+  organizationId: string | null;
+  forcePasswordChange: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -223,4 +228,96 @@ export const notificationsApi = {
 
 export const workspaceApi = {
   overview: () => request<{ data: WorkspaceOverview }>("/workspace/overview"),
+};
+
+// ── Organization & Project API ──────────────────────────────────────────────
+
+export interface OrganizationData {
+  _id: string;
+  name: string;
+  slug: string;
+  adminUserId: string;
+  status: string;
+  seatLimit: number;
+  seatsUsed: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrgUser {
+  _id: string;
+  email: string;
+  name: string;
+  orgRole: string;
+  isActive: boolean;
+  isVerified: boolean;
+  createdAt: string;
+}
+
+export interface ProjectData {
+  _id: string;
+  name: string;
+  description: string | null;
+  organizationId: string;
+  managerUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DispositionContent {
+  meetings: { id: string; title: string; status: string; createdAt: string }[];
+  tasks: { id: string; title: string; status: string; priority: string; createdAt: string }[];
+}
+
+export const organizationsApi = {
+  get: (id: string) => request<OrganizationData>(`/organizations/${id}`),
+  listAll: () => request<OrganizationData[]>("/organizations"),
+  create: (data: { name: string }) =>
+    request<OrganizationData>("/organizations", { method: "POST", body: data }),
+  update: (id: string, data: Partial<OrganizationData>) =>
+    request<OrganizationData>(`/organizations/${id}`, { method: "PATCH", body: data }),
+  listUsers: (id: string) => request<{ users: OrgUser[] }>(`/organizations/${id}/users`),
+  provision: (id: string, data: { email: string; name: string; role: string }) =>
+    request<{ user: OrgUser; tempPassword: string }>(`/organizations/${id}/provision`, {
+      method: "POST",
+      body: data,
+    }),
+  seats: (id: string) =>
+    request<{ seatLimit: number; seatsUsed: number }>(`/organizations/${id}/seats`),
+  recountSeats: (id: string) =>
+    request<{ seatLimit: number; seatsUsed: number }>(`/organizations/${id}/seats/recount`, {
+      method: "POST",
+    }),
+  disposition: (id: string, removedUserId: string) =>
+    request<DispositionContent>(`/organizations/${id}/disposition?removedUserId=${removedUserId}`),
+  removeManager: (id: string, userId: string, replacementUserId: string) =>
+    request(`/organizations/${id}/managers/${userId}`, {
+      method: "DELETE",
+      body: { replacementUserId },
+    }),
+  activate: (id: string) =>
+    request(`/organizations/${id}/activate`, { method: "POST" }),
+  suspend: (id: string) =>
+    request(`/organizations/${id}/suspend`, { method: "POST" }),
+  provisionAdmin: (id: string, data: { email: string; name: string }) =>
+    request<{ user: OrgUser; tempPassword: string }>(`/organizations/${id}/provision-admin`, {
+      method: "POST",
+      body: data,
+    }),
+};
+
+export const projectsApi = {
+  list: (organizationId?: string) => {
+    const qs = organizationId ? `?organizationId=${organizationId}` : "";
+    return request<{ projects: ProjectData[] }>(`/projects${qs}`);
+  },
+  get: (id: string) => request<ProjectData>(`/projects/${id}`),
+  create: (data: { name: string; description?: string; organizationId: string }) =>
+    request<ProjectData>("/projects", { method: "POST", body: data }),
+  update: (id: string, data: Partial<ProjectData>) =>
+    request<ProjectData>(`/projects/${id}`, { method: "PATCH", body: data }),
+  assignManager: (id: string, data: { managerUserId: string }) =>
+    request(`/projects/${id}/assign-manager`, { method: "POST", body: data }),
+  teams: (id: string) =>
+    request<{ teams: Team[] }>(`/projects/${id}/teams`),
 };

@@ -123,7 +123,6 @@ router.post(
     const team = await Team.create({
       name,
       description: description || null,
-      managerId: new Types.ObjectId(req.userId!),
       inviteCode,
     });
 
@@ -1015,14 +1014,13 @@ router.delete('/:teamId', apiLimiter, authenticate, asyncHandler(async (req: Aut
     teamId: new Types.ObjectId(teamId),
   }).lean();
 
-  const team = await Team.findById(teamId).select('managerId').lean();
+  const team = await Team.findById(teamId).select('projectId').lean();
 
   if (!team || !requesterMembership) {
     return res.status(404).json({ message: 'Team not found' });
   }
 
   const canDeleteTeam =
-    team.managerId?.toString() === req.userId ||
     requesterMembership.role === 'MANAGER' ||
     requesterMembership.role === 'LEAD';
 

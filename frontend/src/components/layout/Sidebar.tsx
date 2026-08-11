@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, Users, FileText, ScrollText, Target, BarChart2,
-  Upload, Layout, Settings, LogOut,
+  Upload, Layout, Settings, LogOut, ChevronDown, Building2, User,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
@@ -27,15 +27,51 @@ const NAV = [
   { id: 'workspaces', label: 'Workspaces',     icon: Layout,      path: '/dashboard/workspace' },
 ];
 
+interface WorkspaceOption {
+  id: string;
+  name: string;
+  subtitle: string;
+  icon: React.ReactNode;
+}
+
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const workspaceRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => location.pathname === path;
-
   const navTo = (path: string) => navigate(path);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (workspaceRef.current && !workspaceRef.current.contains(e.target as Node)) {
+        setWorkspaceOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const isCorporate = user?.accountType === 'corporate' && user?.organizationId;
+
+  const workspaces: WorkspaceOption[] = isCorporate
+    ? [
+        { id: 'org', name: user?.name || 'Organization', subtitle: `${user?.orgRole || 'member'} · Organization`, icon: <Building2 size={14} /> },
+        ...(user?.teams ?? []).slice(0, 5).map((t) => ({
+          id: t.teamId,
+          name: `Team ${t.teamId.slice(-4)}`,
+          subtitle: `Role: ${t.role}`,
+          icon: <Users size={14} />,
+        })),
+      ]
+    : [
+        { id: 'personal', name: user?.name || 'Personal Account', subtitle: 'Free Plan', icon: <User size={14} /> },
+      ];
+
+  const currentWorkspace = workspaces[0];
 
   return (
     <div className="w-[232px] flex-shrink-0 h-screen flex flex-col relative overflow-hidden"
@@ -44,13 +80,10 @@ const Sidebar: React.FC = () => {
         borderRight: '1px solid #E4E0F5',
         boxShadow: '1px 0 0 rgba(91,63,214,0.04)',
       }}>
-      {/* Subtle dot-grid on sidebar */}
       <div className="absolute inset-0 pointer-events-none" style={{ ...DOT_GRID, opacity: 0.25 }} />
-      {/* Very soft purple glow top */}
       <div className="absolute -top-16 -left-16 w-[220px] h-[220px] rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle, rgba(91,63,214,0.06) 0%, transparent 70%)' }} />
 
-      {/* Logo mark */}
       <div className="relative px-5 pt-5 pb-4">
         <div className="flex items-center gap-2.5 mb-5">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
@@ -63,23 +96,44 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* Workspace selector */}
-      <div className="relative px-4 pb-4">
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-[#E4E0F5] bg-white/60 hover:bg-white transition-all duration-150 cursor-pointer">
+      <div className="relative px-4 pb-4" ref={workspaceRef}>
+        <button
+          onClick={() => setWorkspaceOpen(!workspaceOpen)}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-[#E4E0F5] bg-white/60 hover:bg-white transition-all duration-150 cursor-pointer"
+        >
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
             style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
-            A
+            {currentWorkspace.icon}
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <div className="text-sm font-semibold text-[#1D1B22] truncate">Acme Corp</div>
-            <div className="text-[10px] text-[#64607A] truncate">Secure, synced, and ...</div>
+            <div className="text-sm font-semibold text-[#1D1B22] truncate">{currentWorkspace.name}</div>
+            <div className="text-[10px] text-[#64607A] truncate">{currentWorkspace.subtitle}</div>
           </div>
-          <svg className="w-4 h-4 flex-shrink-0" style={{ color: '#64607A' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          <ChevronDown size={14} className={`flex-shrink-0 transition-transform duration-150 ${workspaceOpen ? 'rotate-180' : ''}`} style={{ color: '#64607A' }} />
         </button>
+
+        {workspaceOpen && workspaces.length > 1 && (
+          <div className="absolute left-4 right-4 mt-1 bg-white rounded-xl border border-[#E4E0F5] shadow-lg overflow-hidden z-50">
+            {workspaces.map((ws) => (
+              <button
+                key={ws.id}
+                onClick={() => { setWorkspaceOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#F5F3FF] transition-colors"
+              >
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                  style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, fontSize: 10 }}>
+                  {ws.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-[#1D1B22] truncate">{ws.name}</div>
+                  <div className="text-[10px] text-[#64607A] truncate">{ws.subtitle}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Nav */}
       <nav className="relative flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
         {NAV.map((item) => (
           <button
@@ -125,7 +179,6 @@ const Sidebar: React.FC = () => {
         </div>
       </nav>
 
-      {/* User footer */}
       <div className="relative p-4 border-t border-[#E4E0F5]">
         <div className="flex items-center gap-2.5 mb-3">
           <Avatar name={user?.name || 'User'} size="sm" />

@@ -1,54 +1,59 @@
 import { useState, useEffect } from "react";
 import {
-  Building2,
-  Users,
-  Users2,
-  Video,
-  HardDrive,
-  Pencil,
-  Save,
-  X,
-  Upload,
-  Plus,
-  CreditCard,
-  ScrollText,
-  Globe,
-  Mail,
-  Clock,
-  Send,
-  Loader2,
+  Building2, Users, Users2, Video, HardDrive, Pencil, Save, X,
+  Plus, Loader2, Shield, ShieldCheck, ShieldOff, UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
-import { authApi, teamsApi, workspaceApi } from "@/lib/api";
-import type { MeUser, Team, WorkspaceOverview } from "@/lib/api";
+import { authApi, organizationsApi, projectsApi } from "@/lib/api";
+import type { MeUser, OrganizationData, OrgUser, ProjectData } from "@/lib/api";
 
-const DEPT_COLORS = ["#06B6D4", "#8B5CF6", "#10B981", "#F59E0B", "#F43F5E", "#4F46E5"];
+const STATUS_COLORS: Record<string, string> = {
+  active: "bg-emerald-50 text-emerald-600",
+  pending: "bg-amber-50 text-amber-600",
+  suspended: "bg-red-50 text-red-600",
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  super_admin: "bg-purple-50 text-purple-600",
+  admin: "bg-blue-50 text-blue-600",
+  manager: "bg-cyan-50 text-cyan-600",
+  team_leader: "bg-green-50 text-green-600",
+  member: "bg-gray-50 text-gray-600",
+};
 
 export function Organization() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<MeUser | null>(null);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [workspace, setWorkspace] = useState<WorkspaceOverview | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [showAddDept, setShowAddDept] = useState(false);
-  const [newDeptName, setNewDeptName] = useState("");
-  const [newDeptLead, setNewDeptLead] = useState("");
+  const [organizations, setOrganizations] = useState<OrganizationData[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<OrganizationData | null>(null);
+  const [orgUsers, setOrgUsers] = useState<OrgUser[]>([]);
+  const [orgProjects, setOrgProjects] = useState<ProjectData[]>([]);
+  const [showProvision, setShowProvision] = useState(false);
+  const [provisionForm, setProvisionForm] = useState({ email: "", name: "", role: "manager" });
+  const [provisionResult, setProvisionResult] = useState<{ tempPassword: string } | null>(null);
+
+  const isSuperAdmin = user?.orgRole === "super_admin";
+  const isAdmin = user?.orgRole === "admin";
 
   useEffect(() => {
     async function load() {
       try {
-        const [me, teamsRes, ws] = await Promise.all([
-          authApi.me(),
-          teamsApi.list(),
-          workspaceApi.overview(),
-        ]);
+        const me = await authApi.me();
         setUser(me);
-        setTeams(teamsRes.teams ?? []);
-        setWorkspace(ws.data);
-        setEditName(me.name);
-        setEditEmail(me.email);
+
+        if (me.orgRole === "super_admin") {
+          const orgs = await organizationsApi.listAll();
+          setOrganizations(orgs);
+        } else if (me.organizationId) {
+          const org = await organizationsApi.get(me.organizationId);
+          setSelectedOrg(org);
+          const [usersRes, projectsRes] = await Promise.allSettled([
+            organizationsApi.listUsers(org._id),
+            projectsApi.list(org._id),
+          ]);
+          if (usersRes.status === "fulfilled") setOrgUsers(usersRes.value.users ?? []);
+          if (projectsRes.status === "fulfilled") setOrgProjects(projectsRes.value.projects ?? []);
+        }
       } catch {
         toast.error("Failed to load organization data");
       } finally {
@@ -58,38 +63,52 @@ export function Organization() {
     load();
   }, []);
 
-  const handleSave = () => {
-    if (user) {
-      setUser({ ...user, name: editName, email: editEmail });
+  const loadOrgDetails = async (orgId: string) => {
+    try {
+      const [org, usersRes, projectsRes] = await Promise.allSettled([
+        organizationsApi.get(orgId),
+        organizationsApi.listUsers(orgId),
+        projectsApi.list(orgId),
+      ]);
+      if (org.status === "fulfilled") setSelectedOrg(org.value);
+      if (usersRes.status === "fulfilled") setOrgUsers(usersRes.value.users ?? []);
+      if (projectsRes.status === "fulfilled") setOrgProjects(projectsRes.value.projects ?? []);
+    } catch {
+      toast.error("Failed to load organization details");
     }
-    setEditing(false);
-    toast.success("Organization profile updated");
   };
 
-  const handleCancel = () => {
-    if (user) {
-      setEditName(user.name);
-      setEditEmail(user.email);
+  const handleProvision = async () => {
+    if (!selectedOrg) return;
+    try {
+      const res = await organizationsApi.provision(selectedOrg._id, provisionForm);
+      setProvisionResult({ tempPassword: res.tempPassword });
+      toast.success(`User ${provisionForm.name} provisioned successfully`);
+      setOrgUsers((prev) => [...prev, res.user]);
+      setProvisionForm({ email: "", name: "", role: "manager" });
+    } catch (err: any) {
+      toast.error(err.message || "Provisioning failed");
     }
-    setEditing(false);
   };
 
-  const addDepartment = () => {
-    if (!newDeptName) return;
-    const dept: Team = {
-      id: `local-${Date.now()}`,
-      name: newDeptName,
-      description: null,
-      inviteCode: "",
-      role: "lead",
-      status: "active",
-      joinedAt: new Date().toISOString(),
-    };
-    setTeams((prev) => [...prev, dept]);
-    setNewDeptName("");
-    setNewDeptLead("");
-    setShowAddDept(false);
-    toast.success("Department added");
+  const handleActivate = async (orgId: string) => {
+    try {
+      await organizationsApi.activate(orgId);
+      toast.success("Organization activated");
+      setOrganizations((prev) => prev.map((o) => (o._id === orgId ? { ...o, status: "active" } : o)));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to activate");
+    }
+  };
+
+  const handleSuspend = async (orgId: string) => {
+    try {
+      await organizationsApi.suspend(orgId);
+      toast.success("Organization suspended");
+      setOrganizations((prev) => prev.map((o) => (o._id === orgId ? { ...o, status: "suspended" } : o)));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to suspend");
+    }
   };
 
   if (loading) {
@@ -103,205 +122,218 @@ export function Organization() {
     );
   }
 
-  const totalUsers = workspace?.teamSize ?? 0;
-  const activeTeams = teams.length;
-  const meetingsCount = workspace?.ongoingProjects?.length ?? 0;
-  const orgName = user?.name ?? "Organization";
-  const initials = orgName.charAt(0).toUpperCase();
+  if (isSuperAdmin && !selectedOrg) {
+    return (
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-[#0F172A]">Organizations</h1>
+          <p className="text-sm text-[#94A3B8]">Manage all organizations on the platform</p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white rounded-2xl border border-[#E5F4F7] p-5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#06B6D4] to-[#0891B2] flex items-center justify-center text-white"><Building2 className="w-5 h-5" /></div>
+            <div><p className="text-sm text-[#94A3B8]">Total Orgs</p><p className="text-2xl font-bold text-[#0F172A]">{organizations.length}</p></div>
+          </div>
+          <div className="bg-white rounded-2xl border border-[#E5F4F7] p-5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#10B981] to-[#059669] flex items-center justify-center text-white"><ShieldCheck className="w-5 h-5" /></div>
+            <div><p className="text-sm text-[#94A3B8]">Active</p><p className="text-2xl font-bold text-[#0F172A]">{organizations.filter((o) => o.status === "active").length}</p></div>
+          </div>
+          <div className="bg-white rounded-2xl border border-[#E5F4F7] p-5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#F59E0B] to-[#D97706] flex items-center justify-center text-white"><ShieldOff className="w-5 h-5" /></div>
+            <div><p className="text-sm text-[#94A3B8]">Pending</p><p className="text-2xl font-bold text-[#0F172A]">{organizations.filter((o) => o.status === "pending").length}</p></div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-[#E5F4F7] overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-[#E5F4F7]">
+                <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Organization</th>
+                <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Status</th>
+                <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Seats</th>
+                <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Created</th>
+                <th className="text-right px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {organizations.map((org) => (
+                <tr key={org._id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors cursor-pointer" onClick={() => loadOrgDetails(org._id)}>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#06B6D4] to-[#4F46E5] flex items-center justify-center text-white text-xs font-bold">{org.name.charAt(0)}</div>
+                      <div>
+                        <p className="text-sm font-semibold text-[#0F172A]">{org.name}</p>
+                        <p className="text-xs text-[#94A3B8]">{org.slug}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4"><span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[org.status] ?? "bg-gray-50 text-gray-600"}`}>{org.status}</span></td>
+                  <td className="px-5 py-4 text-sm text-[#0F172A]">{org.seatsUsed}/{org.seatLimit}</td>
+                  <td className="px-5 py-4 text-sm text-[#94A3B8]">{new Date(org.createdAt).toLocaleDateString()}</td>
+                  <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-2">
+                      {org.status === "pending" && <button onClick={() => handleActivate(org._id)} className="px-3 py-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors">Activate</button>}
+                      {org.status === "active" && <button onClick={() => handleSuspend(org._id)} className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">Suspend</button>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {organizations.length === 0 && (
+                <tr><td colSpan={5} className="px-5 py-12 text-center text-sm text-[#94A3B8]">No organizations found</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#0F172A]">Organization</h1>
-          <p className="text-sm text-[#94A3B8]">Manage your organization profile, structure, and settings</p>
-        </div>
-        <button
-          onClick={() => (editing ? handleCancel() : setEditing(true))}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] text-white rounded-xl text-sm font-semibold shadow-sm shadow-[#06B6D4]/25 hover:shadow-md hover:shadow-[#06B6D4]/30 transition-all"
-        >
-          {editing ? <X className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
-          {editing ? "Cancel" : "Edit Profile"}
-        </button>
-      </div>
-
-      <div className="grid grid-cols-4 gap-4">
-        {[
-          { label: "Total Users", value: totalUsers.toLocaleString(), icon: <Users className="w-5 h-5" />, color: "from-[#06B6D4] to-[#0891B2]" },
-          { label: "Active Teams", value: activeTeams.toLocaleString(), icon: <Users2 className="w-5 h-5" />, color: "from-[#4F46E5] to-[#6366F1]" },
-          { label: "Ongoing Projects", value: meetingsCount.toLocaleString(), icon: <Video className="w-5 h-5" />, color: "from-[#10B981] to-[#059669]" },
-          { label: "Velocity Score", value: (workspace?.cumulativeVelocity ?? 0).toLocaleString(), icon: <HardDrive className="w-5 h-5" />, color: "from-[#F59E0B] to-[#D97706]" },
-        ].map((s) => (
-          <div key={s.label} className="bg-white rounded-2xl border border-[#E5F4F7] p-5 flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center text-white`}>
-              {s.icon}
-            </div>
-            <div>
-              <p className="text-sm text-[#94A3B8]">{s.label}</p>
-              <p className="text-2xl font-bold text-[#0F172A]">{s.value}</p>
-            </div>
+          <div className="flex items-center gap-2">
+            {isSuperAdmin && (
+              <button onClick={() => { setSelectedOrg(null); setOrgUsers([]); setOrgProjects([]); }} className="text-sm text-[#06B6D4] hover:underline cursor-pointer">← All Organizations</button>
+            )}
           </div>
-        ))}
+          <h1 className="text-2xl font-bold text-[#0F172A]">{selectedOrg?.name ?? "Organization"}</h1>
+          <p className="text-sm text-[#94A3B8]">Manage organization users, projects, and settings</p>
+        </div>
+        {isAdmin && selectedOrg && (
+          <button onClick={() => setShowProvision(true)} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] text-white rounded-xl text-sm font-semibold shadow-sm shadow-[#06B6D4]/25 hover:shadow-md transition-all">
+            <UserPlus className="w-4 h-4" /> Provision User
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-6">
+      {selectedOrg && (
+        <>
+          <div className="grid grid-cols-4 gap-4">
+            {[
+              { label: "Status", value: selectedOrg.status, icon: <Shield className="w-5 h-5" />, color: "from-[#06B6D4] to-[#0891B2]" },
+              { label: "Users", value: `${selectedOrg.seatsUsed}/${selectedOrg.seatLimit}`, icon: <Users className="w-5 h-5" />, color: "from-[#4F46E5] to-[#6366F1]" },
+              { label: "Projects", value: orgProjects.length.toString(), icon: <Video className="w-5 h-5" />, color: "from-[#10B981] to-[#059669]" },
+              { label: "Teams", value: orgProjects.reduce((acc, p) => acc, 0).toString(), icon: <HardDrive className="w-5 h-5" />, color: "from-[#F59E0B] to-[#D97706]" },
+            ].map((s) => (
+              <div key={s.label} className="bg-white rounded-2xl border border-[#E5F4F7] p-5 flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center text-white`}>{s.icon}</div>
+                <div><p className="text-sm text-[#94A3B8]">{s.label}</p><p className="text-2xl font-bold text-[#0F172A]">{s.value}</p></div>
+              </div>
+            ))}
+          </div>
+
           <div className="bg-white rounded-2xl border border-[#E5F4F7] overflow-hidden">
-            <div className="h-28 bg-gradient-to-r from-[#06B6D4] via-[#0891B2] to-[#4F46E5]" />
-            <div className="px-6 pb-6">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#06B6D4] to-[#4F46E5] flex items-center justify-center text-white text-2xl font-bold border-4 border-white -mt-8 shadow-lg">
-                {initials}
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-5">
-                {[
-                  { label: "ORGANIZATION NAME", key: "name" as const },
-                  { label: "CONTACT EMAIL", key: "email" as const },
-                  { label: "MEMBER SINCE", key: "createdAt" as const },
-                  { label: "LAST UPDATED", key: "updatedAt" as const },
-                ].map((f) => (
-                  <div key={f.key}>
-                    <p className="text-[11px] font-semibold text-[#94A3B8] uppercase tracking-wider mb-1">{f.label}</p>
-                    {editing && (f.key === "name" || f.key === "email") ? (
-                      f.key === "name" ? (
-                        <input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="w-full px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-lg text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all"
-                        />
-                      ) : (
-                        <input
-                          value={editEmail}
-                          onChange={(e) => setEditEmail(e.target.value)}
-                          className="w-full px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-lg text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all"
-                        />
-                      )
-                    ) : (
-                      <p className="text-sm font-medium text-[#0F172A]">
-                        {f.key === "createdAt" || f.key === "updatedAt"
-                          ? user?.[f.key] ? new Date(user[f.key]).toLocaleDateString() : "N/A"
-                          : user?.[f.key as keyof MeUser] ?? "N/A"}
-                      </p>
-                    )}
-                  </div>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5F4F7]">
+              <h3 className="text-base font-bold text-[#0F172A]">Users</h3>
+              <span className="text-xs text-[#94A3B8]">{orgUsers.length} members</span>
+            </div>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#E5F4F7]">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">User</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Role</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Status</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Joined</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orgUsers.map((u) => (
+                  <tr key={u._id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#06B6D4] flex items-center justify-center text-white text-xs font-bold">{u.name.charAt(0).toUpperCase()}</div>
+                        <div><p className="text-sm font-semibold text-[#0F172A]">{u.name}</p><p className="text-xs text-[#94A3B8]">{u.email}</p></div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[u.orgRole] ?? "bg-gray-50 text-gray-600"}`}>{u.orgRole}</span></td>
+                    <td className="px-5 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.isActive ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>{u.isActive ? "Active" : "Inactive"}</span></td>
+                    <td className="px-5 py-3 text-sm text-[#94A3B8]">{new Date(u.createdAt).toLocaleDateString()}</td>
+                  </tr>
                 ))}
-              </div>
-
-              {editing && (
-                <div className="mt-5 flex justify-end">
-                  <button
-                    onClick={handleSave}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] text-white rounded-xl text-sm font-semibold shadow-sm shadow-[#06B6D4]/25 hover:shadow-md transition-all"
-                  >
-                    <Save className="w-4 h-4" /> Save Changes
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-[#E5F4F7] p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-[#0F172A]">Departments</h3>
-              <button
-                onClick={() => setShowAddDept(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[#06B6D4] text-sm font-medium hover:bg-[#EFF9FB] rounded-lg transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add
-              </button>
-            </div>
-            <div className="space-y-3">
-              {teams.length === 0 ? (
-                <div className="text-center py-8">
-                  <Users2 className="w-10 h-10 mx-auto text-[#CBD5E1] mb-2" />
-                  <p className="text-sm text-[#94A3B8]">No teams yet</p>
-                  <p className="text-xs text-[#CBD5E1]">Teams you join will appear here</p>
-                </div>
-              ) : (
-                teams.map((t, i) => (
-                  <div key={t.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#F8FDFE] transition-all">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold"
-                      style={{ backgroundColor: DEPT_COLORS[i % DEPT_COLORS.length] }}
-                    >
-                      {t.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#0F172A] truncate">{t.name}</p>
-                      <p className="text-xs text-[#94A3B8]">Role: {t.role}</p>
-                    </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      t.status === "active" ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"
-                    }`}>
-                      {t.status}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
+                {orgUsers.length === 0 && (
+                  <tr><td colSpan={4} className="px-5 py-8 text-center text-sm text-[#94A3B8]">No users in this organization</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
 
-          <div className="bg-white rounded-2xl border border-[#E5F4F7] p-5">
-            <h3 className="text-base font-bold text-[#0F172A] mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "Export Data", icon: <Upload className="w-4 h-4" />, color: "text-[#06B6D4]" },
-                { label: "Invite Members", icon: <Send className="w-4 h-4" />, color: "text-[#4F46E5]" },
-                { label: "Billing & Plans", icon: <CreditCard className="w-4 h-4" />, color: "text-[#10B981]" },
-                { label: "Audit Log", icon: <ScrollText className="w-4 h-4" />, color: "text-[#F59E0B]" },
-              ].map((a) => (
-                <button
-                  key={a.label}
-                  onClick={() => toast.success(`${a.label} clicked`)}
-                  className="flex items-center gap-2.5 p-3 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm font-medium text-[#0F172A] hover:bg-[#EFF9FB] hover:border-[#06B6D4]/20 transition-all"
-                >
-                  <span className={a.color}>{a.icon}</span>
-                  {a.label}
-                </button>
-              ))}
+          <div className="bg-white rounded-2xl border border-[#E5F4F7] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5F4F7]">
+              <h3 className="text-base font-bold text-[#0F172A]">Projects</h3>
+              <span className="text-xs text-[#94A3B8]">{orgProjects.length} projects</span>
             </div>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#E5F4F7]">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Project</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Manager</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orgProjects.map((p) => (
+                  <tr key={p._id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors">
+                    <td className="px-5 py-3"><p className="text-sm font-semibold text-[#0F172A]">{p.name}</p>{p.description && <p className="text-xs text-[#94A3B8] truncate max-w-xs">{p.description}</p>}</td>
+                    <td className="px-5 py-3 text-sm text-[#94A3B8]">{p.managerUserId ?? "Unassigned"}</td>
+                    <td className="px-5 py-3 text-sm text-[#94A3B8]">{new Date(p.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+                {orgProjects.length === 0 && (
+                  <tr><td colSpan={3} className="px-5 py-8 text-center text-sm text-[#94A3B8]">No projects in this organization</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
-      {showAddDept && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAddDept(false)}>
+      {showProvision && selectedOrg && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowProvision(false); setProvisionResult(null); }}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-[#E5F4F7]">
-              <h3 className="text-lg font-bold text-[#0F172A]">Add Department</h3>
-              <button onClick={() => setShowAddDept(false)} className="w-8 h-8 rounded-lg hover:bg-[#F5FEFF] flex items-center justify-center transition-all">
-                <X className="w-4 h-4" />
-              </button>
+              <h3 className="text-lg font-bold text-[#0F172A]">Provision User</h3>
+              <button onClick={() => { setShowProvision(false); setProvisionResult(null); }} className="w-8 h-8 rounded-lg hover:bg-[#F5FEFF] flex items-center justify-center transition-all"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Department Name</label>
-                <input
-                  value={newDeptName}
-                  onChange={(e) => setNewDeptName(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all"
-                  placeholder="e.g. Human Resources"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Lead</label>
-                <input
-                  value={newDeptLead}
-                  onChange={(e) => setNewDeptLead(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all"
-                  placeholder="e.g. John Doe"
-                />
-              </div>
+              {provisionResult ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-emerald-800 mb-2">User provisioned successfully</p>
+                  <p className="text-xs text-emerald-700">Temporary password:</p>
+                  <code className="block mt-1 px-3 py-2 bg-white rounded-lg text-sm font-mono text-[#0F172A] border border-emerald-200 select-all">{provisionResult.tempPassword}</code>
+                  <p className="text-xs text-emerald-600 mt-2">Share this password securely. The user will be forced to change it on first login.</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Email</label>
+                    <input type="email" value={provisionForm.email} onChange={(e) => setProvisionForm((f) => ({ ...f, email: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all" placeholder="user@company.com" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Full Name</label>
+                    <input type="text" value={provisionForm.name} onChange={(e) => setProvisionForm((f) => ({ ...f, name: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all" placeholder="John Doe" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Role</label>
+                    <select value={provisionForm.role} onChange={(e) => setProvisionForm((f) => ({ ...f, role: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all">
+                      <option value="manager">Manager</option>
+                      <option value="team_leader">Team Leader</option>
+                      <option value="member">Member</option>
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
             <div className="flex justify-end gap-3 p-6 border-t border-[#E5F4F7]">
-              <button onClick={() => setShowAddDept(false)} className="px-4 py-2 bg-[#F5FEFF] border border-[#E5F4F7] rounded-xl text-sm font-medium text-[#0F172A] hover:bg-[#F8FDFE] transition-all">
-                Cancel
+              <button onClick={() => { setShowProvision(false); setProvisionResult(null); }} className="px-4 py-2 bg-[#F5FEFF] border border-[#E5F4F7] rounded-xl text-sm font-medium text-[#0F172A] hover:bg-[#F8FDFE] transition-all">
+                {provisionResult ? "Close" : "Cancel"}
               </button>
-              <button onClick={addDepartment} className="px-4 py-2 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] text-white rounded-xl text-sm font-semibold shadow-sm transition-all">
-                Add Department
-              </button>
+              {!provisionResult && (
+                <button onClick={handleProvision} className="px-4 py-2 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] text-white rounded-xl text-sm font-semibold shadow-sm transition-all">
+                  Provision
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -5,20 +5,66 @@ import {
   Bell, Search, LogOut, ChevronDown, User, Building2, Pencil,
 } from "lucide-react";
 import { authApi, clearToken } from "@/lib/api";
+import type { MeUser } from "@/lib/api";
 import type { Page } from "@/types";
 
-const sidebarNav: { id: Page; label: string; icon: React.ElementType }[] = [
+const PANEL_ROLES = ["super_admin", "admin", "manager"] as const;
+
+const allNavItems: { id: Page; label: string; icon: React.ElementType; minRole?: string }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "users", label: "Users", icon: Users },
+  { id: "users", label: "Users", icon: Users, minRole: "super_admin" },
   { id: "teams", label: "Teams", icon: Users2 },
-  { id: "organization", label: "Organization", icon: Building2 },
+  { id: "organization", label: "Organization", icon: Building2, minRole: "super_admin" },
   { id: "ai", label: "AI Usage", icon: Brain },
   { id: "logs", label: "Logs", icon: ScrollText },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar({ current, onNav }: { current: Page; onNav: (p: Page) => void }) {
+const ROLE_HIERARCHY: Record<string, number> = {
+  super_admin: 3,
+  admin: 2,
+  manager: 1,
+};
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+export function Sidebar({
+  current,
+  onNav,
+  user,
+  onLogout,
+}: {
+  current: Page;
+  onNav: (p: Page) => void;
+  user: MeUser | null;
+  onLogout?: () => void;
+}) {
   const profileActive = current === "profile";
+  const role = user?.orgRole ?? "member";
+  const roleLevel = ROLE_HIERARCHY[role] ?? 0;
+
+  const visibleNav = allNavItems.filter((item) => {
+    if (!item.minRole) return true;
+    return roleLevel >= (ROLE_HIERARCHY[item.minRole] ?? 0);
+  });
+
+  const roleLabel =
+    role === "super_admin"
+      ? "Super Admin"
+      : role === "admin"
+        ? "Admin"
+        : role === "manager"
+          ? "Manager"
+          : role === "team_leader"
+            ? "Team Leader"
+            : "Member";
 
   return (
     <aside className="fixed left-0 top-0 h-screen flex flex-col bg-white border-r border-[#EDF7F9] z-50" style={{ width: "210px" }}>
@@ -34,7 +80,7 @@ export function Sidebar({ current, onNav }: { current: Page; onNav: (p: Page) =>
 
       <nav className="flex-1 py-3 px-3 overflow-y-auto">
         <ul className="space-y-0.5">
-          {sidebarNav.map(({ id, label, icon: Icon }) => {
+          {visibleNav.map(({ id, label, icon: Icon }) => {
             const active = current === id;
             return (
               <li key={id}>
@@ -60,10 +106,16 @@ export function Sidebar({ current, onNav }: { current: Page; onNav: (p: Page) =>
         onClick={() => onNav("profile")}
         className={`flex items-center gap-2.5 px-4 py-3 border-t border-[#EDF7F9] transition-colors cursor-pointer w-full text-left group ${profileActive ? "bg-[#EFF9FB]" : "hover:bg-[#F8FDFE]"}`}
       >
-        <div className={`w-7 h-7 rounded-full text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 ${profileActive ? "bg-[#06B6D4]" : "bg-[#4F46E5]"}`}>SA</div>
+        <div className={`w-7 h-7 rounded-full text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 ${profileActive ? "bg-[#06B6D4]" : "bg-[#4F46E5]"}`}>
+          {user ? getInitials(user.name) : "SA"}
+        </div>
         <div className="flex-1 min-w-0">
-          <div className={`text-[14px] font-semibold truncate transition-colors ${profileActive ? "text-[#06B6D4]" : "text-[#0F172A] group-hover:text-[#06B6D4]"}`}>Super Admin</div>
-          <div className="text-[12px] font-medium text-[#94A3B8] truncate">admin@meetiva.com</div>
+          <div className={`text-[14px] font-semibold truncate transition-colors ${profileActive ? "text-[#06B6D4]" : "text-[#0F172A] group-hover:text-[#06B6D4]"}`}>
+            {user?.name ?? "Loading..."}
+          </div>
+          <div className="text-[12px] font-medium text-[#94A3B8] truncate">
+            {roleLabel} · {user?.email ?? ""}
+          </div>
         </div>
         <Pencil size={11} className={`flex-shrink-0 transition-colors ${profileActive ? "text-[#06B6D4]" : "text-[#CBD5E1] group-hover:text-[#06B6D4]"}`} />
       </button>

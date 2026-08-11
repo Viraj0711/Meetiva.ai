@@ -30,7 +30,19 @@ export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED';
 
 // ─── User Enums ─────────────────────────────────────────────────────────────
 
-export type SubscriptionTier = 'FREE' | 'PRO' | 'TEAM';
+export type SubscriptionTier = 'FREE' | 'TEAM' | 'ENTERPRISE';
+
+// ─── Account Type ──────────────────────────────────────────────────────────
+
+export type AccountType = 'self' | 'corporate';
+
+// ─── Org Role ──────────────────────────────────────────────────────────────
+
+export type OrgRole = 'super_admin' | 'admin' | 'manager' | 'team_leader' | 'member';
+
+// ─── Organization Status ───────────────────────────────────────────────────
+
+export type OrganizationStatus = 'pending' | 'active' | 'suspended';
 
 // ─── Sentiment ──────────────────────────────────────────────────────────────
 

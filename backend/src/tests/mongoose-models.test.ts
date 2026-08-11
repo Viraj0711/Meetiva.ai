@@ -120,10 +120,10 @@ async function run(): Promise<void> {
 
     // Subscription helpers
     assert(hasActiveSubscription('FREE') === false, 'FREE tier is not active subscription');
-    assert(hasActiveSubscription('PRO') === true, 'PRO tier is active subscription');
+    assert(hasActiveSubscription('TEAM') === true, 'TEAM tier is active subscription');
     assert(
-      hasActiveSubscription('PRO', new Date(Date.now() - 86400000)) === false,
-      'PRO tier with expired date is not active'
+      hasActiveSubscription('TEAM', new Date(Date.now() - 86400000)) === false,
+      'TEAM tier with expired date is not active'
     );
 
     await User.findByIdAndDelete(user._id);
@@ -210,18 +210,16 @@ async function run(): Promise<void> {
       email: 'carol@test.com',
       name: 'Carol',
       hashedPassword: 'pw',
-      subscriptionTier: 'PRO',
+      subscriptionTier: 'TEAM',
     });
 
     const team = await Team.create({
       name: 'Engineering',
       description: 'Engineering team',
-      managerId: user._id,
       inviteCode: 'eng-team-code',
     });
 
     assert(team.inviteCode === 'eng-team-code', 'Team created with invite code');
-    assert(team.managerId!.toString() === user._id.toString(), 'Team manager set');
 
     // Add team members
     await TeamMember.create({
@@ -290,10 +288,10 @@ async function run(): Promise<void> {
       assert(err.code === 'MEETING_LIMIT_REACHED', 'Error code is MEETING_LIMIT_REACHED');
     }
 
-    // PRO tier should not be limited
+    // TEAM tier should not be limited
     await User.findByIdAndUpdate(user._id, {
       $set: {
-        subscriptionTier: 'PRO',
+      subscriptionTier: 'TEAM',
         subscriptionExpiresAt: new Date(Date.now() + 365 * 86400000),
         meetingCountThisMonth: 100,
       },
@@ -481,7 +479,6 @@ async function run(): Promise<void> {
 
     const team = await Team.create({
       name: 'Chat Team',
-      managerId: user._id,
       inviteCode: 'chat-team-code',
     });
 
@@ -518,7 +515,6 @@ async function run(): Promise<void> {
 
     const team = await Team.create({
       name: 'Unique Test',
-      managerId: user._id,
       inviteCode: 'unique-team-code',
     });
 
