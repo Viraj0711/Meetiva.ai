@@ -14,10 +14,4 @@ useDefault = true
 description = "Vendored / generated dependency files in history"
 paths = [
   "node_modules",
-  "package-lock.json",
-  "npm-shrinkwrap.json",
-  "bun.lock",
-  "yarn.lock",
-  "pnpm-lock.yaml",
-  "AUDIT",
 ]
