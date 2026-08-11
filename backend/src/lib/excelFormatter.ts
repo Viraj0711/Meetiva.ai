@@ -15,7 +15,6 @@ const COLORS = {
     high: 'FFFED7AA',
     medium: 'FFFEF9C3',
     low: 'FFDCFCE7',
-  }
   },
 
   // Status colors (text)
