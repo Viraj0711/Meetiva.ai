@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Upload as UploadIcon, FileText, CheckCircle2, Mic, Video, ArrowRight, FileDown, BookOpen, Loader2 } from 'lucide-react';
+import { Upload as UploadIcon, FileText, CheckCircle2, Mic, Video, ArrowRight, FileDown, BookOpen, Loader2, Zap } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Progress } from '@/components/ui/Progress';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -46,6 +46,7 @@ const Upload: React.FC = () => {
   const [drag, setDrag] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [duplicateMeeting, setDuplicateMeeting] = useState<DuplicateMeetingInfo | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
   const [processingMode, setProcessingMode] = useState<'tasks' | 'minutes' | 'both' | null>(null);
   const [completedMode, setCompletedMode] = useState<'tasks' | 'minutes' | 'both' | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -54,6 +55,20 @@ const Upload: React.FC = () => {
   const acceptedExtensions = '.mp3,.wav,.m4a,.aac,.mp4,.mpeg,.mov,.avi,.txt';
   const audioExtensions = ['mp3', 'wav', 'm4a', 'aac', 'mpeg'];
   const videoExtensions = ['mp4', 'mov', 'avi'];
+
+  // ponytail: read summary pref from localStorage, map to backend mode
+  const getSummaryMode = (): string => {
+    try {
+      const saved = localStorage.getItem('meetiva_general_prefs');
+      if (saved) {
+        const prefs = JSON.parse(saved);
+        const val: string = prefs.summaryLength || '';
+        if (val.startsWith('Brief')) return 'brief';
+        if (val.startsWith('Detailed')) return 'detailed';
+      }
+    } catch { /* ignore */ }
+    return 'standard';
+  };
 
   const getFileCategory = (file: File): 'audio' | 'video' | 'text' => {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
@@ -124,12 +139,14 @@ const Upload: React.FC = () => {
     if (!uploadState.file) return;
     try {
       setDuplicateMeeting(null);
+      setLimitReached(false);
       setCompletedMode(null);
       setUploadState((prev) => ({ ...prev, uploading: true, error: null, exportUrl: null, meetingId: null }));
       const result = await retryWithBackoff(() =>
         meetingService.uploadMeetingFile(uploadState.file!, meetingTitle || uploadState.file!.name,
           `Meeting uploaded on ${new Date().toLocaleDateString()}`, undefined,
-          (progress) => setUploadState((prev) => ({ ...prev, progress }))),
+          (progress) => setUploadState((prev) => ({ ...prev, progress })),
+          getSummaryMode()),
         { maxAttempts: 3 }
       );
       setUploadState((prev) => ({ ...prev, uploading: false, progress: 100, meetingId: result.data.id }));
@@ -138,6 +155,11 @@ const Upload: React.FC = () => {
       if ((error as UploadDuplicateError)?.code === 'MEETING_DUPLICATE') {
         setUploadState((prev) => ({ ...prev, uploading: false, error: null }));
         setDuplicateMeeting((error as UploadDuplicateError).existingMeeting);
+        return;
+      }
+      if ((error as { code?: string })?.code === 'MEETING_LIMIT_REACHED') {
+        setUploadState((prev) => ({ ...prev, uploading: false, error: null }));
+        setLimitReached(true);
         return;
       }
       const errorMessage = isNetworkError(error)
@@ -151,6 +173,7 @@ const Upload: React.FC = () => {
     if (uploadState.uploading) { setShowCancelDialog(true); return; }
     setUploadState({ file: null, uploading: false, progress: 0, error: null, exportUrl: null, meetingId: null });
     setDuplicateMeeting(null);
+    setLimitReached(false);
     setCompletedMode(null);
     setMeetingTitle('');
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -276,6 +299,36 @@ const Upload: React.FC = () => {
               </div>
             )}
 
+            {/* Free tier limit reached */}
+            {limitReached && (
+              <div className="bg-white rounded-2xl border border-[#5B3FD6]/30 p-5" style={{ boxShadow: CARD_SHADOW }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#EDE9FF' }}>
+                    <Zap size={18} className="text-[#5B3FD6]" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-[#1D1B22]">You&apos;ve reached your free meeting limit</p>
+                    <p className="text-sm text-[#64607A] mt-1">
+                      You&apos;ve used all {subscription?.monthlyLimit ?? 5} free meetings this month. Upgrade to PRO for
+                      unlimited meetings, team collaboration, and calendar sync.
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      <button onClick={() => navigate('/dashboard/upgrade')}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-xs rounded-full font-bold text-white transition-all duration-150 hover:opacity-90 cursor-pointer select-none"
+                        style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}>
+                        <Zap size={13} /> Upgrade to PRO
+                      </button>
+                      <button onClick={() => setLimitReached(false)}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-xs rounded-full font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
+                        style={{ color: GRAD }}>
+                        Not now
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Processing state */}
             {processing && (
               <div className="bg-white rounded-2xl border border-[#E4E0F5] p-5" style={{ boxShadow: CARD_SHADOW }}>
@@ -354,7 +407,7 @@ const Upload: React.FC = () => {
             )}
 
             {/* Upload button */}
-            {uploadState.file && !uploadState.uploading && !uploadState.exportUrl && !uploadState.meetingId && (
+            {uploadState.file && !uploadState.uploading && !uploadState.exportUrl && !uploadState.meetingId && !limitReached && (
               <div className="flex justify-center pt-2">
                 <button onClick={handleUpload}
                   className="inline-flex items-center gap-2 px-8 py-3 text-sm rounded-full font-bold text-white transition-all duration-150 hover:opacity-90 hover:scale-[1.015] active:scale-[0.985] cursor-pointer select-none"

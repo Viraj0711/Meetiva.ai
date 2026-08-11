@@ -4,8 +4,8 @@ import { Badge } from '@/components/ui/Badge';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAppSelector } from '@/store/hooks';
 import { selectIsManagerOrLead, selectUserTeams } from '@/store/selectors/authSelectors';
-import { meetingService, actionItemService } from '@/services';
-import { Meeting, ActionItem, MeetingStats } from '@/types';
+import { meetingService, taskService } from '@/services';
+import { Meeting, Task, MeetingStats } from '@/types';
 import { formatDate } from '@/utils';
 
 interface TeamMemberStats {
@@ -17,7 +17,7 @@ interface TeamMemberStats {
   pendingTasks: number;
   inProgressTasks: number;
   recentMeetings: Meeting[];
-  recentTasks: ActionItem[];
+  recentTasks: Task[];
 }
 
 const TeamReport: React.FC = () => {
@@ -26,7 +26,7 @@ const TeamReport: React.FC = () => {
 
   const [stats, setStats] = useState<MeetingStats | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,16 +45,16 @@ const TeamReport: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch stats, meetings, and action items
-      const [statsData, meetingsData, actionItemsData] = await Promise.all([
+      // Fetch stats, meetings, and tasks
+      const [statsData, meetingsData, tasksData] = await Promise.all([
         meetingService.getMeetingStats(),
         meetingService.getMeetings({ limit: 100 }),
-        actionItemService.getActionItems({ limit: 100 }),
+        taskService.getTasks({ limit: 100 }),
       ]);
 
       setStats(statsData);
       setMeetings(meetingsData.data || []);
-      setActionItems(actionItemsData.data || []);
+      setTasks(tasksData.data || []);
     } catch (err) {
       console.error('Failed to load team data:', err);
       setError('Failed to load team report data. Please try again.');
@@ -116,7 +116,7 @@ const TeamReport: React.FC = () => {
     }
   });
 
-  actionItems.forEach((item) => {
+  tasks.forEach((item) => {
     const userId = item.userId;
     if (!userId) return;
     if (!teamMembersMap.has(userId)) {
@@ -220,7 +220,7 @@ const TeamReport: React.FC = () => {
           <Card className="p-6">
             <div className="text-sm font-medium text-white/50">Avg Tasks/Meeting</div>
             <div className="text-3xl font-bold text-white mt-2">
-              {stats.avgActionItems}
+              {stats.avgTasks}
             </div>
             <p className="text-xs text-white/40 mt-2">
               Tasks per meeting

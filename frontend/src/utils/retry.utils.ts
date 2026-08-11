@@ -30,6 +30,12 @@ export async function retryWithBackoff<T>(
     } catch (error) {
       lastError = error as Error;
 
+      // Deterministic failures (e.g. 403 MEETING_LIMIT_REACHED, 409 duplicate)
+      // won't succeed on retry — surface them immediately.
+      if (!isRetryableError(lastError)) {
+        throw lastError;
+      }
+
       if (attempt === maxAttempts) {
         throw lastError;
       }
@@ -77,10 +83,11 @@ export function describeNetworkError(error: unknown): string {
  */
 export function isRetryableError(error: unknown): boolean {
   const retryableStatusCodes = [408, 429, 500, 502, 503, 504];
-  const err = error as { response?: { status?: number } };
+  const err = error as { response?: { status?: number }; status?: number };
+  const status = err?.response?.status ?? err?.status ?? 0;
 
   return (
     isNetworkError(error) ||
-    retryableStatusCodes.includes(err?.response?.status ?? 0)
+    retryableStatusCodes.includes(status)
   );
 }

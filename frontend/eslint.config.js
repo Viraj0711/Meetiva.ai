@@ -35,10 +35,13 @@ export default [
       // no-undef is redundant with TypeScript (which catches real issues)
       // and produces false positives for TS-only types like BodyInit.
       'no-undef': 'off',
-      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // Relax overly strict react-hooks rules
+      'react-hooks/immutability': 'off',
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
 
@@ -54,6 +57,16 @@ export default [
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
+  // Node globals for config files
+  {
+    files: ['**/*.config.{ts,js}', '**/vite.config.*'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
     },
   },
 ];

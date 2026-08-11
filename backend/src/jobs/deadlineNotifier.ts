@@ -1,5 +1,5 @@
 import type { NotificationType } from '../lib/shared';
-import ActionItem from '../models/ActionItem';
+import Task from '../models/ActionItem';
 import Notification from '../models/Notification';
 import mongoose from 'mongoose';
 import { createLogger } from '../lib/logger';
@@ -13,7 +13,7 @@ const createInAppReminderNotifications = async () => {
   const now = new Date();
   const upcomingWindow = new Date(now.getTime() + 24 * ONE_HOUR_MS);
 
-  const dueSoonItems = await ActionItem.find({
+  const dueSoonItems = await Task.find({
     status: { $in: ['pending', 'in_progress'] },
     dueDate: {
       $gte: now,
@@ -32,7 +32,7 @@ const createInAppReminderNotifications = async () => {
   await Notification.insertMany(
     dueSoonItems.map((item) => ({
       userId: item.userId._id || item.userId,
-      actionItemId: item._id,
+      taskId: item._id,
       type: 'DEADLINE_REMINDER' as const satisfies NotificationType,
       channel: 'in_app',
       title: 'Deadline approaching in 24 hours',
@@ -40,7 +40,7 @@ const createInAppReminderNotifications = async () => {
     }))
   );
 
-  await ActionItem.updateMany(
+  await Task.updateMany(
     { _id: { $in: dueSoonItems.map((item) => item._id) } },
     { $set: { reminderSentAt: now } }
   );

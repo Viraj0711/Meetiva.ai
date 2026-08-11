@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
+import MeetingLimitGate from '@/components/MeetingLimitGate';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAppSelector } from '@/store/hooks';
 
@@ -9,11 +10,12 @@ const Home = React.lazy(() => import('@/pages/dashboard/Home'));
 const Login = React.lazy(() => import('@/pages/auth/LoginEnhanced'));
 const Register = React.lazy(() => import('@/pages/auth/RegisterEnhanced'));
 const ResetPassword = React.lazy(() => import('@/pages/auth/ResetPassword'));
+const VerifyEmail = React.lazy(() => import('@/pages/auth/VerifyEmail'));
 const Meetings = React.lazy(() => import('@/pages/Meetings'));
 const MeetingDetail = React.lazy(() => import('@/pages/MeetingDetail'));
 const Upload = React.lazy(() => import('@/pages/Upload'));
 const Processing = React.lazy(() => import('@/pages/Processing'));
-const ActionItems = React.lazy(() => import('@/pages/ActionItems'));
+const Tasks = React.lazy(() => import('@/pages/Tasks'));
 const Analytics = React.lazy(() => import('@/pages/Analytics'));
 const TeamReport = React.lazy(() => import('@/pages/TeamReport'));
 const TeamsAdmin = React.lazy(() => import('@/pages/TeamsAdmin'));
@@ -30,9 +32,14 @@ const NotFound = React.lazy(() => import('@/pages/NotFound'));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const user = useAppSelector((state) => state.auth.user);
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (user && !user.isVerified) {
+    return <Navigate to={`/verify-email?email=${encodeURIComponent(user.email)}`} replace />;
   }
   
   return <>{children}</>;
@@ -72,6 +79,14 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: '/verify-email',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <VerifyEmail />
+      </Suspense>
+    ),
+  },
+  {
     path: '/pricing',
     element: (
       <Suspense fallback={<LoadingSpinner />}>
@@ -107,7 +122,12 @@ const router = createBrowserRouter([
     path: '/dashboard',
     element: (
       <ProtectedRoute>
-        <Layout />
+        <>
+          <Layout />
+          {/* Auto-redirects to the upgrade page when any API call hits the
+              free-tier meeting limit (MEETING_LIMIT_REACHED). */}
+          <MeetingLimitGate />
+        </>
       </ProtectedRoute>
     ),
     children: [
@@ -152,10 +172,10 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: 'action-items',
+        path: 'tasks',
         element: (
           <Suspense fallback={<LoadingSpinner />}>
-            <ActionItems />
+            <Tasks />
           </Suspense>
         ),
       },

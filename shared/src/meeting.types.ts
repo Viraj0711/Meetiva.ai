@@ -76,7 +76,7 @@ export interface MeetingStats {
   totalDuration: number;
   averageDuration?: number;
   avgDuration?: number;
-  avgActionItems?: number;
+  avgTasks?: number;
   upcoming?: number;
   trends?: { month: string; count: number }[];
   weeklyActivity?: { name: string; meetings: number; actions: number }[];

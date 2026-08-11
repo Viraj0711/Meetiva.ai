@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authService } from '@/services';
 import { LoginCredentials, RegisterData, AuthResponse, User } from '@/types';
-import { useAppDispatch } from '@/store/hooks';
-import { loginSuccess, logout as logoutAction } from '@/store/slices/authSlice';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { loginSuccess, logout as logoutAction, setUser } from '@/store/slices/authSlice';
 import { addToast } from '@/store/slices/uiSlice';
 
 /**
@@ -113,6 +113,68 @@ export const useResetPassword = () => {
       dispatch(
         addToast({ type: 'success', message: 'Password updated successfully.' })
       );
+    },
+    onError: (error: Error) => {
+      dispatch(addToast({ type: 'error', message: error.message }));
+    },
+  });
+};
+
+/**
+ * Hook to change password (authenticated user)
+ */
+export const useChangePassword = () => {
+  const dispatch = useAppDispatch();
+
+  return useMutation({
+    mutationFn: ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) =>
+      authService.changePassword(currentPassword, newPassword),
+    onSuccess: () => {
+      dispatch(
+        addToast({ type: 'success', message: 'Password updated successfully. Please log in again.' })
+      );
+    },
+    onError: (error: Error) => {
+      dispatch(addToast({ type: 'error', message: error.message }));
+    },
+  });
+};
+
+/**
+ * Hook to verify email with OTP
+ */
+export const useVerifyOtp = () => {
+  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+  const user = useAppSelector((state) => state.auth.user);
+
+  return useMutation({
+    mutationFn: ({ email, otp }: { email: string; otp: string }) =>
+      authService.verifyOtp(email, otp),
+    onSuccess: () => {
+      // Update Redux immediately so the redirect in VerifyEmail fires
+      if (user) {
+        dispatch(setUser({ ...user, isVerified: true }));
+      }
+      dispatch(addToast({ type: 'success', message: 'Email verified successfully!' }));
+      queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
+    },
+    onError: (error: Error) => {
+      dispatch(addToast({ type: 'error', message: error.message }));
+    },
+  });
+};
+
+/**
+ * Hook to resend verification OTP
+ */
+export const useResendOtp = () => {
+  const dispatch = useAppDispatch();
+
+  return useMutation({
+    mutationFn: (email: string) => authService.resendOtp(email),
+    onSuccess: () => {
+      dispatch(addToast({ type: 'success', message: 'New verification code sent.' }));
     },
     onError: (error: Error) => {
       dispatch(addToast({ type: 'error', message: error.message }));

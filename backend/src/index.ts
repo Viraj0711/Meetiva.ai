@@ -9,7 +9,7 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth';
 import aiRoutes from './routes/ai';
 import meetingsRoutes from './routes/meetings';
-import actionItemsRoutes from './routes/actionItems';
+import tasksRoutes from './routes/actionItems';
 import teamsRoutes from './routes/teams';
 import calendarRoutes from './routes/calendar';
 import notificationsRoutes from './routes/notifications';
@@ -94,7 +94,7 @@ app.get('/health', (req, res) => {
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/ai`, aiRoutes);
 app.use(`${API_PREFIX}/meetings`, meetingsRoutes);
-app.use(`${API_PREFIX}/action-items`, actionItemsRoutes);
+app.use(`${API_PREFIX}/action-items`, tasksRoutes);
 app.use(`${API_PREFIX}/teams`, teamsRoutes);
 app.use(`${API_PREFIX}/calendar`, calendarRoutes);
 app.use(`${API_PREFIX}/notifications`, notificationsRoutes);

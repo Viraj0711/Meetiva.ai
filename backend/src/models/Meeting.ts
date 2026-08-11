@@ -2,7 +2,7 @@ import type { MeetingStatus, MeetingPriority } from '../lib/shared';
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import MeetingSummary from './MeetingSummary';
 import Transcript from './Transcript';
-import ActionItem from './ActionItem';
+import Task from './ActionItem';
 
 export interface IMeeting extends Document {
   title: string;
@@ -47,7 +47,7 @@ const meetingSchema = new Schema<IMeeting>(
 
 meetingSchema.index({ userId: 1, createdAt: -1 });
 
-// ── Cascade delete: when a Meeting is deleted, remove summaries, transcripts, action items ──
+// ── Cascade delete: when a Meeting is deleted, remove summaries, transcripts, tasks ──
 meetingSchema.pre('findOneAndDelete', async function () {
   const doc = await this.model.findOne(this.getFilter());
   if (doc) {
@@ -55,7 +55,7 @@ meetingSchema.pre('findOneAndDelete', async function () {
     await Promise.all([
       MeetingSummary.deleteMany({ meetingId }),
       Transcript.deleteMany({ meetingId }),
-      ActionItem.deleteMany({ meetingId }),
+      Task.deleteMany({ meetingId }),
     ]);
   }
 });

@@ -5,7 +5,7 @@ import { useRegister } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
 
-const GRAD = '#4B2E83';
+const GRAD = '#5B3FD6';
 const GRAD2 = '#8B5CF6';
 
 const DOT_GRID: React.CSSProperties = {
@@ -28,7 +28,7 @@ const RegisterPage: React.FC = () => {
     }
     try {
       await registerMutation.mutateAsync({ name, email, password: pw });
-      navigate('/dashboard');
+      navigate(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err) {
       const e = err as { message?: string };
       toast.error(e?.message || 'Registration failed.');

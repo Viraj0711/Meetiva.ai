@@ -76,7 +76,7 @@ router.get('/stats', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_
     const filter = await getMeetingsFilter(req);
     const now = new Date();
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    const [totalMeetings, completedMeetings, processingMeetings, durationAgg, totalActionItems, recentMeetings,] = await Promise.all([
+    const [totalMeetings, completedMeetings, processingMeetings, durationAgg, totalTasks, recentMeetings,] = await Promise.all([
         Meeting_1.default.countDocuments(filter),
         Meeting_1.default.countDocuments({ ...filter, status: 'completed' }),
         Meeting_1.default.countDocuments({ ...filter, status: 'processing' }),
@@ -96,7 +96,7 @@ router.get('/stats', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_
     ]);
     const totalDuration = durationAgg[0]?.total ?? 0;
     const avgDuration = totalMeetings > 0 ? Math.round(totalDuration / totalMeetings) : 0;
-    const avgActionItems = totalMeetings > 0 ? Number((totalActionItems / totalMeetings).toFixed(1)) : 0;
+    const avgTasks = totalMeetings > 0 ? Number((totalTasks / totalMeetings).toFixed(1)) : 0;
     // Monthly trends from recent meetings
     const monthMap = new Map();
     recentMeetings.forEach((meeting) => {
@@ -122,7 +122,7 @@ router.get('/stats', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_
         processingMeetings,
         totalDuration,
         avgDuration,
-        avgActionItems,
+        avgTasks,
         trends,
         topParticipants,
     });
@@ -216,7 +216,9 @@ router.post('/upload', rateLimiters_1.uploadLimiter, auth_1.authenticate, upload
                     `Whisper API accepts a maximum of 25 MB. Please trim or compress your recording.`,
             });
         }
-        transcriptText = await (0, whisperTranscriber_1.transcribeWithWhisper)(req.file.buffer, req.file.originalname, req.file.mimetype);
+        const rawTranscript = await (0, whisperTranscriber_1.transcribeWithWhisper)(req.file.buffer, req.file.originalname, req.file.mimetype);
+        // Post-process: reformat raw Whisper output into structured transcript with speaker labels
+        transcriptText = await (0, whisperTranscriber_1.formatTranscript)(rawTranscript);
         transcribedByWhisper = true;
     }
     if (!transcriptText) {
@@ -284,6 +286,17 @@ router.post('/upload', rateLimiters_1.uploadLimiter, auth_1.authenticate, upload
             fullText: transcriptText,
             segments: [],
         });
+        // ── Step 3b: auto-generate Summary (not Minutes/Tasks — those are manual) ──
+        const summaryMode = typeof req.body.summaryMode === 'string' ? req.body.summaryMode : undefined;
+        console.log('[upload] summaryMode received:', summaryMode, '| req.body keys:', Object.keys(req.body || {}));
+        const fullSummary = await (0, llmRouter_1.generateSummaryOnly)(transcriptText, summaryMode).catch(() => '');
+        if (fullSummary) {
+            await MeetingSummary_1.default.findOneAndUpdate({ meetingId: createdMeeting._id }, {
+                meetingId: createdMeeting._id,
+                executiveSummary: fullSummary.slice(0, 300),
+                fullSummary,
+            }, { upsert: true }).catch(() => { }); // ponytail: non-critical, don't fail upload
+        }
         await Meeting_1.default.findByIdAndUpdate(createdMeeting._id, { status: 'completed', processingProgress: 100, completedAt: new Date() });
     }
     catch (err) {
@@ -331,18 +344,33 @@ router.post('/:id/process', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, 
     }
     try {
         if (mode === 'minutes' || mode === 'both') {
-            // Upsert: one summary per meeting
-            await MeetingSummary_1.default.findOneAndUpdate({ meetingId: meeting._id }, {
-                meetingId: meeting._id,
-                executiveSummary: analysis.executiveSummary,
-                keyPoints: analysis.keyPoints,
-                decisions: analysis.decisions,
-                openQuestions: analysis.openQuestions,
-                sentiment: analysis.sentiment,
-            }, { upsert: true });
+            // Upsert: one summary per meeting — but skip if already generated during upload
+            const existingSummary = await MeetingSummary_1.default.findOne({ meetingId: meeting._id }).lean();
+            if (!existingSummary?.fullSummary) {
+                await MeetingSummary_1.default.findOneAndUpdate({ meetingId: meeting._id }, {
+                    meetingId: meeting._id,
+                    executiveSummary: analysis.executiveSummary,
+                    fullSummary: analysis.fullSummary,
+                    minutesContent: analysis.minutesContent,
+                    keyPoints: analysis.keyPoints,
+                    decisions: analysis.decisions,
+                    openQuestions: analysis.openQuestions,
+                    sentiment: analysis.sentiment,
+                }, { upsert: true });
+            }
+            else {
+                // Summary exists from upload — only update minutes-specific fields
+                await MeetingSummary_1.default.findOneAndUpdate({ meetingId: meeting._id }, {
+                    minutesContent: analysis.minutesContent,
+                    keyPoints: analysis.keyPoints.length ? analysis.keyPoints : undefined,
+                    decisions: analysis.decisions.length ? analysis.decisions : undefined,
+                    openQuestions: analysis.openQuestions.length ? analysis.openQuestions : undefined,
+                    sentiment: analysis.sentiment,
+                });
+            }
         }
         if (mode === 'tasks' || mode === 'both') {
-            // Replace all action items for this meeting
+            // Replace all tasks for this meeting
             await ActionItem_1.default.deleteMany({ meetingId: meeting._id });
             if (analysis.tasks.length > 0) {
                 await ActionItem_1.default.insertMany(analysis.tasks.map((task) => ({
@@ -396,6 +424,8 @@ router.get('/:id/summary', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, e
         id: summary._id.toString(),
         meetingId: summary.meetingId.toString(),
         executiveSummary: summary.executiveSummary,
+        fullSummary: summary.fullSummary,
+        minutesContent: summary.minutesContent,
         keyPoints: summary.keyPoints,
         decisions: summary.decisions,
         openQuestions: summary.openQuestions,
@@ -440,7 +470,7 @@ router.get('/:id/action-items', rateLimiters_1.apiLimiter, auth_1.authenticate, 
     const pageNumber = Math.max(1, parseInt(page, 10) || 1);
     const limitNumber = Math.max(1, Math.min(parseInt(limit, 10) || 50, 200));
     const skip = (pageNumber - 1) * limitNumber;
-    const [actionItems, total] = await Promise.all([
+    const [tasks, total] = await Promise.all([
         ActionItem_1.default.find({ meetingId: meeting._id })
             .sort({ createdAt: 1 })
             .skip(skip)
@@ -450,7 +480,7 @@ router.get('/:id/action-items', rateLimiters_1.apiLimiter, auth_1.authenticate, 
         ActionItem_1.default.countDocuments({ meetingId: meeting._id }),
     ]);
     res.json({
-        data: actionItems.map((item) => ({
+        data: tasks.map((item) => ({
             id: item._id.toString(),
             meetingId: item.meetingId.toString(),
             title: item.title,
@@ -483,11 +513,11 @@ router.get('/:id/action-items/export', rateLimiters_1.apiLimiter, auth_1.authent
     if (!(await (0, authorize_1.canViewUserData)(req.userId, meeting.userId.toString(), req.userTeams || []))) {
         return res.status(403).json({ message: 'You do not have permission to export this meeting' });
     }
-    const actionItems = await ActionItem_1.default.find({ meetingId: meeting._id })
+    const tasks = await ActionItem_1.default.find({ meetingId: meeting._id })
         .sort({ createdAt: 1 })
         .select('title description assignee priority status dueDate tags')
         .lean();
-    const rows = actionItems.map((item) => ({
+    const rows = tasks.map((item) => ({
         Task: item.title,
         Description: item.description || '',
         Assignee: item.assignee || '',
@@ -517,7 +547,7 @@ router.get('/:id/minutes/export', rateLimiters_1.apiLimiter, auth_1.authenticate
     if (!(await (0, authorize_1.canViewUserData)(req.userId, meeting.userId.toString(), req.userTeams || []))) {
         return res.status(403).json({ message: 'You do not have permission to export this meeting' });
     }
-    const [summary, actionItems] = await Promise.all([
+    const [summary, tasks] = await Promise.all([
         MeetingSummary_1.default.findOne({ meetingId: meeting._id }).lean(),
         ActionItem_1.default.find({ meetingId: meeting._id })
             .sort({ createdAt: 1 })
@@ -530,12 +560,16 @@ router.get('/:id/minutes/export', rateLimiters_1.apiLimiter, auth_1.authenticate
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     const doc = new pdfkit_1.default({ size: 'A4', margins: { top: 50, bottom: 50, left: 50, right: 50 } });
     doc.pipe(res);
-    // Helper
+    // Helpers
     const section = (title) => {
-        doc.moveDown(0.5).fontSize(14).font('Helvetica-Bold').fillColor('#1D1B22').text(title);
-        doc.moveDown(0.3);
+        doc.moveDown(1.2).fontSize(14).font('Helvetica-Bold').fillColor('#1D1B22').text(title);
+        doc.moveDown(0.4);
     };
     const body = () => doc.fontSize(10).font('Helvetica').fillColor('#333');
+    // Strip Markdown bold syntax and render as plain text to avoid overlap issues
+    const stripMarkdown = (text) => {
+        return text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
+    };
     // Title
     doc.fontSize(20).font('Helvetica-Bold').fillColor('#1D1B22').text(meeting.title || 'Meeting Minutes', { align: 'center' });
     doc.moveDown(0.5);
@@ -556,35 +590,67 @@ router.get('/:id/minutes/export', rateLimiters_1.apiLimiter, auth_1.authenticate
         doc.moveDown(0.5);
         doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
     }
-    // Executive Summary
-    if (summary?.executiveSummary) {
-        section('Executive Summary');
-        body().text(summary.executiveSummary, { lineGap: 4 });
-        doc.moveDown(0.5);
-        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+    // If minutesContent exists, render the full MoM directly from it
+    if (summary?.minutesContent) {
+        const lines = summary.minutesContent.split('\n');
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed)
+                continue;
+            // Heading: ## something
+            const headingMatch = trimmed.match(/^#{1,3}\s+(.+)$/);
+            if (headingMatch) {
+                doc.moveDown(1.0);
+                doc.fontSize(13).font('Helvetica-Bold').fillColor('#1D1B22').text(headingMatch[1]);
+                doc.moveDown(0.4);
+                continue;
+            }
+            // Horizontal rule: ---
+            if (/^---+$/.test(trimmed)) {
+                doc.moveDown(0.5);
+                doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#E0E0E0').stroke();
+                doc.moveDown(0.5);
+                continue;
+            }
+            // Bullet point: - something or * something
+            const bulletMatch = trimmed.match(/^[\-*]\s+(.+)$/);
+            if (bulletMatch) {
+                body().text(`  \u2022  ${stripMarkdown(bulletMatch[1])}`);
+                continue;
+            }
+            // Regular text (strip markdown and render)
+            body().text(stripMarkdown(trimmed));
+        }
     }
-    // Key Discussion Points
-    if (summary?.keyPoints && summary.keyPoints.length > 0) {
-        section('Key Discussion Points');
-        summary.keyPoints.forEach((point, i) => {
-            doc.fontSize(10).font('Helvetica').fillColor('#333').text(`${i + 1}. ${point}`, { indent: 10, lineGap: 3 });
-        });
-        doc.moveDown(0.5);
-        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+    else {
+        // Fallback: build from individual fields if minutesContent is missing
+        if (summary?.executiveSummary) {
+            section('Executive Summary');
+            body().text(summary.executiveSummary, { lineGap: 4 });
+            doc.moveDown(0.5);
+            doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+        }
+        if (summary?.keyPoints && summary.keyPoints.length > 0) {
+            section('Key Discussion Points');
+            summary.keyPoints.forEach((point, i) => {
+                doc.fontSize(10).font('Helvetica').fillColor('#333').text(`${i + 1}. ${point}`, { indent: 10, lineGap: 3 });
+            });
+            doc.moveDown(0.5);
+            doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+        }
+        if (summary?.decisions && summary.decisions.length > 0) {
+            section('Decisions Made');
+            summary.decisions.forEach((decision) => {
+                doc.fontSize(10).font('Helvetica').fillColor('#333').text(`✓  ${decision}`, { indent: 10, lineGap: 3 });
+            });
+            doc.moveDown(0.5);
+            doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
+        }
     }
-    // Decisions Made
-    if (summary?.decisions && summary.decisions.length > 0) {
-        section('Decisions Made');
-        summary.decisions.forEach((decision) => {
-            doc.fontSize(10).font('Helvetica').fillColor('#333').text(`✓  ${decision}`, { indent: 10, lineGap: 3 });
-        });
-        doc.moveDown(0.5);
-        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#F0F0F0').stroke();
-    }
-    // Action Items
-    if (actionItems.length > 0) {
-        section('Action Items');
-        actionItems.forEach((item, i) => {
+    // Tasks from DB (always included)
+    if (tasks.length > 0) {
+        section('Tasks');
+        tasks.forEach((item, i) => {
             const assignee = item.assignee || 'Unassigned';
             const due = item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not specified';
             doc.fontSize(10).font('Helvetica-Bold').fillColor('#1D1B22').text(`${i + 1}. ${item.title}`);
@@ -640,7 +706,7 @@ router.patch('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validat
     if (status !== undefined)
         updateData.status = status;
     await Meeting_1.default.findByIdAndUpdate(req.params.id, { $set: updateData });
-    await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(req.params.id);
+    await (0, meetingStatus_1.syncMeetingStatusFromTasks)(req.params.id);
     const refreshed = await Meeting_1.default.findById(req.params.id).lean();
     res.json(refreshed ? { ...refreshed, id: refreshed._id.toString() } : null);
 }));

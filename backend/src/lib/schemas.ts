@@ -80,6 +80,20 @@ export const passwordResetConfirmSchema = z.object({
   password: passwordField,
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: passwordField,
+});
+
+export const verifyOtpSchema = z.object({
+  email: emailField,
+  otp: z.string().regex(/^\d{6}$/, 'OTP must be a 6-digit code'),
+});
+
+export const resendOtpSchema = z.object({
+  email: emailField,
+});
+
 export const updateProfileSchema = z.object({
   name: z
     .string()
@@ -125,9 +139,9 @@ export const updateMeetingSchema = z.object({
   status: z.enum(['pending', 'uploading', 'processing', 'transcribing', 'analyzing', 'completed', 'failed']).optional(),
 });
 
-// ── Action Item schemas ────────────────────────────────────────────────────
+// ── Task schemas ──────────────────────────────────────────────────────────
 
-export const createActionItemSchema = z.object({
+export const createTaskSchema = z.object({
   meetingId: objectIdField,
   title: z
     .string()
@@ -147,7 +161,7 @@ export const createActionItemSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().default('medium'),
 });
 
-export const updateActionItemSchema = z.object({
+export const updateTaskSchema = z.object({
   title: z
     .string()
     .trim()

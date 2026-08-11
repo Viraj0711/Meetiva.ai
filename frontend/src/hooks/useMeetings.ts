@@ -1,14 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { meetingService, actionItemService } from '@/services';
+import { meetingService, taskService } from '@/services';
 import {
   Meeting,
   MeetingSummary,
   Transcript,
-  ActionItem,
+  Task,
   CreateMeetingRequest,
   UpdateMeetingRequest,
-  CreateActionItemRequest,
-  UpdateActionItemRequest,
+  CreateTaskRequest,
+  UpdateTaskRequest,
   MeetingStats,
   PaginatedResponse,
   PaginationParams,
@@ -16,6 +16,7 @@ import {
 } from '@/types';
 import { useAppDispatch } from '@/store/hooks';
 import { addToast } from '@/store/slices/uiSlice';
+import { isMeetingLimitReached } from '@/services/api.client';
 
 /**
  * Hook to get all meetings
@@ -53,6 +54,8 @@ export const useCreateMeeting = () => {
       dispatch(addToast({ type: 'success', message: 'Meeting created successfully' }));
     },
     onError: (error: Error) => {
+      // Free-tier limit: the global gate auto-redirects to the upgrade page.
+      if (isMeetingLimitReached(error)) return;
       dispatch(addToast({ type: 'error', message: error.message }));
     },
   });
@@ -118,6 +121,9 @@ export const useUploadMeetingFile = () => {
       dispatch(addToast({ type: 'success', message: 'File uploaded successfully' }));
     },
     onError: (error: Error) => {
+      // NOTE: the upload endpoint uses raw fetch, so the global meeting-limit
+      // gate never fires for it — the toast is this path's only feedback.
+      // (The real Upload page renders a dedicated inline upgrade card.)
       dispatch(addToast({ type: 'error', message: error.message }));
     },
   });
@@ -146,12 +152,12 @@ export const useMeetingTranscript = (meetingId: string) => {
 };
 
 /**
- * Hook to get meeting action items
+ * Hook to get meeting tasks
  */
-export const useMeetingActionItems = (meetingId: string) => {
-  return useQuery<ActionItem[], Error>({
-    queryKey: ['meetings', meetingId, 'action-items'],
-    queryFn: () => meetingService.getMeetingActionItems(meetingId),
+export const useMeetingTasks = (meetingId: string) => {
+  return useQuery<Task[], Error>({
+    queryKey: ['meetings', meetingId, 'tasks'],
+    queryFn: () => meetingService.getMeetingTasks(meetingId),
     enabled: !!meetingId,
   });
 };
@@ -168,29 +174,29 @@ export const useMeetingStats = () => {
 };
 
 /**
- * Hook to get all action items
+ * Hook to get all tasks
  */
-export const useActionItems = (params?: PaginationParams & FilterParams) => {
-  return useQuery<PaginatedResponse<ActionItem>, Error>({
-    queryKey: ['action-items', params],
-    queryFn: () => actionItemService.getActionItems(params),
+export const useTasks = (params?: PaginationParams & FilterParams) => {
+  return useQuery<PaginatedResponse<Task>, Error>({
+    queryKey: ['tasks', params],
+    queryFn: () => taskService.getTasks(params),
     staleTime: 30 * 1000,
   });
 };
 
 /**
- * Hook to create action item
+ * Hook to create task
  */
-export const useCreateActionItem = () => {
+export const useCreateTask = () => {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
 
   return useMutation({
-    mutationFn: (data: CreateActionItemRequest) => actionItemService.createActionItem(data),
+    mutationFn: (data: CreateTaskRequest) => taskService.createTask(data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['action-items'] });
-      queryClient.invalidateQueries({ queryKey: ['meetings', variables.meetingId, 'action-items'] });
-      dispatch(addToast({ type: 'success', message: 'Action item created successfully' }));
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['meetings', variables.meetingId, 'tasks'] });
+      dispatch(addToast({ type: 'success', message: 'Task created successfully' }));
     },
     onError: (error: Error) => {
       dispatch(addToast({ type: 'error', message: error.message }));
@@ -199,19 +205,19 @@ export const useCreateActionItem = () => {
 };
 
 /**
- * Hook to update action item
+ * Hook to update task
  */
-export const useUpdateActionItem = () => {
+export const useUpdateTask = () => {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateActionItemRequest }) =>
-      actionItemService.updateActionItem(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateTaskRequest }) =>
+      taskService.updateTask(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['action-items'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
-      dispatch(addToast({ type: 'success', message: 'Action item updated successfully' }));
+      dispatch(addToast({ type: 'success', message: 'Task updated successfully' }));
     },
     onError: (error: Error) => {
       dispatch(addToast({ type: 'error', message: error.message }));
@@ -220,18 +226,18 @@ export const useUpdateActionItem = () => {
 };
 
 /**
- * Hook to delete action item
+ * Hook to delete task
  */
-export const useDeleteActionItem = () => {
+export const useDeleteTask = () => {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
 
   return useMutation({
-    mutationFn: (id: string) => actionItemService.deleteActionItem(id),
+    mutationFn: (id: string) => taskService.deleteTask(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['action-items'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
-      dispatch(addToast({ type: 'success', message: 'Action item deleted successfully' }));
+      dispatch(addToast({ type: 'success', message: 'Task deleted successfully' }));
     },
     onError: (error: Error) => {
       dispatch(addToast({ type: 'error', message: error.message }));
@@ -240,18 +246,18 @@ export const useDeleteActionItem = () => {
 };
 
 /**
- * Hook to complete action item
+ * Hook to complete task
  */
-export const useCompleteActionItem = () => {
+export const useCompleteTask = () => {
   const queryClient = useQueryClient();
   const dispatch = useAppDispatch();
 
   return useMutation({
-    mutationFn: (id: string) => actionItemService.completeActionItem(id),
+    mutationFn: (id: string) => taskService.completeTask(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['action-items'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
-      dispatch(addToast({ type: 'success', message: 'Action item completed!' }));
+      dispatch(addToast({ type: 'success', message: 'Task completed!' }));
     },
     onError: (error: Error) => {
       dispatch(addToast({ type: 'error', message: error.message }));

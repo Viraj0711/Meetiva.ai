@@ -12,10 +12,11 @@ import { createRateLimitStore } from './redis';
  * When Redis is present the counters are shared across all server instances;
  * otherwise each process tracks its own counters in-memory.
  *
- * Limiters (3):
+ * Limiters (4):
  *   authLimiter  —  10 / 5 min  — sensitive auth endpoints
  *   apiLimiter   —  60 /  1 min  — general authenticated CRUD
  *   uploadLimiter — 20 /  1 hr   — meeting uploads + AI proxy (cost protection)
+ *   otpLimiter   —   5 / 5 min  — OTP verification (code-guessing guard)
  */
 
 /**
@@ -55,4 +56,17 @@ export const uploadLimiter = rateLimit(withFreshStore({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many uploads or AI requests. Please slow down.' },
+}));
+
+/**
+ * OTP verification — strict per-IP budget so code-guessing attempts can't
+ * ride on the shared auth limiter budget. Pair this with the per-email
+ * failed-attempt lockout in the verify-otp route (defense in depth).
+ */
+export const otpLimiter = rateLimit(withFreshStore({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many verification attempts. Please try again after 5 minutes.' },
 }));

@@ -23,9 +23,9 @@ router.param('id', (req, res, next, value) => {
     next();
 });
 // Helper to get the appropriate filter based on user's role
-const getActionItemsFilter = async (req) => {
+const getTasksFilter = async (req) => {
     try {
-        // For members or users with no team membership, only show their own action items
+        // For members or users with no team membership, only show their own tasks
         if (!req.userTeams || req.userTeams.length === 0) {
             return { userId: new mongoose_1.Types.ObjectId(req.userId) };
         }
@@ -54,15 +54,15 @@ const getActionItemsFilter = async (req) => {
         return { userId: new mongoose_1.Types.ObjectId(req.userId) };
     }
 };
-const actionItemQuerySchema = validation_1.paginationQuerySchema.merge(validation_1.statusFilterSchema);
-router.get('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(actionItemQuerySchema, 'query'), (0, errors_1.asyncHandler)(async (req, res) => {
+const taskQuerySchema = validation_1.paginationQuerySchema.merge(validation_1.statusFilterSchema);
+router.get('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(taskQuerySchema, 'query'), (0, errors_1.asyncHandler)(async (req, res) => {
     const { page, limit, status } = req.query;
     const skip = (page - 1) * limit;
-    let filter = await getActionItemsFilter(req);
+    let filter = await getTasksFilter(req);
     if (status) {
         filter.status = status;
     }
-    const [actionItems, total] = await Promise.all([
+    const [tasks, total] = await Promise.all([
         ActionItem_1.default.find(filter)
             .skip(skip)
             .limit(limit)
@@ -72,7 +72,7 @@ router.get('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1
         ActionItem_1.default.countDocuments(filter),
     ]);
     res.json({
-        data: actionItems.map((item) => ({
+        data: tasks.map((item) => ({
             ...item,
             id: item._id.toString(),
             meeting: item.meetingId ? { id: item.meetingId._id.toString(), title: item.meetingId.title } : undefined,
@@ -87,19 +87,19 @@ router.get('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1
     });
 }));
 router.get('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
-    const actionItem = await ActionItem_1.default.findById(req.params.id)
+    const task = await ActionItem_1.default.findById(req.params.id)
         .populate('meetingId')
         .lean();
-    if (!actionItem) {
-        return res.status(404).json({ message: 'Action item not found' });
+    if (!task) {
+        return res.status(404).json({ message: 'Task not found' });
     }
-    // Check if user can view this action item
-    if (!(await (0, authorize_1.canViewUserData)(req.userId, actionItem.userId.toString(), req.userTeams || []))) {
-        return res.status(403).json({ message: 'You do not have permission to view this action item' });
+    // Check if user can view this task
+    if (!(await (0, authorize_1.canViewUserData)(req.userId, task.userId.toString(), req.userTeams || []))) {
+        return res.status(403).json({ message: 'You do not have permission to view this task' });
     }
-    res.json(actionItem);
+    res.json(task);
 }));
-router.post('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(validation_1.createActionItemSchema), (0, errors_1.asyncHandler)(async (req, res) => {
+router.post('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(validation_1.createTaskSchema), (0, errors_1.asyncHandler)(async (req, res) => {
     const { meetingId, title, description, assignee, dueDate, priority } = req.body;
     const meeting = await Meeting_1.default.findOne({
         _id: new mongoose_1.Types.ObjectId(meetingId),
@@ -108,7 +108,7 @@ router.post('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_
     if (!meeting) {
         return res.status(404).json({ message: 'Meeting not found' });
     }
-    const actionItem = await ActionItem_1.default.create({
+    const task = await ActionItem_1.default.create({
         meetingId: meeting._id,
         title,
         description,
@@ -118,21 +118,21 @@ router.post('/', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_
         reminderSentAt: null,
         userId: new mongoose_1.Types.ObjectId(req.userId),
     });
-    await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(meetingId);
-    res.status(201).json(actionItem.toObject());
+    await (0, meetingStatus_1.syncMeetingStatusFromTasks)(meetingId);
+    res.status(201).json(task.toObject());
 }));
-router.patch('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(validation_1.updateActionItemSchema), (0, errors_1.asyncHandler)(async (req, res) => {
+router.patch('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validation_1.validate)(validation_1.updateTaskSchema), (0, errors_1.asyncHandler)(async (req, res) => {
     const { title, description, assignee, dueDate, priority, status } = req.body;
-    const actionItem = await ActionItem_1.default.findOne({
+    const task = await ActionItem_1.default.findOne({
         _id: new mongoose_1.Types.ObjectId(req.params.id),
         userId: new mongoose_1.Types.ObjectId(req.userId),
     }).lean();
-    if (!actionItem) {
-        return res.status(404).json({ message: 'Action item not found' });
+    if (!task) {
+        return res.status(404).json({ message: 'Task not found' });
     }
-    // Check if user can modify this action item (must be owner)
-    if (actionItem.userId.toString() !== req.userId) {
-        return res.status(403).json({ message: 'You do not have permission to modify this action item' });
+    // Check if user can modify this task (must be owner)
+    if (task.userId.toString() !== req.userId) {
+        return res.status(403).json({ message: 'You do not have permission to modify this task' });
     }
     const updateData = {};
     if (title !== undefined)
@@ -149,42 +149,42 @@ router.patch('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, validat
         updateData.dueDate = dueDate ? new Date(dueDate) : null;
         updateData.reminderSentAt = null;
     }
-    if (status === 'completed' && !actionItem.completedAt) {
+    if (status === 'completed' && !task.completedAt) {
         updateData.completedAt = new Date();
     }
     if (status !== undefined && status !== 'completed') {
         updateData.reminderSentAt = null;
     }
-    const updated = await ActionItem_1.default.findByIdAndUpdate(actionItem._id, { $set: updateData }, { returnDocument: 'after' }).lean();
-    await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId.toString());
+    const updated = await ActionItem_1.default.findByIdAndUpdate(task._id, { $set: updateData }, { returnDocument: 'after' }).lean();
+    await (0, meetingStatus_1.syncMeetingStatusFromTasks)(task.meetingId.toString());
     res.json(updated ? { ...updated, id: updated._id.toString() } : null);
 }));
 router.delete('/:id', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
-    const actionItem = await ActionItem_1.default.findOne({
+    const task = await ActionItem_1.default.findOne({
         _id: new mongoose_1.Types.ObjectId(req.params.id),
         userId: new mongoose_1.Types.ObjectId(req.userId),
     }).lean();
-    if (!actionItem) {
-        return res.status(404).json({ message: 'Action item not found' });
+    if (!task) {
+        return res.status(404).json({ message: 'Task not found' });
     }
-    // Check if user can delete this action item (must be owner)
-    if (actionItem.userId.toString() !== req.userId) {
-        return res.status(403).json({ message: 'You do not have permission to delete this action item' });
+    // Check if user can delete this task (must be owner)
+    if (task.userId.toString() !== req.userId) {
+        return res.status(403).json({ message: 'You do not have permission to delete this task' });
     }
-    await ActionItem_1.default.findByIdAndDelete(actionItem._id);
-    await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId.toString());
+    await ActionItem_1.default.findByIdAndDelete(task._id);
+    await (0, meetingStatus_1.syncMeetingStatusFromTasks)(task.meetingId.toString());
     res.status(204).send();
 }));
 router.post('/:id/complete', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
-    const actionItem = await ActionItem_1.default.findOne({
+    const task = await ActionItem_1.default.findOne({
         _id: new mongoose_1.Types.ObjectId(req.params.id),
         userId: new mongoose_1.Types.ObjectId(req.userId),
     }).lean();
-    if (!actionItem) {
-        return res.status(404).json({ message: 'Action item not found' });
+    if (!task) {
+        return res.status(404).json({ message: 'Task not found' });
     }
-    const updated = await ActionItem_1.default.findByIdAndUpdate(actionItem._id, { $set: { status: 'completed', completedAt: new Date() } }, { returnDocument: 'after' }).lean();
-    await (0, meetingStatus_1.syncMeetingStatusFromActionItems)(actionItem.meetingId.toString());
+    const updated = await ActionItem_1.default.findByIdAndUpdate(task._id, { $set: { status: 'completed', completedAt: new Date() } }, { returnDocument: 'after' }).lean();
+    await (0, meetingStatus_1.syncMeetingStatusFromTasks)(task.meetingId.toString());
     res.json(updated ? { ...updated, id: updated._id.toString() } : null);
 }));
 exports.default = router;

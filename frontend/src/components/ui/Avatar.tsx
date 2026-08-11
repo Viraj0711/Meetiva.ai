@@ -1,6 +1,6 @@
 import React from 'react';
 
-const GRAD = '#4B2E83';
+const GRAD = '#5B3FD6';
 
 type AvatarSize = 'xs' | 'sm' | 'md';
 

@@ -4,7 +4,7 @@ import {
   Meeting,
   MeetingSummary,
   Transcript,
-  ActionItem,
+  Task,
   MeetingStats,
 } from '@/types';
 
@@ -13,7 +13,7 @@ const initialState: MeetingsState = {
   currentMeeting: null,
   summary: null,
   transcript: null,
-  actionItems: [],
+  tasks: [],
   stats: null,
   isLoading: false,
   error: null,
@@ -63,20 +63,20 @@ const meetingSlice = createSlice({
     setTranscript: (state, action: PayloadAction<Transcript | null>) => {
       state.transcript = action.payload;
     },
-    setActionItems: (state, action: PayloadAction<ActionItem[]>) => {
-      state.actionItems = action.payload;
+    setTasks: (state, action: PayloadAction<Task[]>) => {
+      state.tasks = action.payload;
     },
-    addActionItem: (state, action: PayloadAction<ActionItem>) => {
-      state.actionItems.push(action.payload);
+    addTask: (state, action: PayloadAction<Task>) => {
+      state.tasks.push(action.payload);
     },
-    updateActionItem: (state, action: PayloadAction<ActionItem>) => {
-      const index = state.actionItems.findIndex((a) => a.id === action.payload.id);
+    updateTask: (state, action: PayloadAction<Task>) => {
+      const index = state.tasks.findIndex((a) => a.id === action.payload.id);
       if (index !== -1) {
-        state.actionItems[index] = action.payload;
+        state.tasks[index] = action.payload;
       }
     },
-    removeActionItem: (state, action: PayloadAction<string>) => {
-      state.actionItems = state.actionItems.filter((a) => a.id !== action.payload);
+    removeTask: (state, action: PayloadAction<string>) => {
+      state.tasks = state.tasks.filter((a) => a.id !== action.payload);
     },
     setStats: (state, action: PayloadAction<MeetingStats>) => {
       state.stats = action.payload;
@@ -85,7 +85,7 @@ const meetingSlice = createSlice({
       state.currentMeeting = null;
       state.summary = null;
       state.transcript = null;
-      state.actionItems = [];
+      state.tasks = [];
     },
   },
 });
@@ -100,10 +100,10 @@ export const {
   setCurrentMeeting,
   setSummary,
   setTranscript,
-  setActionItems,
-  addActionItem,
-  updateActionItem,
-  removeActionItem,
+  setTasks,
+  addTask,
+  updateTask,
+  removeTask,
   setStats,
   clearCurrentMeeting,
 } = meetingSlice.actions;

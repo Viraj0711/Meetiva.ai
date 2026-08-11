@@ -39,7 +39,7 @@ const PrivacyPage: React.FC = () => {
       <div className="relative z-10 mx-auto max-w-6xl px-6 py-6 lg:px-8 lg:py-8">
         <div className="mb-10 flex items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur-2xl">
           <Link to="/" className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary text-white shadow-[0_18px_40px_rgba(124,92,255,0.35)]">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary text-white shadow-[0_18px_40px_rgba(91,63,214,0.35)]">
               <span className="font-bold">M</span>
             </div>
             <div>
@@ -106,7 +106,7 @@ const PrivacyPage: React.FC = () => {
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.12fr_0.88fr]">
-          <div className="rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(124,92,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,213,246,0.14),transparent_28%),rgba(255,255,255,0.03)] p-8 backdrop-blur-2xl lg:p-10">
+          <div className="rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(91,63,214,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(244,114,182,0.14),transparent_28%),rgba(255,255,255,0.03)] p-8 backdrop-blur-2xl lg:p-10">
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-cyan-300" />
               <p className="text-xs uppercase tracking-[0.28em] text-cyan-300/70">Your rights</p>
