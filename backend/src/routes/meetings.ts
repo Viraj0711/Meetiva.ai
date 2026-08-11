@@ -16,6 +16,7 @@ import { syncMeetingStatusFromTasks } from '../services/meetingStatus';
 import { apiLimiter, uploadLimiter } from '../lib/rateLimiters';
 import {
   validate,
+  validateObjectIdParam,
   updateMeetingSchema,
   createMeetingSchema,
   paginationQuerySchema,
@@ -34,12 +35,7 @@ import PDFDocument from 'pdfkit';
 const router = Router();
 
 // Validate all :id route params as MongoDB ObjectId
-router.param('id', (req, res, next, value) => {
-  if (!Types.ObjectId.isValid(value)) {
-    return res.status(400).json({ message: `Invalid id: must be a valid ObjectId` });
-  }
-  next();
-});
+router.param('id', validateObjectIdParam('id'));
 
 // Multer: keep limit at Whisper's hard cap (25 MB).
 const upload = multer({
