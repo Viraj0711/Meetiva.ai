@@ -12,7 +12,8 @@
     "db:seed": "tsx src/scripts/seed.ts",
     "test:rate-limit": "tsx src/tests/rateLimiters.test.ts",
     "test:e2e": "tsx tests/e2e-team-rbac.test.ts",
-    "lint:security": "tsx scripts/check-query-safety.ts"
+    "lint:security": "tsx scripts/check-query-safety.ts",
+    "test:security": "tsx src/tests/querySafetyPlugin.test.ts && tsx src/tests/validationHelpers.test.ts"
   },
   "engines": {
     "node": ">=22.0.0",
