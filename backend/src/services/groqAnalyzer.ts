@@ -1,6 +1,9 @@
 import type { Sentiment, TaskStatus, MeetingPriority } from '../lib/shared';
 import { AppError } from '../lib/errors';
+import { createLogger } from '../lib/logger';
 import { MEETING_SUMMARY_PROMPT, MEETING_SUMMARY_PROMPT_BRIEF, MEETING_SUMMARY_PROMPT_DETAILED, MEETING_MINUTES_PROMPT, TASK_EXTRACTION_PROMPT } from '../prompts';
+
+const log = createLogger('groqAnalyzer');
 
 interface ExtractedTask {
   title: string;

@@ -8,6 +8,9 @@ on:
 
 env:
   NODE_VERSION: "20"
+  # Lockfiles are standardized on npm 11 (latest stable major).
+  # Pinning npm keeps `npm ci` strict-sync checks identical to local dev.
+  NPM_VERSION: "11"
 
 jobs:
   security-scan:
@@ -23,12 +26,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   frontend:
-    name: Frontend — typecheck & test
+    name: Frontend — typecheck, test & build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-
     steps:
       - uses: actions/checkout@v4
 
@@ -38,27 +37,37 @@ jobs:
           cache: "npm"
           cache-dependency-path: package-lock.json
 
-      - name: Build shared types package
-        run: |
-          cd ../shared
-          npm install
-          npx tsc --noEmit
-          npx tsc
+      - name: Pin npm version
+        run: npm i -g npm@${{ env.NPM_VERSION }}
 
-      - name: Install dependencies
+      # shared + frontend (+ admin) are npm workspaces — the lockfile lives at
+      # the repo root, so install must run there (npm ci in frontend/ alone
+      # would fail with "no package-lock.json").
+      - name: Install workspace dependencies
         run: npm ci
 
-      - name: Create .env from example
+      - name: Build shared types package
+        run: cd shared && npx tsc
+
+      - name: Create frontend .env from example
+        working-directory: frontend
         run: cp .env.example .env
 
       - name: TypeScript check
+        working-directory: frontend
         run: npx tsc --noEmit
 
+      - name: Production build (tsc + vite)
+        working-directory: frontend
+        run: npm run build
+
       - name: Unit tests
+        working-directory: frontend
         run: npm test
 
       - name: Lint
-        run: npx eslint . --ext ts,tsx --max-warnings 5
+        working-directory: frontend
+        run: npm run lint
 
   backend:
     name: Backend — typecheck & build
@@ -75,6 +84,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
+
+      - name: Pin npm version
+        run: npm i -g npm@${{ env.NPM_VERSION }}
 
       - name: Build shared types package
         run: |

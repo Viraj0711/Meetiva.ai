@@ -1,7 +1,7 @@
 import type { TaskStatus, MeetingPriority } from '../lib/shared';
 import { Router, Response, NextFunction, Request } from 'express';
 import multer from 'multer';
-import ExcelJS from 'exceljs';
+import { createStyledWorkbook } from '../lib/excelFormatter';
 import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { canViewUserData } from '../middleware/authorize';
@@ -639,11 +639,19 @@ router.get('/:id/action-items/export', apiLimiter, authenticate, asyncHandler(as
     Tags: Array.isArray(item.tags) ? item.tags.join(', ') : '',
   }));
 
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Tasks');
-
-  worksheet.columns = Object.keys(rows[0] ?? {}).map((key) => ({ header: key, key, width: 20 }));
-  worksheet.addRows(rows);
+  const workbook = createStyledWorkbook({
+    sheetName: 'Tasks',
+    columns: [
+      { header: 'Task', key: 'Task', width: 30 },
+      { header: 'Description', key: 'Description', width: 40, wrap: true },
+      { header: 'Assignee', key: 'Assignee', width: 18 },
+      { header: 'Priority', key: 'Priority', width: 12 },
+      { header: 'Status', key: 'Status', width: 15 },
+      { header: 'Due Date', key: 'DueDate', width: 14 },
+      { header: 'Tags', key: 'Tags', width: 25 },
+    ],
+    data: rows,
+  });
 
   const fileBuffer = await workbook.xlsx.writeBuffer();
 

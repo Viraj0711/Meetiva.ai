@@ -1,0 +1,86 @@
+# ── Render Blueprint for Meetiva.ai ────────────────────────────────────────────
+#
+# One web service is enough: the Express backend serves both the built React
+# SPA (frontend/dist) and the /api/v1 REST API on the same port.
+#
+# To deploy:
+#   1. Push this repo to GitHub, then in Render: New + → Blueprint → connect repo.
+#   2. Render finds render.yaml automatically and creates the service.
+#   3. Set the required `sync: false` env vars (MONGODB_URI, JWT_SECRET, ...)
+#      under Service → Environment. Everything else has a sane default.
+#   4. Deploy. Render health-checks GET /health before routing traffic.
+#
+# Note: pick Node 20.x in the service's Runtime settings to match CI.
+#
+# The backend uses the platform-injected PORT automatically (backend/src/lib/env.ts)
+# and NODE_ENV=production is set below.
+
+databases:
+  - name: meetiva-redis
+    type: redis
+    plan: free
+
+services:
+  - type: web
+    name: meetiva
+    runtime: node
+    plan: free
+    buildCommand: |
+      # Pin the latest stable npm so lockfiles (npm-11 format) install cleanly
+      # regardless of the Node runtime Render bundles (Node 20 ships npm 10).
+      npm i -g npm@11
+      npm ci --include=dev
+      cd shared && npx tsc
+      cd ../frontend && npm run build
+      cd ../backend && npm ci --include=dev && npx tsc
+    startCommand: node backend/dist/index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Allow the app's own origin so the SPA can call the API (cookies are
+      # same-origin, so this mainly affects email links + CORS preflight).
+      - key: CORS_ORIGIN
+        sync: false
+      - key: FRONTEND_APP_URL
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: REDIS_URL
+        fromDatabase:
+          name: meetiva-redis
+          property: connectionString
+      - key: GROQ_API_KEY
+        sync: false
+      - key: WHISPER_API_KEY
+        sync: false
+      - key: GROK_API_KEY
+        sync: false
+      - key: XAI_API_KEY
+        sync: false
+      - key: CEREBRAS_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_TOKEN_ENCRYPTION_KEY
+        sync: false
+      # Must be https://<your-app>.onrender.com/auth/google/callback
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
