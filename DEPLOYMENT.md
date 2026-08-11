@@ -133,7 +133,7 @@ per-instance limits; email falls back to console logging).
 
 ## Gotchas
 
-  consistent across local dev, CI, and the deploy platform.
+- **Node & npm versions:** Keep Node 20.x and npm 11 to keep installs consistent across local dev, CI, and the deploy platform.
 - **`shared/` must be built before frontend/backend** — `npm run build` handles
   the order; never deploy a `frontend/dist` or `backend/dist` built from stale
   shared types.
