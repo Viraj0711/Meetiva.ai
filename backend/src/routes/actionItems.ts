@@ -21,11 +21,16 @@ import { Types } from 'mongoose';
 
 const router = Router();
 
+type TaskFilter = {
+  userId: Types.ObjectId | { $in: Types.ObjectId[] };
+  status?: TaskStatus;
+};
+
 // Validate all :id route params as MongoDB ObjectId
 router.param('id', validateObjectIdParam('id'));
 
 // Helper to get the appropriate filter based on user's role
-const getTasksFilter = async (req: AuthRequest, teamId?: string): Promise<Record<string, any>> => {
+const getTasksFilter = async (req: AuthRequest, teamId?: string): Promise<TaskFilter> => {
   try {
     // If a specific teamId is provided, filter by that team's members
     if (teamId) {
@@ -40,7 +45,7 @@ const getTasksFilter = async (req: AuthRequest, teamId?: string): Promise<Record
         .select('userId')
         .lean();
       
-      const memberUserIds = teamMembers.map(tm => tm.userId);
+      const memberUserIds = teamMembers.map(tm => new Types.ObjectId(tm.userId));
       return { userId: { $in: memberUserIds } };
     }
 
@@ -71,10 +76,10 @@ const getTasksFilter = async (req: AuthRequest, teamId?: string): Promise<Record
       .select('userId')
       .lean();
 
-    const memberUserIds = Array.from(new Set([
+    const memberUserIds = [
       new Types.ObjectId(req.userId!),
-      ...teamMembers.map(tm => tm.userId),
-    ]));
+      ...teamMembers.map(tm => new Types.ObjectId(tm.userId)),
+    ];
 
     return { userId: { $in: memberUserIds } };
   } catch {
@@ -97,7 +102,7 @@ router.get('/',
     };
     const skip = (page - 1) * limit;
 
-    let filter: Record<string, any> = await getTasksFilter(req, teamId);
+    const filter: TaskFilter = await getTasksFilter(req, teamId);
 
     if (status) {
       filter.status = status;
