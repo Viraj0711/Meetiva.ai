@@ -74,9 +74,8 @@ describe('LoginEnhanced Component', () => {
     expect(screen.getByPlaceholderText('you@company.com')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Enter your password')).toBeInTheDocument();
 
-    // Google and GitHub SSO buttons
-    expect(screen.getByText('Google')).toBeInTheDocument();
-    expect(screen.getByText('GitHub')).toBeInTheDocument();
+    // SSO button
+    expect(screen.getByText('Continue with Google')).toBeInTheDocument();
 
     // Links to register and reset password
     expect(screen.getByText('Create one free')).toBeInTheDocument();
