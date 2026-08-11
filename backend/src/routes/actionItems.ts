@@ -25,8 +25,25 @@ const router = Router();
 router.param('id', validateObjectIdParam('id'));
 
 // Helper to get the appropriate filter based on user's role
-const getTasksFilter = async (req: AuthRequest): Promise<Record<string, any>> => {
+const getTasksFilter = async (req: AuthRequest, teamId?: string): Promise<Record<string, any>> => {
   try {
+    // If a specific teamId is provided, filter by that team's members
+    if (teamId) {
+      // Verify user is a member of this team
+      const membership = req.userTeams?.find(t => t.teamId === teamId);
+      if (!membership) {
+        return { userId: new Types.ObjectId(req.userId!) };
+      }
+
+      // Get all members of this team
+      const teamMembers = await TeamMember.find({ teamId: new Types.ObjectId(teamId) })
+        .select('userId')
+        .lean();
+      
+      const memberUserIds = teamMembers.map(tm => tm.userId);
+      return { userId: { $in: memberUserIds } };
+    }
+
     // For members or users with no team membership, only show their own tasks
     if (!req.userTeams || req.userTeams.length === 0) {
       return { userId: new Types.ObjectId(req.userId!) };
@@ -72,14 +89,15 @@ router.get('/',
   authenticate,
   validate(taskQuerySchema, 'query'),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { page, limit, status } = req.query as unknown as {
+    const { page, limit, status, teamId } = req.query as unknown as {
       page: number;
       limit: number;
       status?: TaskStatus;
+      teamId?: string;
     };
     const skip = (page - 1) * limit;
 
-    let filter: Record<string, any> = await getTasksFilter(req);
+    let filter: Record<string, any> = await getTasksFilter(req, teamId);
 
     if (status) {
       filter.status = status;

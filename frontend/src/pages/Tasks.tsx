@@ -15,6 +15,7 @@ import { formatDate } from '@/utils';
 const Tasks: React.FC = () => {
   const isManagerOrLead = useAppSelector(selectIsManagerOrLead);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const activeTeamId = useAppSelector((state) => state.workspace.activeTeamId);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +69,7 @@ const Tasks: React.FC = () => {
     const fetchMeetings = async () => {
       try {
         setLoadingMeetings(true);
-        const response = await meetingService.getMeetings({ limit: 100, status: 'completed' });
+        const response = await meetingService.getMeetings({ limit: 100, status: 'completed', teamId: activeTeamId ?? undefined });
         setMeetings(response.data || []);
       } catch {
         setMeetings([]);
@@ -77,7 +78,7 @@ const Tasks: React.FC = () => {
       }
     };
     fetchMeetings();
-  }, [showCreateModal]);
+  }, [showCreateModal, activeTeamId]);
 
   const handleCreateFormChange = (field: keyof typeof createForm, value: string) => {
     setCreateForm((prev) => ({ ...prev, [field]: value }));

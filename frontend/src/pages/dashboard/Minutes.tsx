@@ -6,6 +6,7 @@ import { meetingService } from '@/services';
 import { Meeting, MeetingSummary } from '@/types';
 import { getAccessToken } from '@/services/api.client';
 import { API_BASE_URL } from '@/services/api.config';
+import { useAppSelector } from '@/store/hooks';
 
 const GRAD = '#5B3FD6';
 const GRAD2 = '#8B5CF6';
@@ -51,12 +52,13 @@ const DashboardMinutes: React.FC = () => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [summaries, setSummaries] = useState<Record<string, MeetingSummary | null>>({});
   const [loading, setLoading] = useState(true);
+  const activeTeamId = useAppSelector((state) => state.workspace.activeTeamId);
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        const result = await meetingService.getMeetings({ limit: 50 });
+        const result = await meetingService.getMeetings({ limit: 50, teamId: activeTeamId ?? undefined });
         const allMeetings = result.data || [];
         // ponytail: fetch all summaries upfront, filter to only those with minutesContent
         const summaryEntries = await Promise.all(
@@ -76,7 +78,7 @@ const DashboardMinutes: React.FC = () => {
       }
     };
     load();
-  }, []);
+  }, [activeTeamId]);
 
   const handleExpand = (meetingId: string) => {
     setExpandedId(expandedId === meetingId ? null : meetingId);

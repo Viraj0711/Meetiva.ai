@@ -54,7 +54,24 @@ const handleMulterError = (err: any, _req: Request, _res: Response, next: NextFu
 };
 
 // Helper to get the appropriate filter based on user's role
-const getMeetingsFilter = async (req: AuthRequest): Promise<Record<string, any>> => {
+const getMeetingsFilter = async (req: AuthRequest, teamId?: string): Promise<Record<string, any>> => {
+  // If a specific teamId is provided, filter by that team's members
+  if (teamId) {
+    // Verify user is a member of this team
+    const membership = req.userTeams?.find(t => t.teamId === teamId);
+    if (!membership) {
+      return { userId: new Types.ObjectId(req.userId!) };
+    }
+
+    // Get all members of this team
+    const teamMembers = await TeamMember.find({ teamId: new Types.ObjectId(teamId) })
+      .select('userId')
+      .lean();
+    
+    const memberUserIds = teamMembers.map(tm => tm.userId);
+    return { userId: { $in: memberUserIds } };
+  }
+
   // For members or users with no team membership, only show their own meetings
   if (!req.userTeams || req.userTeams.length === 0) {
     return { userId: new Types.ObjectId(req.userId!) };
@@ -91,7 +108,8 @@ const getMeetingsFilter = async (req: AuthRequest): Promise<Record<string, any>>
 };
 
 router.get('/stats', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const filter = await getMeetingsFilter(req);
+  const { teamId } = req.query as { teamId?: string };
+  const filter = await getMeetingsFilter(req, teamId);
   const now = new Date();
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
@@ -163,10 +181,10 @@ router.get('/',
   authenticate,
   validate(paginationQuerySchema, 'query'),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { page, limit } = req.query as unknown as { page: number; limit: number };
+    const { page, limit, teamId } = req.query as unknown as { page: number; limit: number; teamId?: string };
     const skip = (page - 1) * limit;
 
-    const filter = await getMeetingsFilter(req);
+    const filter = await getMeetingsFilter(req, teamId);
 
     const [meetings, total] = await Promise.all([
       Meeting.find(filter)
