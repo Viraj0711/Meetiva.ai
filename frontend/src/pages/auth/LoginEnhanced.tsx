@@ -90,22 +90,15 @@ const LoginPage: React.FC = () => {
             <div className="flex-1 h-px bg-[#E4E0F5]" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { name: 'Google', color: '#4285F4', letter: 'G' },
-              { name: 'GitHub', color: '#24292F', letter: 'GH' },
-            ].map(p => (
-              <button key={p.name}
-                onClick={() => toast.info(`${p.name} sign-in coming soon.`)}
-                className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all bg-white text-[#1D1B22]"
-                style={{ borderColor: 'rgba(91,63,214,0.14)' }}
-                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.28)'; el.style.background = '#EDE9FF'; }}
-                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.14)'; el.style.background = 'white'; }}>
-                <span className="rounded-full flex items-center justify-center text-[8px] font-black text-white flex-shrink-0" style={{ background: p.color, width: 18, height: 18 }}>{p.letter}</span>
-                {p.name}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => toast.info('Google sign-in coming soon.')}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all bg-white text-[#1D1B22]"
+            style={{ borderColor: 'rgba(91,63,214,0.14)' }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.28)'; el.style.background = '#EDE9FF'; }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.14)'; el.style.background = 'white'; }}>
+            <span className="rounded-full flex items-center justify-center text-[8px] font-black text-white flex-shrink-0" style={{ background: '#4285F4', width: 18, height: 18 }}>G</span>
+            Continue with Google
+          </button>
         </div>
 
         <p className="mt-7 text-center text-sm text-[#64607A]">

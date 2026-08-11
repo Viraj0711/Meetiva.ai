@@ -1,31 +1,17 @@
 type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
 
-interface LogEntry {
-  level: LogLevel;
-  timestamp: string;
-  tag: string;
-  message: string;
-  data?: Record<string, unknown>;
-}
-
-const formatEntry = (entry: LogEntry): string => {
-  const base = `[${entry.level}] ${entry.timestamp} [${entry.tag}] ${entry.message}`;
-  if (entry.data !== undefined) {
-    return `${base} ${JSON.stringify(entry.data)}`;
-  }
-  return base;
+const LEVEL_COLORS: Record<LogLevel, string> = {
+  INFO: '\x1b[32m',
+  WARN: '\x1b[33m',
+  ERROR: '\x1b[31m',
+  DEBUG: '\x1b[36m',
 };
 
-const write = (level: LogLevel, tag: string, message: string, data?: Record<string, unknown>) => {
-  const entry: LogEntry = {
-    level,
-    timestamp: new Date().toISOString(),
-    tag,
-    message,
-    data,
-  };
+const RESET = '\x1b[0m';
 
-  const line = formatEntry(entry);
+const write = (level: LogLevel, tag: string, message: string, data?: Record<string, unknown>) => {
+  const color = LEVEL_COLORS[level];
+  const line = `${color}[${level}]${RESET} ${new Date().toISOString()} [${tag}] ${message}${data !== undefined ? ` ${JSON.stringify(data)}` : ''}`;
 
   if (level === 'ERROR') {
     console.error(line);

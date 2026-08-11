@@ -32,7 +32,7 @@ export const meetingService = {
    * Get all meetings with pagination and filters
    */
   getMeetings: async (
-    params?: PaginationParams & FilterParams
+    params?: PaginationParams & FilterParams & { teamId?: string }
   ): Promise<PaginatedResponse<Meeting>> => {
     const response = await apiClient.get<PaginatedResponse<Meeting>>('/meetings', {
       params,
@@ -152,8 +152,9 @@ export const meetingService = {
   /**
    * Get meeting stats
    */
-  getMeetingStats: async (): Promise<MeetingStats> => {
-    const response = await apiClient.get<MeetingStats>('/meetings/stats');
+  getMeetingStats: async (teamId?: string): Promise<MeetingStats> => {
+    const params = teamId ? { teamId } : undefined;
+    const response = await apiClient.get<MeetingStats>('/meetings/stats', { params });
     return response;
   },
 };
@@ -163,7 +164,7 @@ export const taskService = {
    * Get all tasks
    */
   getTasks: async (
-    params?: PaginationParams & FilterParams
+    params?: PaginationParams & FilterParams & { teamId?: string }
   ): Promise<PaginatedResponse<Task>> => {
     const response = await apiClient.get<PaginatedResponse<Task>>('/action-items', {
       params,

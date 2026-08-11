@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
+import SubscriptionGate from '@/components/SubscriptionGate';
 import MeetingLimitGate from '@/components/MeetingLimitGate';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAppSelector } from '@/store/hooks';
@@ -182,9 +183,11 @@ const router = createBrowserRouter([
       {
         path: 'analytics',
         element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <Analytics />
-          </Suspense>
+          <SubscriptionGate>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Analytics />
+            </Suspense>
+          </SubscriptionGate>
         ),
       },
       {
@@ -198,9 +201,11 @@ const router = createBrowserRouter([
       {
         path: 'teams',
         element: (
-          <Suspense fallback={<LoadingSpinner />}>
-            <TeamsAdmin />
-          </Suspense>
+          <SubscriptionGate>
+            <Suspense fallback={<LoadingSpinner />}>
+              <TeamsAdmin />
+            </Suspense>
+          </SubscriptionGate>
         ),
       },
       {

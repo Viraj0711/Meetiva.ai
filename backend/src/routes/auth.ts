@@ -463,6 +463,33 @@ const sendPasswordResetEmail = async (email: string, token: string): Promise<voi
   }
 };
 
+const sendPasswordChangedEmail = async (userId: string): Promise<void> => {
+  const user = await User.findById(userId).select('email name').lean();
+  if (!user) return;
+
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPassword = process.env.SMTP_PASSWORD;
+  const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
+
+  if (smtpHost && smtpUser && smtpPassword) {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: process.env.SMTP_PORT === '465',
+      auth: { user: smtpUser, pass: smtpPassword },
+    });
+
+    await transporter.sendMail({
+      from: emailFrom,
+      to: user.email,
+      subject: 'Your Meetiva.ai password was changed',
+      text: `Hi ${user.name || 'there'},\n\nYour password was just changed. If you did not make this change, please contact support immediately.`,
+      html: `<p>Hi ${user.name || 'there'},</p><p>Your password was just changed.</p><p>If you did not make this change, please contact support immediately.</p>`,
+    });
+  }
+};
+
 router.post('/password-reset',
   authLimiter,
   validate(passwordResetSchema),
@@ -506,6 +533,9 @@ router.post('/password-reset/confirm',
     await RefreshToken.deleteMany({ userId: userId as any });
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
     res.clearCookie(SESSION_COOKIE, { path: '/' });
+
+    // Notify user that password was changed
+    await sendPasswordChangedEmail(userId).catch(() => {});
 
     return res.json({ message: 'Password updated successfully. Please log in again.' });
   })

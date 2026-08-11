@@ -22,6 +22,7 @@
     "build:backend": "cd backend && npx tsc",
     "build": "npm run build:shared && npm run build:frontend && npm run build:backend",
     "start": "npx pm2 start ecosystem.config.cjs",
+    "start:web": "node backend/dist/index.js",
     "stop": "npx pm2 stop ecosystem.config.cjs",
     "restart": "npx pm2 restart ecosystem.config.cjs",
     "prod": "npm run build && npm run start",
@@ -34,12 +35,13 @@
     "pm2": "^7.0.3"
   },
   "engines": {
-    "node": ">=20.0.0",
-    "npm": ">=9.0.0"
+    "node": ">=22.0.0",
+    "npm": ">=11 <12"
   },
+  "packageManager": "npm@11.19.0",
   "repository": {
     "type": "git",
-    "url": "https://https://github.com/Viraj0711/Meetiva.ai"
+    "url": "https://github.com/Viraj0711/Meetiva.ai"
   },
   "keywords": [
     "meeting",
@@ -55,11 +57,16 @@
   },
   "overrides": {
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "pm2": {
+      "js-yaml": "^4.3.1"
+    }
   },
   "allowScripts": {
-    "esbuild@0.28.1": true,
-    "unrs-resolver@1.12.2": true,
-    "eslint@10.7.0": true
+    "esbuild@0.25.12": true,
+    "eslint@10.7.0": true,
+    "@tailwindcss/oxide@4.1.12": true,
+    "@tailwindcss/oxide@4.3.2": true,
+    "unrs-resolver": true
   }
 }
