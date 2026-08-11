@@ -46,6 +46,7 @@ export const iso8601Field = z.string().datetime({ message: 'Must be an ISO-8601 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(10),
+  teamId: z.string().optional(),
 });
 
 /** Validates and coerces query params with optional status filter. */
