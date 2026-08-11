@@ -128,7 +128,7 @@ export function createStyledWorkbook(options: StyleOptions): ExcelJS.Workbook {
         fgColor: { argb: isEven ? COLORS.zebraRow : COLORS.white },
       };
 
-      cell.font = { size: 10, name: 'Calibri', color: { argb: '1f2937' } };
+      cell.font = { size: 10, name: 'Calibri', color: { argb: 'FF1F2937' } };
       cell.alignment = {
         vertical: 'middle',
         wrapText: colConfig?.wrap ?? false,
