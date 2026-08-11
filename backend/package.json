@@ -15,7 +15,7 @@
     "lint:security": "tsx scripts/check-query-safety.ts"
   },
   "engines": {
-    "node": ">=20.19.0",
+    "node": ">=22.0.0",
     "npm": ">=11 <12"
   },
   "packageManager": "npm@11.19.0",
