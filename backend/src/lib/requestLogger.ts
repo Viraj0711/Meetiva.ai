@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
+import { createLogger } from './logger';
 
-/**
- * Interface for the rate limit headers set by `express-rate-limit`
- * when `standardHeaders: true` is configured.
- */
+const log = createLogger('meetiva:http');
+
 interface RateLimitHeaders {
   'ratelimit-limit'?: string;
   'ratelimit-remaining'?: string;
@@ -11,9 +10,6 @@ interface RateLimitHeaders {
   'retry-after'?: string;
 }
 
-/**
- * Extract rate-limit related headers from a response object.
- */
 const getRateLimitHeaders = (res: Response): RateLimitHeaders => {
   const headers: RateLimitHeaders = {};
 
@@ -32,36 +28,12 @@ const getRateLimitHeaders = (res: Response): RateLimitHeaders => {
   return headers;
 };
 
-/**
- * Format milliseconds into a human-readable duration string.
- */
 const formatDuration = (ms: number): string => {
   if (ms < 1000) return `${ms.toFixed(0)}ms`;
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
   return `${(ms / 1000 / 60).toFixed(1)}min`;
 };
 
-/**
- * Conditional logging levels based on status code.
- */
-const statusLabel = (statusCode: number): string => {
-  if (statusCode >= 500) return 'ERROR';
-  if (statusCode >= 400) return 'WARN ';
-  if (statusCode >= 300) return 'REDIR';
-  return 'OK   ';
-};
-
-/**
- * Request logging middleware.
- *
- * Logs every HTTP request with:
- *  - Timestamp, method, path, status code, duration
- *  - Rate-limit headers set by express-rate-limit (when present)
- *  - User-ID hint for authenticated requests
- *
- * Place this middleware AFTER `express.json()` / `cookieParser()` but
- * BEFORE the route mounts so it wraps every matched route handler.
- */
 export const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
   const start = Date.now();
 
@@ -70,31 +42,30 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
     const rateLimitHeaders = getRateLimitHeaders(res);
     const userId = (req as any).userId ?? '-';
 
-    const parts: string[] = [
-      new Date().toISOString(),
-      `[${statusLabel(res.statusCode)}]`,
-      `${req.method} ${req.originalUrl}`,
-      `→ ${res.statusCode}`,
-      `(${formatDuration(durationMs)})`,
-      `ip=${req.ip}`,
-      `uid=${userId}`,
-    ];
+    const data: Record<string, unknown> = {
+      method: req.method,
+      path: req.originalUrl,
+      status: res.statusCode,
+      duration: formatDuration(durationMs),
+      ip: req.ip,
+      uid: userId,
+    };
 
     if (rateLimitHeaders['ratelimit-remaining']) {
-      parts.push(
-        `rl=${rateLimitHeaders['ratelimit-remaining']}/${rateLimitHeaders['ratelimit-limit'] ?? '?'}`,
-      );
+      data.rl = `${rateLimitHeaders['ratelimit-remaining']}/${rateLimitHeaders['ratelimit-limit'] ?? '?'}`;
     }
     if (rateLimitHeaders['retry-after']) {
-      parts.push(`retry-after=${rateLimitHeaders['retry-after']}s`);
+      data.retryAfter = `${rateLimitHeaders['retry-after']}s`;
     }
 
+    const msg = `${req.method} ${req.originalUrl} -> ${res.statusCode}`;
+
     if (res.statusCode >= 500) {
-      console.error(parts.join('  '));
+      log.error(msg, data);
     } else if (res.statusCode >= 400) {
-      console.warn(parts.join('  '));
+      log.warn(msg, data);
     } else {
-      console.log(parts.join('  '));
+      log.info(msg, data);
     }
   });
 

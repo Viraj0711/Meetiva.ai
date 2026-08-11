@@ -1,3 +1,7 @@
+import { createLogger } from './logger';
+
+const log = createLogger('meetiva');
+
 const REQUIRED_ENV_KEYS = ['MONGODB_URI', 'JWT_SECRET'] as const;
 
 const missingKeys = (keys: readonly string[]): string[] =>
@@ -41,11 +45,9 @@ export const validateBackendEnv = (): void => {
   }
 
   if (optionalMissing.length > 0) {
-    console.warn(
-      [
-        'Optional AI environment variables are missing. Related features may fail:',
-        ...optionalMissing.map((message) => `- ${message}`)
-      ].join('\n')
+    log.warn(
+      'Optional AI environment variables are missing. Related features may fail',
+      { missing: optionalMissing }
     );
   }
 };
