@@ -157,16 +157,14 @@ let nextCalled = false;
 let nextError: any = null;
 
 const mockReq = { params: {} } as any;
-const mockRes = {
-  status: (_code: number) => mockRes,
-  json: (_data: any) => mockRes,
+const mockRes: any = {
   _statusCalled: false,
   _jsonCalled: false,
   _statusCode: 0,
   status(code: number) { this._statusCalled = true; this._statusCode = code; return this; },
   json(_data: any) { this._jsonCalled = true; return this; },
   reset() { this._statusCalled = false; this._jsonCalled = false; this._statusCode = 0; },
-} as any;
+};
 
 const validParamHandler = validateObjectIdParam('id');
 
