@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { apiLimiter } from '../lib/rateLimiters';
-import { validate, notificationQuerySchema } from '../lib/validation';
+import { validate, validateObjectIdParam, notificationQuerySchema } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
 import Notification from '../models/Notification';
 import { Types } from 'mongoose';
@@ -9,12 +9,7 @@ import { Types } from 'mongoose';
 const router = Router();
 
 // Validate all :id route params as MongoDB ObjectId
-router.param('id', (req, res, next, value) => {
-  if (!Types.ObjectId.isValid(value)) {
-    return res.status(400).json({ message: 'Invalid id: must be a valid ObjectId' });
-  }
-  next();
-});
+router.param('id', validateObjectIdParam('id'));
 
 router.get(
   '/',

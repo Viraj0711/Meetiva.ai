@@ -57,6 +57,13 @@ jobs:
       - name: Audit dependencies (high+)
         run: npm audit --audit-level=high
 
+      # Static scan for input validation gaps — flags direct fetch() calls
+      # that bypass apiClient, as any casts on payloads, and unvalidated
+      # API URLs.
+      - name: Input safety scan
+        working-directory: frontend
+        run: npx tsx scripts/check-input-safety.ts
+
       - name: Build shared types package
         run: cd shared && npx tsc
 
@@ -112,6 +119,11 @@ jobs:
       # Fail the build on high/critical vulnerabilities in backend deps.
       - name: Audit dependencies (high+)
         run: npm audit --audit-level=high
+
+      # Static scan for NoSQL injection risks — flags any req.body passed
+      # directly to a MongoDB query. Fails the build on violations.
+      - name: NoSQL injection safety scan
+        run: npx tsx scripts/check-query-safety.ts
 
       - name: Create .env from example
         run: cp .env.example .env

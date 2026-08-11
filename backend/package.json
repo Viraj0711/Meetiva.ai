@@ -11,7 +11,8 @@
     "start": "node dist/index.js",
     "db:seed": "tsx src/scripts/seed.ts",
     "test:rate-limit": "tsx src/tests/rateLimiters.test.ts",
-    "test:e2e": "tsx tests/e2e-team-rbac.test.ts"
+    "test:e2e": "tsx tests/e2e-team-rbac.test.ts",
+    "lint:security": "tsx scripts/check-query-safety.ts"
   },
   "engines": {
     "node": ">=20.19.0",

@@ -7,6 +7,7 @@ import { syncMeetingStatusFromTasks } from '../services/meetingStatus';
 import { apiLimiter } from '../lib/rateLimiters';
 import {
   validate,
+  validateObjectIdParam,
   createTaskSchema,
   updateTaskSchema,
   paginationQuerySchema,
@@ -21,12 +22,7 @@ import { Types } from 'mongoose';
 const router = Router();
 
 // Validate all :id route params as MongoDB ObjectId
-router.param('id', (req, res, next, value) => {
-  if (!Types.ObjectId.isValid(value)) {
-    return res.status(400).json({ message: 'Invalid id: must be a valid ObjectId' });
-  }
-  next();
-});
+router.param('id', validateObjectIdParam('id'));
 
 // Helper to get the appropriate filter based on user's role
 const getTasksFilter = async (req: AuthRequest): Promise<Record<string, any>> => {

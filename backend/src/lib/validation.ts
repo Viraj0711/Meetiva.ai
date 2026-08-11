@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodSchema, ZodError } from 'zod';
+import { Types } from 'mongoose';
+import { AppError } from './errors';
 
 export {
   sanitize,
@@ -61,6 +63,48 @@ export const validateUuidParam = (paramName: string) =>
   };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+// ── ObjectId helpers ───────────────────────────────────────────────────────
+
+/**
+ * Validate that `value` is a well-formed MongoDB ObjectId and return it
+ * wrapped in `Types.ObjectId`.  Throws a 400 `AppError` on failure.
+ *
+ * Use this to guard every user-supplied ID before it reaches a database
+ * query — prevents NoSQL injection via operator objects and catches
+ * malformed strings early (returning 400 instead of a 500 CastError).
+ */
+export const sanitizeObjectId = (
+  value: unknown,
+  fieldName: string = 'id',
+): Types.ObjectId => {
+  if (typeof value !== 'string' || !Types.ObjectId.isValid(value)) {
+    throw new AppError(400, `Invalid ${fieldName}: must be a valid ObjectId`);
+  }
+  return new Types.ObjectId(value);
+};
+
+/**
+ * Express `router.param()` callback factory that validates a named route
+ * parameter is a well-formed MongoDB ObjectId.  On success the string
+ * value is replaced with a `Types.ObjectId` instance so downstream
+ * handlers can use it directly in queries without further casting.
+ *
+ * Usage:
+ *   router.param('id',       validateObjectIdParam('id'));
+ *   router.param('teamId',   validateObjectIdParam('teamId'));
+ * * This replaces the duplicated `Types.ObjectId.isValid` + 400 pattern
+ * across all route files.
+ */
+export const validateObjectIdParam = (paramName: string) =>
+  (req: Request, _res: Response, next: NextFunction, value: string): void => {
+    try {
+      req.params[paramName] = sanitizeObjectId(value, paramName).toString();
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
 
 /**
  * Express middleware factory that validates `req.body` (or a custom source)
