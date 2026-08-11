@@ -243,7 +243,7 @@ ${transcript}`;
       throw new AppError(504, `Groq LLM request timed out after ${GROQ_FETCH_TIMEOUT_MS / 1000}s`);
     }
     const errorMessage = error instanceof Error ? error.message : 'Unknown Groq LLM API error';
-    console.error('Groq LLM API error:', errorMessage);
+    log.error('Groq LLM API error', { error: errorMessage });
     throw new AppError(502, `Groq LLM API error: ${errorMessage}`);
   } finally {
     clearTimeout(timeoutId);

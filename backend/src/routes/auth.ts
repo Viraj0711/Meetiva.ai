@@ -27,6 +27,9 @@ import User from '../models/User';
 import TeamMember from '../models/TeamMember';
 import RefreshToken from '../models/RefreshToken';
 import GoogleCalendarAuth from '../models/GoogleCalendarAuth';
+import { createLogger } from '../lib/logger';
+
+const log = createLogger('meetiva:auth');
 
 const router = Router();
 
@@ -397,7 +400,7 @@ const sendPasswordResetEmail = async (email: string, token: string): Promise<voi
     });
   } else {
     // Dev fallback — log the token so developers can test the reset flow
-    console.log(`[DEV] Password reset token for ${email}: ${token}`);
+    log.info('DEV: Password reset token', { email, token });
   }
 };
 
@@ -531,7 +534,7 @@ router.post('/admin/set-tier',
       return res.status(500).json({ message: 'Failed to update user' });
     }
 
-    console.log(`✅ Admin upgraded user ${updated.email} to ${tier}`);
+    log.info('Admin upgraded user', { email: updated.email, tier });
 
     res.json({
       user: {
