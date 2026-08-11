@@ -139,12 +139,43 @@ const sendAuthResponse = async (res, user, statusCode = 200) => {
             id: userId,
             email: user.email,
             name: user.name,
+            isVerified: user.isVerified,
             createdAt: user.createdAt.toISOString(),
             updatedAt: user.updatedAt.toISOString(),
         },
     });
 };
 // ── Auth routes ────────────────────────────────────────────────────────────
+// ── OTP generation helper ──────────────────────────────────────────────────
+const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+// ── SMTP email helper for verification OTP ─────────────────────────────────
+const sendVerificationEmail = async (email, otp) => {
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPassword = process.env.SMTP_PASSWORD;
+    const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
+    if (smtpHost && smtpUser && smtpPassword) {
+        const transporter = nodemailer_1.default.createTransport({
+            host: smtpHost,
+            port: parseInt(process.env.SMTP_PORT || '587', 10),
+            secure: process.env.SMTP_PORT === '465',
+            auth: {
+                user: smtpUser,
+                pass: smtpPassword,
+            },
+        });
+        await transporter.sendMail({
+            from: emailFrom,
+            to: email,
+            subject: 'Verify your Meetiva.ai email',
+            text: `Your verification code is: ${otp}\n\nThis code expires in 5 minutes.`,
+            html: `<p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${otp}</p><p>This code expires in 5 minutes.</p>`,
+        });
+    }
+    else {
+        console.log(`[DEV] Verification OTP for ${email}: ${otp}`);
+    }
+};
 // ── Open registration ──────────────────────────────────────────────────────
 // Any user can create an account with a FREE tier (5 meetings/month).
 // Team-creation and team-joining require a subscription upgrade.
@@ -156,6 +187,10 @@ router.post('/register', rateLimiters_1.authLimiter, (0, validation_1.validate)(
     }
     const hashedPassword = await bcryptjs_1.default.hash(password, 10);
     const user = await User_1.default.create({ email, name, hashedPassword });
+    // Generate and send verification OTP
+    const otp = generateOtp();
+    await (0, redis_1.setOtp)(email, otp);
+    await sendVerificationEmail(email, otp);
     await sendAuthResponse(res, user, 201);
 }));
 // ── Get subscription info ──────────────────────────────────────────────────
@@ -196,7 +231,7 @@ router.post('/login', rateLimiters_1.authLimiter, (0, validation_1.validate)(val
 // Get current authenticated user (access token required)
 router.get('/me', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.asyncHandler)(async (req, res) => {
     const user = await User_1.default.findById(req.userId)
-        .select('email name createdAt updatedAt')
+        .select('email name isVerified createdAt updatedAt')
         .lean();
     if (!user) {
         return res.status(404).json({ message: 'User not found' });
@@ -205,6 +240,7 @@ router.get('/me', rateLimiters_1.apiLimiter, auth_1.authenticate, (0, errors_1.a
         id: user._id.toString(),
         email: user.email,
         name: user.name,
+        isVerified: user.isVerified,
         createdAt: user.createdAt.toISOString(),
         updatedAt: user.updatedAt.toISOString(),
     });
@@ -253,7 +289,7 @@ router.post('/refresh', rateLimiters_1.authLimiter, (0, errors_1.asyncHandler)(a
         return res.status(401).json({ message: 'Session expired. Please log in again.' });
     }
     const user = await User_1.default.findById(userId)
-        .select('email name isActive createdAt updatedAt')
+        .select('email name isActive isVerified createdAt updatedAt')
         .lean();
     if (!user) {
         return res.status(401).json({ message: 'User not found' });
@@ -270,6 +306,7 @@ router.post('/refresh', rateLimiters_1.authLimiter, (0, errors_1.asyncHandler)(a
             id: user._id.toString(),
             email: user.email,
             name: user.name,
+            isVerified: user.isVerified,
             createdAt: user.createdAt.toISOString(),
             updatedAt: user.updatedAt.toISOString(),
         },
@@ -334,6 +371,81 @@ router.post('/password-reset/confirm', rateLimiters_1.authLimiter, (0, validatio
     const hashedPassword = await bcryptjs_1.default.hash(password, 10);
     await User_1.default.findByIdAndUpdate(userId, { hashedPassword });
     await (0, redis_1.deleteResetToken)(token);
+    // Invalidate all existing refresh tokens (password changed — force re-login)
+    await RefreshToken_1.default.deleteMany({ userId: userId });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
+    return res.json({ message: 'Password updated successfully. Please log in again.' });
+}));
+// ── Email verification OTP ──────────────────────────────────────────────────
+// Stricter per-IP limit (otpLimiter) + per-email failed-attempt lockout so a
+// 6-digit code can't be brute-forced by rotating IPs.
+router.post('/verify-otp', rateLimiters_1.otpLimiter, (0, validation_1.validate)(validation_1.verifyOtpSchema), (0, errors_1.asyncHandler)(async (req, res) => {
+    const { email, otp } = req.body;
+    const user = await User_1.default.findOne({ email });
+    if (!user) {
+        return res.status(400).json({ message: 'Invalid or expired code' });
+    }
+    if (user.isVerified) {
+        return res.json({ message: 'Email already verified' });
+    }
+    // Per-email brute-force guard: block once the attempt budget is exhausted.
+    const failedAttempts = await (0, redis_1.getOtpFailedAttempts)(email);
+    if (failedAttempts >= redis_1.MAX_OTP_ATTEMPTS) {
+        return res.status(429).json({
+            message: 'Too many incorrect codes. Request a new code or try again in 15 minutes.',
+        });
+    }
+    const valid = await (0, redis_1.verifyOtp)(email, otp);
+    if (!valid) {
+        await (0, redis_1.incrementOtpFailedAttempts)(email);
+        return res.status(400).json({ message: 'Invalid or expired code' });
+    }
+    await (0, redis_1.clearOtpFailedAttempts)(email);
+    await User_1.default.findByIdAndUpdate(user._id, { isVerified: true });
+    return res.json({ message: 'Email verified successfully' });
+}));
+// ── Resend verification OTP ────────────────────────────────────────────────
+router.post('/verify-otp/resend', rateLimiters_1.authLimiter, (0, validation_1.validate)(validation_1.resendOtpSchema), (0, errors_1.asyncHandler)(async (req, res) => {
+    const { email } = req.body;
+    const user = await User_1.default.findOne({ email }).lean();
+    // Always return success to avoid revealing whether the email exists
+    if (!user) {
+        return res.json({ message: 'If the email is registered, a new code has been sent.' });
+    }
+    if (user.isVerified) {
+        return res.json({ message: 'If the email is registered, a new code has been sent.' });
+    }
+    // Check cooldown
+    const cooldownMs = await (0, redis_1.getOtpCooldown)(email);
+    if (cooldownMs > 0) {
+        return res.status(429).json({
+            message: `Please wait ${Math.ceil(cooldownMs / 1000)} seconds before requesting a new code.`,
+            retryAfterMs: cooldownMs,
+        });
+    }
+    // Generate new OTP (old one is automatically discarded by setOtp)
+    const otp = generateOtp();
+    await (0, redis_1.setOtp)(email, otp);
+    await sendVerificationEmail(email, otp);
+    // A fresh code resets the failed-attempt budget for this email.
+    await (0, redis_1.clearOtpFailedAttempts)(email);
+    return res.json({ message: 'If the email is registered, a new code has been sent.' });
+}));
+// ── Change password (authenticated) ─────────────────────────────────────────
+router.post('/change-password', auth_1.authenticate, (0, validation_1.validate)(validation_1.changePasswordSchema), (0, errors_1.asyncHandler)(async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.userId;
+    const user = await User_1.default.findById(userId).select('hashedPassword');
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+    const isMatch = await bcryptjs_1.default.compare(currentPassword, user.hashedPassword);
+    if (!isMatch) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+    const hashedPassword = await bcryptjs_1.default.hash(newPassword, 10);
+    await User_1.default.findByIdAndUpdate(userId, { hashedPassword });
     // Invalidate all existing refresh tokens (password changed — force re-login)
     await RefreshToken_1.default.deleteMany({ userId: userId });
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
