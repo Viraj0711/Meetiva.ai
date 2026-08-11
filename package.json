@@ -5,7 +5,8 @@
   "private": true,
   "workspaces": [
     "shared",
-    "frontend"
+    "frontend",
+    "admin"
   ],
   "scripts": {
     "install:backend": "cd backend && npm install",
@@ -13,7 +14,9 @@
     "install:all": "npm run install:backend && npm run install:frontend",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "dev": "npx concurrently -n frontend,backend -c cyan,green \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:admin": "cd admin && npm run dev",
+    "dev": "npx concurrently -n frontend,backend,admin -c cyan,green,magenta \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:admin\"",
+    "install:admin": "cd admin && npm install",
     "build:shared": "cd shared && npx tsc",
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && npx tsc",
@@ -29,9 +32,6 @@
   "devDependencies": {
     "concurrently": "^9.1.0",
     "pm2": "^7.0.3"
-  },
-  "devDependencies": {
-    "concurrently": "^9.1.0"
   },
   "engines": {
     "node": ">=20.0.0",
