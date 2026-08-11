@@ -12,9 +12,10 @@ const COLORS = {
   // Priority colors (background)
   priority: {
     urgent: 'FFFEE2E2',
-    high: 'FFFEDD5',
+    high: 'FFFED7AA',
     medium: 'FFFEF9C3',
     low: 'FFDCFCE7',
+  }
   },
 
   // Status colors (text)
