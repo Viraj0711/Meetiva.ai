@@ -180,13 +180,16 @@ const Sidebar: React.FC = () => {
       </nav>
 
       <div className="relative p-4 border-t border-[#E4E0F5]">
-        <div className="flex items-center gap-2.5 mb-3">
+        <button
+          onClick={() => navTo('/dashboard/profile')}
+          className="flex items-center gap-2.5 mb-3 w-full text-left rounded-lg p-1 -m-1 transition-colors hover:bg-[rgba(91,63,214,0.04)] cursor-pointer"
+        >
           <Avatar name={user?.name || 'User'} size="sm" />
           <div className="flex-1 min-w-0">
             <div className="text-xs font-semibold text-[#1D1B22] truncate">{user?.name || 'User'}</div>
             <div className="text-[10px] text-[#64607A] truncate">{user?.email || ''}</div>
           </div>
-        </div>
+        </button>
         <button
           onClick={() => dispatch(logout())}
           className="flex items-center gap-2 text-xs transition-colors"
