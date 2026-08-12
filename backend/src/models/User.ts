@@ -18,7 +18,9 @@ export interface IUser extends Document {
   passwordSalt: string;
   // Set when the user signs in via Google. Used to link a Google account to
   // the existing Meetiva account (same email) instead of duplicating it.
-  googleId: string | null;
+  // `undefined` when the user has never signed in with Google (field absent,
+  // so the sparse unique index excludes them).
+  googleId: string | null | undefined;
   isActive: boolean;
   isVerified: boolean;
   subscriptionTier: SubscriptionTier;
@@ -48,7 +50,12 @@ const userSchema = new Schema<IUser>(
     // bcrypt also embeds the salt in the hash string, so legacy records without
     // this column still verify correctly.
     passwordSalt: { type: String, default: '' },
-    googleId: { type: String, default: null },
+    // IMPORTANT: no default. An explicit `default: null` would store `null`
+    // in every unlinked document, and the sparse unique index below indexes
+    // null values (sparse only skips MISSING fields) — allowing only ONE
+    // unlinked user before E11000 ("A record with this googleId already
+    // exists."). Omitting the field keeps unlinked users out of the index.
+    googleId: { type: String },
     isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
     subscriptionTier: {
@@ -74,7 +81,8 @@ const userSchema = new Schema<IUser>(
 userSchema.index({ subscriptionTier: 1, meetingCountResetAt: 1 });
 userSchema.index({ organizationId: 1 });
 userSchema.index({ accountType: 1 });
-// One Google account maps to at most one Meetiva user (sparse: null is allowed).
+// One Google account maps to at most one Meetiva user (sparse: documents
+// without googleId are excluded from the index, so unlinked users coexist).
 userSchema.index({ googleId: 1 }, { sparse: true, unique: true });
 
 // ── Cascade delete: when a User is deleted, remove all related data ────────
