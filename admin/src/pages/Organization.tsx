@@ -189,10 +189,10 @@ export function Organization() {
                   <td className="px-5 py-4"><span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[org.status] ?? "bg-gray-50 text-gray-600"}`}>{org.status}</span></td>
                   <td className="px-5 py-4 text-sm text-[#0F172A]">{org.seatsUsed}/{org.seatLimit}</td>
                   <td className="px-5 py-4 text-sm text-[#94A3B8]">{new Date(org.createdAt).toLocaleDateString()}</td>
-                  <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {org.status === "pending" && <button onClick={() => loadOrgDetails(org.id)} className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">Review</button>}
-                      {org.status === "active" && <button onClick={() => handleSuspend(org.id)} className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">Suspend</button>}
+                      {org.status === "pending" && <button onClick={(e) => { e.stopPropagation(); loadOrgDetails(org.id); }} className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">Review</button>}
+                      {org.status === "active" && <button onClick={(e) => { e.stopPropagation(); handleSuspend(org.id); }} className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">Suspend</button>}
                     </div>
                   </td>
                 </tr>
