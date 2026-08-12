@@ -32,6 +32,9 @@ const MeetingDetail: React.FC = () => {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
 
+  // Fresh signed URL for the file persisted in Firebase Storage (optional).
+  const [storedFile, setStoredFile] = useState<{ url: string; kind: 'audio' | 'video' | 'text' } | null>(null);
+
   const loadMeetingDetails = useCallback(async () => {
     if (!id) return;
 
@@ -46,6 +49,15 @@ const MeetingDetail: React.FC = () => {
       setMeeting(meetingData);
       setSummary(summaryData);
       setTasks(tasksData);
+
+      // Fetch a fresh signed URL for the stored recording/file (if any).
+      setStoredFile(null);
+      meetingService
+        .getMeetingFileUrl(id)
+        .then((res) => {
+          if (res.kind) setStoredFile({ url: res.url, kind: res.kind });
+        })
+        .catch(() => setStoredFile(null));
 
       const transcriptData = await meetingService.getMeetingTranscript(id).catch(() => null);
       setTranscript(transcriptData);
@@ -225,6 +237,46 @@ const MeetingDetail: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Stored recording / file (Firebase Storage) */}
+      {storedFile && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {storedFile.kind === 'text' ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                ) : storedFile.kind === 'video' ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
+                )}
+              </svg>
+              <h2 className="text-lg font-semibold">
+                {storedFile.kind === 'audio'
+                  ? 'Recording'
+                  : storedFile.kind === 'video'
+                    ? 'Video'
+                    : 'Transcript file'}
+              </h2>
+            </div>
+            <a href={storedFile.url} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm">Open file</Button>
+            </a>
+          </div>
+          {storedFile.kind === 'audio' && (
+            <audio controls src={storedFile.url} preload="metadata" className="w-full" />
+          )}
+          {storedFile.kind === 'video' && (
+            <video controls src={storedFile.url} preload="metadata" className="w-full max-h-96 rounded-lg bg-black" />
+          )}
+          {storedFile.kind === 'text' && (
+            <p className="text-sm text-muted-foreground">
+              The original transcript file is available — open it to view or download.
+            </p>
+          )}
+        </Card>
+      )}
 
       {/* Tabs */}
       <div className="border-b">
