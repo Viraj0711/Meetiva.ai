@@ -349,7 +349,7 @@ router.post('/login',
 // Get current authenticated user (access token required)
 router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = await User.findById(req.userId!)
-    .select('email name isVerified accountType orgRole organizationId forcePasswordChange createdAt updatedAt')
+    .select('email name isVerified hashedPassword accountType orgRole organizationId forcePasswordChange createdAt updatedAt')
     .lean();
 
   if (!user) {
@@ -361,6 +361,7 @@ router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest
     email: user.email,
     name: user.name,
     isVerified: user.isVerified,
+    hasPassword: Boolean(user.hashedPassword),
     accountType: user.accountType ?? 'self',
     orgRole: user.orgRole ?? null,
     organizationId: user.organizationId?.toString() ?? null,
@@ -675,9 +676,16 @@ router.post('/change-password',
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const isMatch = await verifyPassword(currentPassword, user.hashedPassword);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Current password is incorrect' });
+    // Accounts created via Google have no password yet — let them set one
+    // without a current password. Everyone else must prove the current one.
+    if (user.hashedPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Current password is required' });
+      }
+      const isMatch = await verifyPassword(currentPassword, user.hashedPassword);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
     }
 
     const { salt, hashedPassword } = await hashPassword(newPassword);
@@ -1048,9 +1056,13 @@ router.delete('/me',
       });
     }
 
-    const valid = await verifyPassword(password, user.hashedPassword);
-    if (!valid) {
-      return res.status(400).json({ message: 'Incorrect password' });
+    // Google-only accounts have no password — the authenticated session is the
+    // proof of identity, so skip re-verification for them.
+    if (user.hashedPassword) {
+      const valid = await verifyPassword(password, user.hashedPassword);
+      if (!valid) {
+        return res.status(400).json({ message: 'Incorrect password' });
+      }
     }
 
     // Document deleteOne() triggers the User schema cascade hook, permanently

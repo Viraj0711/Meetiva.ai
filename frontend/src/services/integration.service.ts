@@ -1,4 +1,5 @@
 import { CalendarConnectionStatus, CalendarEvent, CreateCalendarEventRequest } from '@/types';
+import { toLocalIsoString } from '@/utils';
 import { apiClient } from './api.client';
 
 export const integrationService = {
@@ -51,7 +52,18 @@ export const integrationService = {
 
   /** Create a calendar event */
   createEvent: async (payload: CreateCalendarEventRequest): Promise<CalendarEvent> => {
-    const response = await apiClient.post<{ data: CalendarEvent }>('/calendar/create-event', payload);
+    // The backend contract requires full ISO-8601 datetimes (with offset). The
+    // form submits local datetime-local values ("YYYY-MM-DDTHH:mm"), so
+    // normalise here — at the API boundary — preserving the user's local
+    // timezone. Timezone defaults to the browser's local zone when omitted.
+    const timeZone =
+      payload.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const response = await apiClient.post<{ data: CalendarEvent }>('/calendar/create-event', {
+      ...payload,
+      startTime: toLocalIsoString(payload.startTime),
+      endTime: toLocalIsoString(payload.endTime),
+      timeZone,
+    });
     return response.data;
   },
 

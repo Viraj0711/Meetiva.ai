@@ -9,6 +9,7 @@ import { useAppDispatch } from '@/store/hooks';
 import { addToast } from '@/store/slices/uiSlice';
 import { integrationService, workspaceService } from '@/services';
 import { createEventSchema, zodResolver } from '@/lib/validation';
+import { toLocalIsoString } from '@/utils';
 import {
   CalendarConnectionStatus,
   CalendarEvent,
@@ -61,6 +62,7 @@ const Workspace: React.FC = () => {
     handleSubmit: handleEventSubmit,
     formState: { errors: eventErrors },
     reset: resetEventForm,
+    setValue,
   } = useForm<CalendarFormData>({
     resolver: zodResolver(createEventSchema),
     defaultValues: {
@@ -78,11 +80,8 @@ const Workspace: React.FC = () => {
     [overview.upcomingDeadlines]
   );
 
-  const toLocalDateTimeValue = (date: Date): string => {
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - offset * 60 * 1000);
-    return localDate.toISOString().slice(0, 16);
-  };
+  const toLocalDateTimeValue = (date: Date): string =>
+    toLocalIsoString(date.toISOString()).slice(0, 16);
 
   const loadWorkspace = useCallback(async () => {
     try {
@@ -135,10 +134,48 @@ const Workspace: React.FC = () => {
     }
   };
 
+  /**
+   * datetime-local gives "YYYY-MM-DDTHH:mm" (local wall time). Keep that raw
+   * value for the native picker/display, but mirror the ISO-8601 (local-offset)
+   * form into react-hook-form so validation and the API payload both satisfy
+   * the strict ISO-8601 contract while preserving the user's timezone.
+   */
+  const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawStart = e.target.value;
+
+    // User cleared the picker (or the value is garbage): reset both times so
+    // validation marks them missing. Never touch toISOString on an Invalid Date.
+    const startDate = new Date(rawStart);
+    if (!rawStart || Number.isNaN(startDate.getTime())) {
+      setValue('startTime', '', { shouldValidate: true });
+      setValue('endTime', '', { shouldValidate: true });
+      setEventForm((prev: CreateCalendarEventRequest) => ({ ...prev, startTime: '', endTime: '' }));
+      return;
+    }
+
+    const endDate = new Date(startDate.getTime());
+    endDate.setMinutes(endDate.getMinutes() + 30);
+    const rawEnd = toLocalDateTimeValue(endDate);
+
+    setValue('startTime', toLocalIsoString(rawStart), { shouldValidate: true });
+    setValue('endTime', toLocalIsoString(rawEnd), { shouldValidate: true });
+    setEventForm((prev: CreateCalendarEventRequest) => ({
+      ...prev,
+      startTime: rawStart,
+      endTime: rawEnd,
+    }));
+  };
+
   const onCreateEvent = async (data: CalendarFormData) => {
     try {
       setIsCreatingEvent(true);
-      await integrationService.createEvent(data);
+      await integrationService.createEvent({
+        title: data.title,
+        description: data.description,
+        startTime: data.startTime || toLocalIsoString(eventForm.startTime),
+        endTime: data.endTime || toLocalIsoString(eventForm.endTime),
+        timeZone: eventForm.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
       dispatch(addToast({ type: 'success', message: 'Event created in Google Calendar.' }));
       resetEventForm();
       setEventForm((prev: CreateCalendarEventRequest) => ({
@@ -264,21 +301,17 @@ const Workspace: React.FC = () => {
                       ? new Date(eventForm.startTime).toLocaleString()
                       : 'Select date and time'}
                   </button>
+                  {/* react-hook-form needs startTime/endTime registered so the
+                      ISO-8601 values set by handleStartTimeChange are validated
+                      and submitted. They live in the form state, not the DOM. */}
+                  <input type="hidden" {...register('startTime')} />
+                  <input type="hidden" {...register('endTime')} />
                   <input
                     ref={startTimeInputRef}
                     type="datetime-local"
                     className="sr-only"
                     value={eventForm.startTime}
-                    onChange={(e) => {
-                      const nextStart = e.target.value;
-                      const endDate = new Date(nextStart);
-                      endDate.setMinutes(endDate.getMinutes() + 30);
-                      setEventForm((prev: CreateCalendarEventRequest) => ({
-                        ...prev,
-                        startTime: nextStart,
-                        endTime: toLocalDateTimeValue(endDate),
-                      }));
-                    }}
+                    onChange={handleStartTimeChange}
                     disabled={!connection.connected || isCreatingEvent}
                   />
                 </div>

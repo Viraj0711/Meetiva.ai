@@ -40,7 +40,9 @@ export const optionalDescription = z
   .transform((val) => sanitize(val))
   .optional()
   .nullable();
-export const iso8601Field = z.string().datetime({ message: 'Must be an ISO-8601 date' });
+// offset: true accepts BOTH UTC ("...Z") and numeric-offset ISO-8601
+// ("...+05:30") so the frontend can send local timezone-aware datetimes.
+export const iso8601Field = z.string().datetime({ offset: true, message: 'Must be an ISO-8601 date' });
 
 /** Validates and coerces query params for paginated list endpoints. */
 export const paginationQuerySchema = z.object({
