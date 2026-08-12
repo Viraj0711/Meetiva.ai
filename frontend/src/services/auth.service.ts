@@ -110,6 +110,7 @@ export const authService = {
    * Request password reset
    */
   requestPasswordReset: async (email: string): Promise<void> => {
+    // input-safety-ok: email validated server-side by passwordResetSchema
     await apiClient.post('/auth/password-reset', { email });
   },
 
@@ -117,6 +118,7 @@ export const authService = {
    * Reset password with token
    */
   resetPassword: async (token: string, newPassword: string): Promise<void> => {
+    // input-safety-ok: token/password validated server-side by passwordResetConfirmSchema
     await apiClient.post('/auth/password-reset/confirm', { token, password: newPassword });
   },
 
@@ -124,6 +126,7 @@ export const authService = {
    * Change password (authenticated user)
    */
   changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    // input-safety-ok: validated server-side by changePasswordSchema
     await apiClient.post('/auth/change-password', { currentPassword, newPassword });
   },
 
@@ -131,6 +134,7 @@ export const authService = {
    * Verify email with OTP code
    */
   verifyOtp: async (email: string, otp: string): Promise<void> => {
+    // input-safety-ok: validated server-side by verifyOtpSchema
     await apiClient.post('/auth/verify-otp', { email, otp });
   },
 
@@ -138,6 +142,7 @@ export const authService = {
    * Resend verification OTP
    */
   resendOtp: async (email: string): Promise<void> => {
+    // input-safety-ok: email validated server-side by resendOtpSchema
     await apiClient.post('/auth/verify-otp/resend', { email });
   },
 
