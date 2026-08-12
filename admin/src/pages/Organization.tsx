@@ -166,6 +166,7 @@ export function Organization() {
             <thead>
               <tr className="border-b border-[#E5F4F7]">
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Organization</th>
+                <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Contact</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Status</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Seats</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Created</th>
@@ -184,19 +185,20 @@ export function Organization() {
                       </div>
                     </div>
                   </td>
+                  <td className="px-5 py-4 text-sm text-[#64748B]">{org.contactEmail || "—"}</td>
                   <td className="px-5 py-4"><span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[org.status] ?? "bg-gray-50 text-gray-600"}`}>{org.status}</span></td>
                   <td className="px-5 py-4 text-sm text-[#0F172A]">{org.seatsUsed}/{org.seatLimit}</td>
                   <td className="px-5 py-4 text-sm text-[#94A3B8]">{new Date(org.createdAt).toLocaleDateString()}</td>
                   <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-2">
-                      {org.status === "pending" && <button onClick={() => handleActivate(org.id)} className="px-3 py-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors">Activate</button>}
+                      {org.status === "pending" && <button onClick={() => loadOrgDetails(org.id)} className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">Review</button>}
                       {org.status === "active" && <button onClick={() => handleSuspend(org.id)} className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">Suspend</button>}
                     </div>
                   </td>
                 </tr>
               ))}
               {organizations.length === 0 && (
-                <tr><td colSpan={5} className="px-5 py-12 text-center text-sm text-[#94A3B8]">No organizations found</td></tr>
+                <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-[#94A3B8]">No organizations found</td></tr>
               )}
             </tbody>
           </table>
@@ -215,7 +217,10 @@ export function Organization() {
             )}
           </div>
           <h1 className="text-2xl font-bold text-[#0F172A]">{selectedOrg?.name ?? "Organization"}</h1>
-          <p className="text-sm text-[#94A3B8]">Manage organization users, projects, and settings</p>
+          <p className="text-sm text-[#94A3B8]">
+            {selectedOrg?.contactEmail && <span>Contact: <strong className="text-[#64748B]">{selectedOrg.contactEmail}</strong> · </span>}
+            Manage organization users, projects, and settings
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {isSuperAdmin && selectedOrg && (

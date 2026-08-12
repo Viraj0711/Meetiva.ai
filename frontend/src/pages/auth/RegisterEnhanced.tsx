@@ -47,7 +47,7 @@ const RegisterPage: React.FC = () => {
       return;
     }
     try {
-      await apiClient.post('/organizations', { name: orgName, contactEmail: orgEmail });
+      await apiClient.post('/organizations/request', { name: orgName, contactEmail: orgEmail });
       setStep('pending');
     } catch (err) {
       const e = err as { message?: string };

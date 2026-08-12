@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { requireOrgRole, requireSuperAdmin, requireOrgAccess } from '../middleware/authorizeOrg';
@@ -60,6 +60,47 @@ const slugify = (text: string): string =>
   text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 // ── Organization CRUD ──────────────────────────────────────────────────────
+
+// Public: Enterprise request (no auth required)
+const enterpriseRequestSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  contactEmail: z.string().email(),
+});
+
+router.post(
+  '/request',
+  apiLimiter,
+  validate(enterpriseRequestSchema),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { name, contactEmail } = req.body as z.infer<typeof enterpriseRequestSchema>;
+
+    const baseSlug = slugify(name);
+    let slug = baseSlug;
+    let counter = 1;
+    while (await Organization.findOne({ slug }).lean()) {
+      slug = `${baseSlug}-${counter++}`;
+    }
+
+    const org = await Organization.create({
+      name,
+      slug,
+      contactEmail,
+      status: 'pending',
+    });
+
+    log.info('Enterprise request submitted', { orgId: String(org._id), contactEmail });
+
+    res.status(201).json({
+      message: 'Request submitted. Our team will review and contact you with Admin credentials.',
+      organization: {
+        id: org._id.toString(),
+        name: org.name,
+        slug: org.slug,
+        status: org.status,
+      },
+    });
+  })
+);
 
 // Create organization (any authenticated user can request; goes to pending status)
 router.post(
@@ -334,7 +375,7 @@ router.get(
   requireSuperAdmin,
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const orgs = await Organization.find()
-      .select('name slug status seatLimit seatsUsed adminUserId createdAt')
+      .select('name slug contactEmail status seatLimit seatsUsed adminUserId createdAt')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -343,10 +384,11 @@ router.get(
         id: o._id.toString(),
         name: o.name,
         slug: o.slug,
+        contactEmail: o.contactEmail ?? null,
         status: o.status,
         seatLimit: o.seatLimit,
         seatsUsed: o.seatsUsed,
-        adminUserId: o.adminUserId.toString(),
+        adminUserId: o.adminUserId?.toString() ?? null,
         createdAt: o.createdAt.toISOString(),
       })),
     });

@@ -236,6 +236,7 @@ export interface OrganizationData {
   id: string;
   name: string;
   slug: string;
+  contactEmail: string | null;
   adminUserId: string;
   status: string;
   seatLimit: number;
