@@ -45,6 +45,7 @@ import TeamMember from '../models/TeamMember';
 import RefreshToken from '../models/RefreshToken';
 import GoogleCalendarAuth from '../models/GoogleCalendarAuth';
 import { createLogger } from '../lib/logger';
+import { verificationOtp, passwordReset, passwordChanged } from '../lib/emailTemplates';
 
 const log = createLogger('meetiva:auth');
 
@@ -248,12 +249,13 @@ const sendVerificationEmail = async (email: string, otp: string): Promise<void> 
       },
     });
 
+    const emailContent = verificationOtp(otp);
     await transporter.sendMail({
       from: emailFrom,
       to: email,
-      subject: 'Verify your Meetiva.ai email',
-      text: `Your verification code is: ${otp}\n\nThis code expires in 5 minutes.`,
-      html: `<p>Your verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${otp}</p><p>This code expires in 5 minutes.</p>`,
+      subject: emailContent.subject,
+      text: emailContent.text,
+      html: emailContent.html,
     });
   } else {
     console.log(`[DEV] Verification OTP for ${email}: ${otp}`);
@@ -464,12 +466,13 @@ const sendPasswordResetEmail = async (email: string, token: string): Promise<voi
       },
     });
 
+    const emailContent = passwordReset(resetLink);
     await transporter.sendMail({
       from: emailFrom,
       to: email,
-      subject: 'Reset your Meetiva.ai password',
-      text: `You requested a password reset. Click this link to reset your password: ${resetLink}\n\nThis link expires in 1 hour.`,
-      html: `<p>You requested a password reset.</p><p>Click <a href="${resetLink}">here</a> to reset your password.</p><p>This link expires in 1 hour.</p>`,
+      subject: emailContent.subject,
+      text: emailContent.text,
+      html: emailContent.html,
     });
   } else {
     // Dev fallback — log the token so developers can test the reset flow
@@ -494,12 +497,13 @@ const sendPasswordChangedEmail = async (userId: string): Promise<void> => {
       auth: { user: smtpUser, pass: smtpPassword },
     });
 
+    const emailContent = passwordChanged(user.name || 'there');
     await transporter.sendMail({
       from: emailFrom,
       to: user.email,
-      subject: 'Your Meetiva.ai password was changed',
-      text: `Hi ${user.name || 'there'},\n\nYour password was just changed. If you did not make this change, please contact support immediately.`,
-      html: `<p>Hi ${user.name || 'there'},</p><p>Your password was just changed.</p><p>If you did not make this change, please contact support immediately.</p>`,
+      subject: emailContent.subject,
+      text: emailContent.text,
+      html: emailContent.html,
     });
   }
 };
