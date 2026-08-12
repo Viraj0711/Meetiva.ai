@@ -6,6 +6,7 @@ import { apiLimiter } from '../lib/rateLimiters';
 import { validate } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
 import { hashPassword } from '../lib/password';
+import { normalizeEmail, emailQueryFilter } from '../lib/email';
 import { createLogger } from '../lib/logger';
 import Organization from '../models/Organization';
 import User from '../models/User';
@@ -230,7 +231,8 @@ router.post(
   requireOrgAccess((req) => req.params.id),
   validate(provisionUserSchema),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { email, name, role } = req.body as z.infer<typeof provisionUserSchema>;
+    const { email: rawEmail, name, role } = req.body as z.infer<typeof provisionUserSchema>;
+    const email = normalizeEmail(rawEmail);
     const orgId = req.params.id;
     const creatorOrgRole = req.userOrg!.orgRole;
 
@@ -262,7 +264,7 @@ router.post(
     }
 
     // Check email not already taken
-    const existing = await User.findOne({ email: email.toLowerCase() }).lean();
+    const existing = await User.findOne(emailQueryFilter(rawEmail)).lean();
     if (existing) {
       return res.status(409).json({ message: 'Email already registered' });
     }
@@ -272,7 +274,7 @@ router.post(
     const { salt, hashedPassword } = await hashPassword(tempPassword);
 
     const user = await User.create({
-      email: email.toLowerCase(),
+      email,
       name,
       hashedPassword,
       passwordSalt: salt,
@@ -443,7 +445,8 @@ router.post(
   requireSuperAdmin,
   validate(addAdminSchema),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { email, name } = req.body as z.infer<typeof addAdminSchema>;
+    const { email: rawEmail, name } = req.body as z.infer<typeof addAdminSchema>;
+    const email = normalizeEmail(rawEmail);
     const orgId = req.params.id;
 
     const org = await Organization.findById(orgId).lean();
@@ -452,7 +455,7 @@ router.post(
     }
 
     // Check email not already taken
-    const existing = await User.findOne({ email: email.toLowerCase() }).lean();
+    const existing = await User.findOne(emailQueryFilter(rawEmail)).lean();
     if (existing) {
       return res.status(409).json({ message: 'Email already registered' });
     }
@@ -470,7 +473,7 @@ router.post(
 
     // Create new admin user
     const adminUser = await User.create({
-      email: email.toLowerCase(),
+      email,
       name,
       hashedPassword,
       passwordSalt: salt,
@@ -525,12 +528,13 @@ router.post(
       return res.status(400).json({ message: 'Organization is not in pending status' });
     }
 
-    const { email, name } = req.body as { email?: string; name?: string };
-    if (!email || !name) {
+    const { email: rawEmail, name } = req.body as { email?: string; name?: string };
+    if (!rawEmail || !name) {
       return res.status(400).json({ message: 'Email and name are required' });
     }
+    const email = normalizeEmail(rawEmail);
 
-    const existing = await User.findOne({ email: email.toLowerCase() }).lean();
+    const existing = await User.findOne(emailQueryFilter(rawEmail)).lean();
     if (existing) {
       return res.status(409).json({ message: 'Email already registered' });
     }
@@ -539,7 +543,7 @@ router.post(
     const { salt, hashedPassword } = await hashPassword(tempPassword);
 
     const adminUser = await User.create({
-      email: email.toLowerCase(),
+      email,
       name,
       hashedPassword,
       passwordSalt: salt,
