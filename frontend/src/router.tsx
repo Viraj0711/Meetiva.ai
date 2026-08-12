@@ -42,6 +42,15 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   if (user && !user.isVerified) {
     return <Navigate to={`/verify-email?email=${encodeURIComponent(user.email)}`} replace />;
   }
+
+  // Google users without a password must set one in Profile before accessing the app
+  if (user && user.hasPassword === false) {
+    // Allow access to Profile page, block everything else
+    const currentPath = window.location.pathname;
+    if (currentPath !== '/dashboard/profile') {
+      return <Navigate to="/dashboard/profile" replace />;
+    }
+  }
   
   return <>{children}</>;
 };
