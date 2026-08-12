@@ -15,11 +15,6 @@
 # The backend uses the platform-injected PORT automatically (backend/src/lib/env.ts)
 # and NODE_ENV=production is set below.
 
-databases:
-  - name: meetiva-redis
-    type: redis
-    plan: free
-
 services:
   - type: web
     name: meetiva
@@ -50,9 +45,7 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: REDIS_URL
-        fromDatabase:
-          name: meetiva-redis
-          property: connectionString
+        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: WHISPER_API_KEY
