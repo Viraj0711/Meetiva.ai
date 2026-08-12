@@ -91,6 +91,27 @@ Optional but needed for full functionality:
 - **Backend:** Ad-hoc test scripts in `backend/src/tests/` and `backend/tests/`. Run with `tsx <file>`. Uses `mongodb-memory-server` for DB tests.
 - **No CI workflow** in the repo.
 
+## Pre-commit Checks (CI must stay green)
+
+Run these **before every commit** to catch errors early:
+
+```bash
+# Frontend — type check + lint
+cd frontend && npm run type-check && npm run lint
+
+# Backend — type check (no linter configured)
+cd backend && npx tsc --noEmit
+```
+
+**If type-check fails:**
+- Fix the errors before committing.
+- Pre-existing errors (e.g., missing `accountType`/`organizationId`/`orgRole` on `User` type) are exceptions — note them in the commit message if shipping alongside unrelated fixes.
+
+**If lint fails:**
+- Fix all errors. Warnings are allowed (max 15).
+
+**Never commit without running type-check and lint first.**
+
 ## Style
 
 - **Prettier** (frontend only): single quotes, trailing commas (es5), 100 char width, 2-space indent.
