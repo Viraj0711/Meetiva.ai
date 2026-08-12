@@ -51,8 +51,8 @@ export function Organization() {
           const org = await organizationsApi.get(me.organizationId);
           setSelectedOrg(org);
           const [usersRes, projectsRes] = await Promise.allSettled([
-            organizationsApi.listUsers(org._id),
-            projectsApi.list(org._id),
+            organizationsApi.listUsers(org.id),
+            projectsApi.list(org.id),
           ]);
           if (usersRes.status === "fulfilled") setOrgUsers(usersRes.value.users ?? []);
           if (projectsRes.status === "fulfilled") setOrgProjects(projectsRes.value.projects ?? []);
@@ -84,7 +84,7 @@ export function Organization() {
   const handleProvision = async () => {
     if (!selectedOrg) return;
     try {
-      const res = await organizationsApi.provision(selectedOrg._id, provisionForm);
+      const res = await organizationsApi.provision(selectedOrg.id, provisionForm);
       setProvisionResult({ tempPassword: res.tempPassword });
       toast.success(`User ${provisionForm.name} provisioned successfully`);
       setOrgUsers((prev) => [...prev, res.user]);
@@ -98,7 +98,7 @@ export function Organization() {
     try {
       await organizationsApi.activate(orgId);
       toast.success("Organization activated");
-      setOrganizations((prev) => prev.map((o) => (o._id === orgId ? { ...o, status: "active" } : o)));
+      setOrganizations((prev) => prev.map((o) => (o.id === orgId ? { ...o, status: "active" } : o)));
     } catch (err: any) {
       toast.error(err.message || "Failed to activate");
     }
@@ -108,7 +108,7 @@ export function Organization() {
     try {
       await organizationsApi.suspend(orgId);
       toast.success("Organization suspended");
-      setOrganizations((prev) => prev.map((o) => (o._id === orgId ? { ...o, status: "suspended" } : o)));
+      setOrganizations((prev) => prev.map((o) => (o.id === orgId ? { ...o, status: "suspended" } : o)));
     } catch (err: any) {
       toast.error(err.message || "Failed to suspend");
     }
@@ -117,7 +117,7 @@ export function Organization() {
   const handleAddAdmin = async () => {
     if (!selectedOrg) return;
     try {
-      const res = await organizationsApi.addAdmin(selectedOrg._id, addAdminForm);
+      const res = await organizationsApi.addAdmin(selectedOrg.id, addAdminForm);
       setAddAdminResult({ tempPassword: res.user.tempPassword });
       toast.success(`Admin ${addAdminForm.name} added successfully`);
       setOrgUsers((prev) => [...prev, res.user]);
@@ -174,7 +174,7 @@ export function Organization() {
             </thead>
             <tbody>
               {organizations.map((org) => (
-                <tr key={org._id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors cursor-pointer" onClick={() => loadOrgDetails(org._id)}>
+                <tr key={org.id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors cursor-pointer" onClick={() => loadOrgDetails(org.id)}>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#06B6D4] to-[#4F46E5] flex items-center justify-center text-white text-xs font-bold">{org.name.charAt(0)}</div>
@@ -189,8 +189,8 @@ export function Organization() {
                   <td className="px-5 py-4 text-sm text-[#94A3B8]">{new Date(org.createdAt).toLocaleDateString()}</td>
                   <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-2">
-                      {org.status === "pending" && <button onClick={() => handleActivate(org._id)} className="px-3 py-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors">Activate</button>}
-                      {org.status === "active" && <button onClick={() => handleSuspend(org._id)} className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">Suspend</button>}
+                      {org.status === "pending" && <button onClick={() => handleActivate(org.id)} className="px-3 py-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors">Activate</button>}
+                      {org.status === "active" && <button onClick={() => handleSuspend(org.id)} className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">Suspend</button>}
                     </div>
                   </td>
                 </tr>
@@ -263,7 +263,7 @@ export function Organization() {
               </thead>
               <tbody>
                 {orgUsers.map((u) => (
-                  <tr key={u._id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors">
+                  <tr key={u.id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#06B6D4] flex items-center justify-center text-white text-xs font-bold">{u.name.charAt(0).toUpperCase()}</div>
@@ -297,9 +297,9 @@ export function Organization() {
               </thead>
               <tbody>
                 {orgProjects.map((p) => (
-                  <tr key={p._id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors">
+                  <tr key={p.id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors">
                     <td className="px-5 py-3"><p className="text-sm font-semibold text-[#0F172A]">{p.name}</p>{p.description && <p className="text-xs text-[#94A3B8] truncate max-w-xs">{p.description}</p>}</td>
-                    <td className="px-5 py-3 text-sm text-[#94A3B8]">{p.managerUserId ?? "Unassigned"}</td>
+                    <td className="px-5 py-3 text-sm text-[#94A3B8]">{p.manager?.name || "Unassigned"}</td>
                     <td className="px-5 py-3 text-sm text-[#94A3B8]">{new Date(p.createdAt).toLocaleDateString()}</td>
                   </tr>
                 ))}
