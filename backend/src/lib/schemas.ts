@@ -86,6 +86,10 @@ export const changePasswordSchema = z.object({
   newPassword: passwordField,
 });
 
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1, 'Password is required'),
+});
+
 export const verifyOtpSchema = z.object({
   email: emailField,
   otp: z.string().regex(/^\d{6}$/, 'OTP must be a 6-digit code'),

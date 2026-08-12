@@ -82,7 +82,7 @@ const Upload: React.FC = () => {
     if (subscription.meetingCountThisMonth === 0) { lastNudgedCount.current = null; return; }
     if (subscription.meetingsRemaining === 1 && lastNudgedCount.current !== 1) {
       lastNudgedCount.current = 1;
-      dispatch(addToast({ type: 'warning', message: 'You have 1 meeting remaining this month. Upgrade to PRO for unlimited meetings.', duration: 8000 }));
+      dispatch(addToast({ type: 'warning', message: 'You have 1 meeting remaining this month. Upgrade to Team for unlimited meetings.', duration: 8000 }));
     }
   }, [subscription, dispatch]);
 
@@ -309,14 +309,14 @@ const Upload: React.FC = () => {
                   <div className="flex-1">
                     <p className="text-sm font-bold text-[#1D1B22]">You&apos;ve reached your free meeting limit</p>
                     <p className="text-sm text-[#64607A] mt-1">
-                      You&apos;ve used all {subscription?.monthlyLimit ?? 5} free meetings this month. Upgrade to PRO for
+                      You&apos;ve used all {subscription?.monthlyLimit ?? 5} free meetings this month. Upgrade to Team for
                       unlimited meetings, team collaboration, and calendar sync.
                     </p>
                     <div className="flex flex-wrap gap-2 mt-4">
                       <button onClick={() => navigate('/dashboard/upgrade')}
                         className="inline-flex items-center gap-2 px-4 py-2 text-xs rounded-full font-bold text-white transition-all duration-150 hover:opacity-90 cursor-pointer select-none"
                         style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 4px 16px rgba(91,63,214,0.35)` }}>
-                        <Zap size={13} /> Upgrade to PRO
+                        <Zap size={13} /> Upgrade to Team
                       </button>
                       <button onClick={() => setLimitReached(false)}
                         className="inline-flex items-center gap-2 px-4 py-2 text-xs rounded-full font-semibold bg-white border border-[#E4E0F5] transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
@@ -484,7 +484,7 @@ const Upload: React.FC = () => {
                   <button onClick={() => navigate('/dashboard/upgrade')}
                     className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs rounded-full font-semibold border border-[#E4E0F5] bg-white transition-all duration-150 hover:border-[#B8ACEC] cursor-pointer select-none"
                     style={{ color: GRAD }}>
-                    Upgrade to PRO
+                    Upgrade to Team
                   </button>
                 </>
               )}

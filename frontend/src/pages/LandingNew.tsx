@@ -28,18 +28,18 @@ const TESTIMONIALS = [
 
 const PRICING = [
   {
-    name: 'Starter', price: 'Free', period: '', desc: 'Perfect for individuals and small teams getting started.',
-    features: ['5 meetings / month', 'AI summaries', 'Task extraction', '7-day history'],
+    name: 'Free', price: '$0', period: '', desc: 'Perfect for individuals and small teams getting started.',
+    features: ['5 meetings / month', 'AI summaries', 'Minutes Extraction', 'Minutes PDF'],
     cta: 'Get started free', highlight: false,
   },
   {
-    name: 'Pro', price: '$29', period: '/mo', desc: 'For growing teams that need unlimited intelligence.',
-    features: ['Unlimited meetings', 'Calendar sync', 'Team workspaces', 'Priority support', '30-day history', 'Slack integration'],
+    name: 'Team', price: '$29', period: '/mo', desc: 'For growing teams that need unlimited intelligence.',
+    features: ['15 meetings/month', 'Calendar sync', 'Team collaboration', 'Analytics dashboard', 'Priority support'],
     cta: 'Start free trial', highlight: true,
   },
   {
     name: 'Enterprise', price: 'Custom', period: '', desc: 'Tailored for large organisations with advanced needs.',
-    features: ['Everything in Pro', 'SSO & SCIM', 'Custom data retention', 'SLA guarantee', 'Dedicated success manager'],
+    features: ['Everything in Team', 'SSO & SCIM', 'Custom data retention', 'SLA guarantee', 'Dedicated success manager'],
     cta: 'Contact sales', highlight: false,
   },
 ];

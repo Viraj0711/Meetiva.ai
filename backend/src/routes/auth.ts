@@ -21,6 +21,7 @@ import {
   verifyOtpSchema,
   resendOtpSchema,
   changePasswordSchema,
+  deleteAccountSchema,
   updateProfileSchema,
 } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
@@ -299,7 +300,7 @@ router.get('/subscription', apiLimiter, authenticate, asyncHandler(async (req: A
     return res.status(404).json({ message: 'User not found' });
   }
 
-  const monthlyLimit = user.subscriptionTier === 'FREE' ? 5 : 999_999;
+  const monthlyLimit = user.subscriptionTier === 'FREE' ? 5 : user.subscriptionTier === 'TEAM' ? 15 : 999_999;
   const meetingsRemaining = Math.max(0, monthlyLimit - user.meetingCountThisMonth);
 
   res.json({
@@ -821,5 +822,55 @@ router.get('/google/callback', authLimiter, asyncHandler(async (req: Request, re
   const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
   return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=1`);
 }));
+
+// ── Self-service account deletion ──────────────────────────────────────────
+// Regular ('self') accounts are permanently deleted together with ALL of
+// their data (meetings, summaries, transcripts, tasks, notifications, team
+// memberships, chat messages, OAuth + refresh tokens) via the User model's
+// cascade hooks. Corporate/enterprise users cannot self-delete — their org
+// admin must remove them through the soft-delete flow (removeUser) so
+// organization data and seats stay intact.
+router.delete('/me',
+  apiLimiter,
+  authenticate,
+  validate(deleteAccountSchema),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { password } = req.body as z.infer<typeof deleteAccountSchema>;
+    const userId = req.userId!;
+
+    const user = await User.findById(userId)
+      .select('hashedPassword accountType orgRole organizationId isRemoved');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isRemoved) {
+      return res.status(400).json({ message: 'Account is already removed' });
+    }
+
+    if (user.accountType === 'corporate') {
+      return res.status(403).json({
+        message:
+          'Your account is managed by your organization. Please contact your organization admin to have your account removed.',
+      });
+    }
+
+    const valid = await verifyPassword(password, user.hashedPassword);
+    if (!valid) {
+      return res.status(400).json({ message: 'Incorrect password' });
+    }
+
+    // Document deleteOne() triggers the User schema cascade hook, permanently
+    // removing the user record and all of their data.
+    await user.deleteOne();
+
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
+    log.info('User permanently deleted their account', { userId });
+
+    return res.json({ message: 'Account deleted successfully' });
+  })
+);
 
 export default router;

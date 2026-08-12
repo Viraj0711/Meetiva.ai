@@ -2,6 +2,8 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './Navbar';
+import BottomNav from './BottomNav';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 const MESH_BG: React.CSSProperties = {
   background:
@@ -11,15 +13,22 @@ const MESH_BG: React.CSSProperties = {
 };
 
 const Layout: React.FC = () => {
+  const isMobile = useIsMobile();
+
   return (
-    <div className="h-screen flex" style={MESH_BG}>
-      <Sidebar />
+    <div className="h-screen flex flex-col md:flex-row" style={MESH_BG}>
+      {/* Sidebar - desktop only */}
+      {!isMobile && <Sidebar />}
+
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
-        <main className="flex-1 min-w-0 relative overflow-y-auto">
+        <main className="flex-1 min-w-0 relative overflow-y-auto pb-16 md:pb-0">
           <Outlet />
         </main>
       </div>
+
+      {/* Bottom Nav - mobile only */}
+      {isMobile && <BottomNav />}
     </div>
   );
 };

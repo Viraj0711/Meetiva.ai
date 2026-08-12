@@ -147,6 +147,16 @@ export const authService = {
   },
 
   /**
+   * Permanently delete the authenticated user's account.
+   * Requires the current password. Self-accounts are hard-deleted together
+   * with all of their data; corporate accounts are rejected (org admin flow).
+   */
+  deleteAccount: async (password: string): Promise<void> => {
+    // input-safety-ok: password validated server-side by deleteAccountSchema
+    await apiClient.delete('/auth/me', { password });
+  },
+
+  /**
    * Upgrade the authenticated user's subscription tier.
    * Gated by ADMIN_EMAIL on the server — only the configured admin user can self-upgrade.
    */
