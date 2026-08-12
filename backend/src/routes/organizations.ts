@@ -34,7 +34,7 @@ const updateOrganizationSchema = z.object({
 const provisionUserSchema = z.object({
   email: z.string().email(),
   name: z.string().trim().min(2).max(50),
-  role: z.enum(['manager', 'team_leader', 'member']),
+  role: z.enum(['admin', 'manager', 'team_leader', 'member']),
 });
 
 const assignManagerSchema = z.object({
@@ -194,6 +194,7 @@ router.post(
 
     // Role hierarchy check: who can create whom
     const canCreate: Record<string, string[]> = {
+      super_admin: ['admin', 'manager', 'team_leader', 'member'],
       admin: ['manager'],
       manager: ['team_leader'],
       team_leader: ['member'],
@@ -381,6 +382,86 @@ router.patch(
       id: org._id.toString(),
       name: org.name,
       status: org.status,
+    });
+  })
+);
+
+// ── Super Admin: add/replace admin for any org ─────────────────────────────
+
+const addAdminSchema = z.object({
+  email: z.string().email(),
+  name: z.string().trim().min(2).max(50),
+});
+
+router.post(
+  '/:id/add-admin',
+  apiLimiter,
+  authenticate,
+  requireSuperAdmin,
+  validate(addAdminSchema),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { email, name } = req.body as z.infer<typeof addAdminSchema>;
+    const orgId = req.params.id;
+
+    const org = await Organization.findById(orgId).lean();
+    if (!org) {
+      return res.status(404).json({ message: 'Organization not found' });
+    }
+
+    // Check email not already taken
+    const existing = await User.findOne({ email: email.toLowerCase() }).lean();
+    if (existing) {
+      return res.status(409).json({ message: 'Email already registered' });
+    }
+
+    const bcrypt = await import('bcryptjs');
+    const tempPassword = generateTempPassword();
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    // If org already has an admin, deactivate the old one's admin role
+    if (org.adminUserId) {
+      await User.findByIdAndUpdate(org.adminUserId, {
+        orgRole: 'manager',
+      });
+      log.info('Previous admin demoted to manager', { orgId: orgId, prevAdminId: String(org.adminUserId) });
+    }
+
+    // Create new admin user
+    const adminUser = await User.create({
+      email: email.toLowerCase(),
+      name,
+      hashedPassword,
+      accountType: 'corporate',
+      orgRole: 'admin',
+      organizationId: new Types.ObjectId(orgId),
+      createdByUserId: new Types.ObjectId(req.userId!),
+      forcePasswordChange: true,
+      isActive: true,
+      isVerified: true,
+    });
+
+    // Set as org admin and ensure org is active
+    await Organization.findByIdAndUpdate(orgId, {
+      adminUserId: adminUser._id,
+      status: 'active',
+    });
+
+    // Increment seats if there's room
+    await Organization.findByIdAndUpdate(orgId, { $inc: { seatsUsed: 1 } });
+
+    log.info('Admin added to organization', { orgId, adminUserId: String(adminUser._id), by: req.userId });
+
+    res.status(201).json({
+      user: {
+        id: adminUser._id.toString(),
+        email: adminUser.email,
+        name: adminUser.name,
+        orgRole: adminUser.orgRole,
+        isActive: adminUser.isActive,
+        createdAt: adminUser.createdAt.toISOString(),
+        tempPassword,
+      },
+      message: 'Admin account created. Share credentials securely. They will be forced to change their password on first login.',
     });
   })
 );

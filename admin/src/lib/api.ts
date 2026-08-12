@@ -296,9 +296,14 @@ export const organizationsApi = {
       body: { replacementUserId },
     }),
   activate: (id: string) =>
-    request(`/organizations/${id}/activate`, { method: "POST" }),
+    request(`/organizations/${id}/status`, { method: "PATCH", body: { status: "active" } }),
   suspend: (id: string) =>
-    request(`/organizations/${id}/suspend`, { method: "POST" }),
+    request(`/organizations/${id}/status`, { method: "PATCH", body: { status: "suspended" } }),
+  addAdmin: (id: string, data: { email: string; name: string }) =>
+    request<{ user: OrgUser & { tempPassword: string }; message: string }>(`/organizations/${id}/add-admin`, {
+      method: "POST",
+      body: data,
+    }),
   provisionAdmin: (id: string, data: { email: string; name: string }) =>
     request<{ user: OrgUser; tempPassword: string }>(`/organizations/${id}/provision-admin`, {
       method: "POST",

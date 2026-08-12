@@ -31,6 +31,9 @@ export function Organization() {
   const [showProvision, setShowProvision] = useState(false);
   const [provisionForm, setProvisionForm] = useState({ email: "", name: "", role: "manager" });
   const [provisionResult, setProvisionResult] = useState<{ tempPassword: string } | null>(null);
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [addAdminForm, setAddAdminForm] = useState({ email: "", name: "" });
+  const [addAdminResult, setAddAdminResult] = useState<{ tempPassword: string } | null>(null);
 
   const isSuperAdmin = user?.orgRole === "super_admin";
   const isAdmin = user?.orgRole === "admin";
@@ -108,6 +111,19 @@ export function Organization() {
       setOrganizations((prev) => prev.map((o) => (o._id === orgId ? { ...o, status: "suspended" } : o)));
     } catch (err: any) {
       toast.error(err.message || "Failed to suspend");
+    }
+  };
+
+  const handleAddAdmin = async () => {
+    if (!selectedOrg) return;
+    try {
+      const res = await organizationsApi.addAdmin(selectedOrg._id, addAdminForm);
+      setAddAdminResult({ tempPassword: res.user.tempPassword });
+      toast.success(`Admin ${addAdminForm.name} added successfully`);
+      setOrgUsers((prev) => [...prev, res.user]);
+      setAddAdminForm({ email: "", name: "" });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add admin");
     }
   };
 
@@ -201,11 +217,18 @@ export function Organization() {
           <h1 className="text-2xl font-bold text-[#0F172A]">{selectedOrg?.name ?? "Organization"}</h1>
           <p className="text-sm text-[#94A3B8]">Manage organization users, projects, and settings</p>
         </div>
-        {isAdmin && selectedOrg && (
-          <button onClick={() => setShowProvision(true)} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] text-white rounded-xl text-sm font-semibold shadow-sm shadow-[#06B6D4]/25 hover:shadow-md transition-all">
-            <UserPlus className="w-4 h-4" /> Provision User
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {isSuperAdmin && selectedOrg && (
+            <button onClick={() => setShowAddAdmin(true)} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-purple-500/25 hover:shadow-md transition-all">
+              <Shield className="w-4 h-4" /> Add Admin
+            </button>
+          )}
+          {isAdmin && selectedOrg && (
+            <button onClick={() => setShowProvision(true)} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] text-white rounded-xl text-sm font-semibold shadow-sm shadow-[#06B6D4]/25 hover:shadow-md transition-all">
+              <UserPlus className="w-4 h-4" /> Provision User
+            </button>
+          )}
+        </div>
       </div>
 
       {selectedOrg && (
@@ -289,6 +312,49 @@ export function Organization() {
         </>
       )}
 
+      {showAddAdmin && selectedOrg && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowAddAdmin(false); setAddAdminResult(null); }}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#E5F4F7]">
+              <h3 className="text-lg font-bold text-[#0F172A]">{addAdminResult ? "Admin Added" : "Add Organization Admin"}</h3>
+              <button onClick={() => { setShowAddAdmin(false); setAddAdminResult(null); }} className="w-8 h-8 rounded-lg hover:bg-[#F5FEFF] flex items-center justify-center transition-all"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              {addAdminResult ? (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-purple-800 mb-2">Admin account created successfully</p>
+                  <p className="text-xs text-purple-700">Temporary password:</p>
+                  <code className="block mt-1 px-3 py-2 bg-white rounded-lg text-sm font-mono text-[#0F172A] border border-purple-200 select-all">{addAdminResult.tempPassword}</code>
+                  <p className="text-xs text-purple-600 mt-2">Share this password securely. The admin will be forced to change it on first login.</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Email</label>
+                    <input type="email" value={addAdminForm.email} onChange={(e) => setAddAdminForm((f) => ({ ...f, email: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" placeholder="admin@company.com" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Full Name</label>
+                    <input type="text" value={addAdminForm.name} onChange={(e) => setAddAdminForm((f) => ({ ...f, name: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" placeholder="John Admin" />
+                  </div>
+                  <p className="text-xs text-[#94A3B8]">The new admin will have full access to this organization only. If an admin already exists, they will be replaced.</p>
+                </>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t border-[#E5F4F7]">
+              <button onClick={() => { setShowAddAdmin(false); setAddAdminResult(null); }} className="px-4 py-2 bg-[#F5FEFF] border border-[#E5F4F7] rounded-xl text-sm font-medium text-[#0F172A] hover:bg-[#F8FDFE] transition-all">
+                {addAdminResult ? "Close" : "Cancel"}
+              </button>
+              {!addAdminResult && (
+                <button onClick={handleAddAdmin} className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-all">
+                  Add Admin
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showProvision && selectedOrg && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowProvision(false); setProvisionResult(null); }}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -317,6 +383,7 @@ export function Organization() {
                   <div>
                     <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Role</label>
                     <select value={provisionForm.role} onChange={(e) => setProvisionForm((f) => ({ ...f, role: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all">
+                      {isSuperAdmin && <option value="admin">Admin</option>}
                       <option value="manager">Manager</option>
                       <option value="team_leader">Team Leader</option>
                       <option value="member">Member</option>
