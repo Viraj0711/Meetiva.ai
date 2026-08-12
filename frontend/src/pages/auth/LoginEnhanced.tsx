@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 import { useLogin } from '@/hooks/useAuth';
+import { authService } from '@/services';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { toast } from 'sonner';
 
 const GRAD = '#5B3FD6';
@@ -18,6 +20,27 @@ const LoginPage: React.FC = () => {
   const loginMutation = useLogin();
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
+
+  // Show an error toast when the Google OAuth callback bounces back here
+  // with a failure reason (e.g. ?googleLogin=error&reason=unverified_email).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('googleLogin') === 'error') {
+      const reason = params.get('reason') || '';
+      const messages: Record<string, string> = {
+        invalid_state: 'Google sign-in could not be verified. Please try again.',
+        missing_code: 'Google sign-in could not be completed. Please try again.',
+        verification_failed: 'Google could not verify your identity. Please try again.',
+        denied: 'Google sign-in was cancelled.',
+        unverified_email: 'Your Google account must have a verified email address.',
+        inactive: 'This account is inactive. Please contact support.',
+        server_error: 'Something went wrong during sign-in. Please try again.',
+      };
+      toast.error(messages[reason] || 'Google sign-in failed. Please try again.');
+      // Remove the error params so a refresh doesn't re-show the toast.
+      window.history.replaceState({}, '', '/login');
+    }
+  }, []);
 
   const handleSubmit = async () => {
     try {
@@ -75,7 +98,7 @@ const LoginPage: React.FC = () => {
                 Forgot password?
               </button>
             </div>
-            <Input placeholder="Enter your password" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
+            <PasswordInput placeholder="Enter your password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" />
           </div>
 
           <button onClick={handleSubmit} disabled={loginMutation.isPending}
@@ -91,7 +114,7 @@ const LoginPage: React.FC = () => {
           </div>
 
           <button
-            onClick={() => toast.info('Google sign-in coming soon.')}
+            onClick={authService.googleLoginRedirect}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all bg-white text-[#1D1B22]"
             style={{ borderColor: 'rgba(91,63,214,0.14)' }}
             onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.28)'; el.style.background = '#EDE9FF'; }}

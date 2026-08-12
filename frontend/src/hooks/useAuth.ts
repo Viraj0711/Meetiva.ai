@@ -127,8 +127,13 @@ export const useChangePassword = () => {
   const dispatch = useAppDispatch();
 
   return useMutation({
-    mutationFn: ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) =>
-      authService.changePassword(currentPassword, newPassword),
+    mutationFn: ({
+      currentPassword,
+      newPassword,
+    }: {
+      currentPassword?: string;
+      newPassword: string;
+    }) => authService.changePassword(currentPassword, newPassword),
     onSuccess: () => {
       dispatch(
         addToast({ type: 'success', message: 'Password updated successfully. Please log in again.' })

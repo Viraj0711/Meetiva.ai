@@ -13,8 +13,12 @@ import Project from './Project';
 export interface IUser extends Document {
   email: string;
   name: string;
-  hashedPassword: string;
+  // null when the account has no password yet (e.g. created via Google Sign-In)
+  hashedPassword: string | null;
   passwordSalt: string;
+  // Set when the user signs in via Google. Used to link a Google account to
+  // the existing Meetiva account (same email) instead of duplicating it.
+  googleId: string | null;
   isActive: boolean;
   isVerified: boolean;
   subscriptionTier: SubscriptionTier;
@@ -37,11 +41,14 @@ const userSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     name: { type: String, required: true },
-    hashedPassword: { type: String, required: true },
+    // Optional: null until the user sets a password (Google Sign-In users can
+    // set one later via the change-password endpoint to enable email login).
+    hashedPassword: { type: String, default: null },
     // Per-user random salt used to hash `hashedPassword` (see lib/password.ts).
     // bcrypt also embeds the salt in the hash string, so legacy records without
     // this column still verify correctly.
     passwordSalt: { type: String, default: '' },
+    googleId: { type: String, default: null },
     isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
     subscriptionTier: {
@@ -67,6 +74,8 @@ const userSchema = new Schema<IUser>(
 userSchema.index({ subscriptionTier: 1, meetingCountResetAt: 1 });
 userSchema.index({ organizationId: 1 });
 userSchema.index({ accountType: 1 });
+// One Google account maps to at most one Meetiva user (sparse: null is allowed).
+userSchema.index({ googleId: 1 }, { sparse: true, unique: true });
 
 // ── Cascade delete: when a User is deleted, remove all related data ────────
 // Meeting.deleteMany() cascades to meeting summaries, transcripts and tasks

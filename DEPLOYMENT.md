@@ -45,6 +45,7 @@ A ready-made **`render.yaml`** lives in the repo root.
    | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | for calendar | |
    | `GOOGLE_TOKEN_ENCRYPTION_KEY` | for calendar | 32-byte key (see `backend/.env.example`) |
    | `GOOGLE_REDIRECT_URI` | for calendar | `https://<app>.onrender.com/auth/google/callback` |
+   | `GOOGLE_LOGIN_REDIRECT_URI` | for Google Sign-In | `https://<app>.onrender.com/auth/google/login/callback` — register this too in Google Cloud Console (same OAuth client) |
    | `GROQ_API_KEY` (or Grok/Cerebras keys) | for AI | `WHISPER_API_KEY` if Groq Whisper is blocked |
    | `ADMIN_EMAIL` | for self-upgrade | Your email → can flip PRO/TEAM |
    | `SMTP_*`, `EMAIL_FROM` | for email | Deadline alerts, OTPs, resets |
@@ -52,9 +53,10 @@ A ready-made **`render.yaml`** lives in the repo root.
    | `FRONTEND_APP_URL` | for email links | `https://<app>.onrender.com` |
    | `REDIS_URL` | optional | Auto-wired to the blueprint Redis |
 
-4. In **Runtime** settings, pick **Node 20.x (≥20.17)** (matches CI). npm 11
-   requires Node ^20.17.0 — every current 20.x satisfies this, and the build
-   command pins **npm 11** itself, so it works regardless of the bundled npm.
+4. In **Runtime** settings, pick **Node 24.x** (matches CI, which runs Node 24).
+   npm 11 requires Node ^20.17.0 (or ≥22.9.0) — Node 24 satisfies this, and the
+   build command pins **npm 11** itself, so it works regardless of the bundled
+   npm.
 5. Health check is `/health` (already configured).
 
 Build command (`npm ci --include=dev` + `tsc`/`vite` for each package) and
@@ -133,7 +135,7 @@ per-instance limits; email falls back to console logging).
 
 ## Gotchas
 
-- **Node & npm versions:** Keep Node 20.x and npm 11 to keep installs consistent across local dev, CI, and the deploy platform.
+- **Node & npm versions:** Keep Node 24.x and npm 11 to keep installs consistent across local dev, CI, and the deploy platform.
 - **`shared/` must be built before frontend/backend** — `npm run build` handles
   the order; never deploy a `frontend/dist` or `backend/dist` built from stale
   shared types.
