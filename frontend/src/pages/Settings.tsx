@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
+import { apiClient } from '@/services/api.client';
 import { useAppSelector } from '@/store/hooks';
 import { authService, integrationService } from '@/services';
 import { useDispatch } from 'react-redux';
@@ -241,15 +242,7 @@ const Settings: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/organizations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: upgradeOrgName, contactEmail: upgradeEmail }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || 'Failed to submit request');
-      }
+      await apiClient.post('/organizations', { name: upgradeOrgName, contactEmail: upgradeEmail });
       setUpgradeSubmitted(true);
       toast.success('Enterprise request submitted!');
     } catch (err) {
