@@ -340,7 +340,7 @@ router.post('/login',
 // Get current authenticated user (access token required)
 router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = await User.findById(req.userId!)
-    .select('email name isVerified createdAt updatedAt')
+    .select('email name isVerified accountType orgRole organizationId forcePasswordChange createdAt updatedAt')
     .lean();
 
   if (!user) {
@@ -352,6 +352,10 @@ router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest
     email: user.email,
     name: user.name,
     isVerified: user.isVerified,
+    accountType: user.accountType ?? 'self',
+    orgRole: user.orgRole ?? null,
+    organizationId: user.organizationId?.toString() ?? null,
+    forcePasswordChange: user.forcePasswordChange ?? false,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   });
