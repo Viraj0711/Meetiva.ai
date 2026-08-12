@@ -26,6 +26,7 @@ import {
   updateProfileSchema,
 } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
+import { normalizeEmail, emailQueryFilter } from '../lib/email';
 import {
   setResetToken,
   getResetToken,
@@ -280,9 +281,10 @@ router.post('/register',
   authLimiter,
   validate(registerSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email, name, password } = req.body as z.infer<typeof registerSchema>;
+    const { email: rawEmail, name, password } = req.body as z.infer<typeof registerSchema>;
+    const email = normalizeEmail(rawEmail);
 
-    const existing = await User.findOne({ email }).lean();
+    const existing = await User.findOne(emailQueryFilter(rawEmail)).lean();
     if (existing) {
       return res.status(400).json({ message: 'Email already registered' });
     }
@@ -328,9 +330,9 @@ router.post('/login',
   authLimiter,
   validate(loginSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email, password } = req.body as z.infer<typeof loginSchema>;
+    const { email: rawEmail, password } = req.body as z.infer<typeof loginSchema>;
 
-    const user = await User.findOne({ email }).lean() as any;
+    const user = await User.findOne(emailQueryFilter(rawEmail)).lean() as any;
     // Accounts without a password (Google-only) can't sign in with a password —
     // keep the generic message so we don't reveal which emails exist.
     if (!user || !user.hashedPassword) {
@@ -389,7 +391,7 @@ router.patch(
       data.name = name.trim();
     }
     if (typeof email === 'string' && email.trim()) {
-      data.email = email.trim().toLowerCase();
+      data.email = normalizeEmail(email);
     }
 
     if (Object.keys(data).length === 0) {
@@ -531,8 +533,9 @@ router.post('/password-reset',
   authLimiter,
   validate(passwordResetSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email } = req.body as z.infer<typeof passwordResetSchema>;
-    const user = await User.findOne({ email }).lean();
+    const { email: rawEmail } = req.body as z.infer<typeof passwordResetSchema>;
+    const email = normalizeEmail(rawEmail);
+    const user = await User.findOne(emailQueryFilter(rawEmail)).lean();
 
     // Always return success to avoid revealing whether the email exists
     if (!user) {
@@ -585,8 +588,9 @@ router.post('/verify-otp',
   otpLimiter,
   validate(verifyOtpSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email, otp } = req.body as z.infer<typeof verifyOtpSchema>;
-    const user = await User.findOne({ email });
+    const { email: rawEmail, otp } = req.body as z.infer<typeof verifyOtpSchema>;
+    const email = normalizeEmail(rawEmail);
+    const user = await User.findOne(emailQueryFilter(rawEmail));
 
     if (!user) {
       return res.status(400).json({ message: 'Invalid or expired code' });
@@ -623,8 +627,9 @@ router.post('/verify-otp/resend',
   authLimiter,
   validate(resendOtpSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email } = req.body as z.infer<typeof resendOtpSchema>;
-    const user = await User.findOne({ email }).lean();
+    const { email: rawEmail } = req.body as z.infer<typeof resendOtpSchema>;
+    const email = normalizeEmail(rawEmail);
+    const user = await User.findOne(emailQueryFilter(rawEmail)).lean();
 
     // Always return success to avoid revealing whether the email exists
     if (!user) {
@@ -792,6 +797,115 @@ const getGoogleLoginOAuthClient = () => {
 };
 
 /**
+ * Link a Google identity (sub + verified email) to a Meetiva account and
+ * return the user document to start a session for (null if no account
+ * matched).
+ *
+ * Matching order: googleId first, then email — so an email/password account
+ * can sign in with Google and keep the same Meetiva account. Every write that
+ * touches the unique googleId index is guarded against duplicate-key errors:
+ * the index allows ONE Meetiva account per Google identity, and when a
+ * concurrent sign-in (or a pre-existing duplicate record) already claimed it,
+ * we sign into THAT account instead of failing. An account that is already
+ * linked to a different Google identity keeps its original link — it is never
+ * overwritten, so two Google accounts sharing one inbox can't ping-pong the
+ * link on every sign-in.
+ */
+const linkGoogleIdentity = async (
+  googleId: string,
+  email: string, // canonical email — used when creating a new account
+  rawEmail: string, // original Google email — used for legacy-dotted lookups
+  name: string
+): Promise<any | null> => {
+  let user = await User.findOne({ googleId }).lean() as any;
+  if (!user) {
+    user = await User.findOne(emailQueryFilter(rawEmail)).lean() as any;
+  }
+
+  if (user) {
+    // Existing account — mark the email verified (Google has already verified
+    // it). Only LINK the Google identity when the account has no link yet: if
+    // it is linked to a DIFFERENT Google account (two Google identities
+    // sharing one inbox), keep the original link instead of overwriting it —
+    // overwriting would ping-pong the link between the two identities on
+    // every sign-in.
+    const updates: Record<string, unknown> = {};
+    if (!user.googleId) {
+      updates.googleId = googleId;
+    }
+    if (!user.isVerified) {
+      updates.isVerified = true;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      try {
+        await User.updateOne({ _id: user._id }, { $set: updates });
+        if (updates.googleId) user.googleId = googleId;
+        if (updates.isVerified) user.isVerified = true;
+      } catch (error: any) {
+        // The Google identity was claimed by another account between our
+        // lookup and this write. Never steal it — sign into the owner.
+        if (error?.code === 11000) {
+          user = await User.findOne({ googleId }).lean() as any;
+          if (user && !user.isVerified) {
+            await User.updateOne({ _id: user._id }, { $set: { isVerified: true } });
+          }
+        } else {
+          throw error;
+        }
+      }
+    }
+    return user;
+  }
+
+  // New account via Google — no password yet (hashedPassword: null). The user
+  // can set one later in Settings to also log in with email/password.
+  try {
+    const created = await User.create({
+      email,
+      name,
+      hashedPassword: null,
+      isVerified: true,
+      googleId,
+    });
+    return created.toObject() as any;
+  } catch (error: any) {
+    if (error?.code !== 11000) throw error;
+    // Concurrent sign-in (or a registration that landed between our lookup and
+    // create): the sparse unique index on googleId — or the unique email index
+    // — rejected the create. Re-resolve and link instead of failing.
+    let winner = await User.findOne({ googleId }).lean() as any;
+    if (!winner) {
+      winner = await User.findOne(emailQueryFilter(rawEmail)).lean() as any;
+    }
+    if (winner) {
+      // Same rule as above: never overwrite an existing Google link.
+      const winnerUpdates: Record<string, unknown> = {};
+      if (!winner.googleId) {
+        winnerUpdates.googleId = googleId;
+      }
+      if (!winner.isVerified) {
+        winnerUpdates.isVerified = true;
+      }
+      if (Object.keys(winnerUpdates).length > 0) {
+        try {
+          await User.updateOne({ _id: winner._id }, { $set: winnerUpdates });
+          if (winnerUpdates.googleId) winner.googleId = googleId;
+          if (winnerUpdates.isVerified) winner.isVerified = true;
+        } catch (linkError: any) {
+          if (linkError?.code === 11000) {
+            winner = await User.findOne({ googleId }).lean() as any;
+          } else {
+            throw linkError;
+          }
+        }
+      }
+    }
+    return winner;
+  }
+};
+
+/**
  * GET /auth/google/login — start Google Sign-In.
  * Bounces the browser to Google's consent screen with identity-only scopes.
  */
@@ -888,7 +1002,7 @@ router.get('/google/login/callback', authLimiter, asyncHandler(async (req: Reque
     return fail('unverified_email');
   }
 
-  const email = googleEmail.toLowerCase().trim();
+  const email = normalizeEmail(googleEmail);
   const name = (payload.name || email.split('@')[0] || 'Google User').trim();
 
   res.clearCookie(LOGIN_STATE_COOKIE, { ...COOKIE_DOMAIN });
@@ -896,46 +1010,11 @@ router.get('/google/login/callback', authLimiter, asyncHandler(async (req: Reque
   try {
     // ── Account linking ──────────────────────────────────────────────────
     // Match by Google ID first, then by email, so someone who registered with
-    // email/password can sign in with Google and keep the same Meetiva account.
-    let user = await User.findOne({ googleId }).lean() as any;
-    if (!user) {
-      user = await User.findOne({ email }).lean() as any;
-    }
-
-    if (user) {
-      // Existing account — link the Google identity and mark email verified
-      // (Google has already verified it).
-      if (user.googleId !== googleId || !user.isVerified) {
-        await User.updateOne({ _id: user._id }, { $set: { googleId, isVerified: true } });
-        user.googleId = googleId;
-        user.isVerified = true;
-      }
-    } else {
-      // New account via Google — no password yet (hashedPassword: null). The
-      // user can set one later in Settings to also log in with email/password.
-      try {
-        const created = await User.create({
-          email,
-          name,
-          hashedPassword: null,
-          isVerified: true,
-          googleId,
-        });
-        user = created.toObject() as any;
-      } catch (error: any) {
-        // Concurrent sign-ins for the same brand-new Google account: the
-        // sparse unique index on googleId rejects the second create. Re-fetch
-        // and link instead of failing.
-        if (error?.code === 11000) {
-          user = await User.findOne({ googleId }).lean() as any;
-          if (user) {
-            await User.updateOne({ _id: user._id }, { $set: { googleId, isVerified: true } });
-          }
-        } else {
-          throw error;
-        }
-      }
-    }
+    // email/password can sign in with Google and keep the same Meetiva
+    // account. Conflicts on the unique googleId index resolve to the account
+    // that already owns the identity instead of surfacing a duplicate-key
+    // error ("A record with this googleId already exists.").
+    const user = await linkGoogleIdentity(googleId, email, googleEmail, name);
 
     if (!user || !user.isActive) {
       return fail('inactive');
