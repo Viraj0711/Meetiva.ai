@@ -53,30 +53,38 @@ const emailLookupCandidates = (email: string): string[] => {
  *   a pre-normalization record like "john.smith@gmail.com" is still found
  *   when the user types — or Google returns — "johnsmith@gmail.com".
  *
+ * IMPORTANT: `$regex` is always passed as a plain string pattern with the
+ * flags supplied via `$options` (exactly once). Passing a RegExp object
+ * (which already embeds its flags) together with `$options` makes MongoDB
+ * reject the query with "Can't canonicalize query" — that error previously
+ * broke both the normal email login and the Google Sign-In lookup.
+ *
  * Returns a filter object safe to pass to `findOne`/`find` directly or to
  * spread alongside other conditions.
  */
 export const emailQueryFilter = (email: string): Record<string, unknown> => {
   const candidates = emailLookupCandidates(email);
-  const dotRegex = gmailDotVariantRegex(email);
-  if (!dotRegex) {
+  const dotPattern = gmailDotVariantPattern(email);
+  if (!dotPattern) {
     return { email: { $in: candidates } };
   }
   return {
     $or: [
       { email: { $in: candidates } },
-      { email: { $regex: dotRegex, $options: 'i' } },
+      { email: { $regex: dotPattern, $options: 'i' } },
     ],
   };
 };
 
 /**
- * Regex matching any dot-placement of a Gmail local part (e.g. johnsmith →
- * john.smith, j.ohns.mith, ...). Bounded to short local parts: the pattern
- * grows 2^n paths, so long usernames skip the fallback (rare, and unlikely
- * to have a dotted legacy twin).
+ * Pattern matching any dot-placement of a Gmail local part (e.g. johnsmith →
+ * john.smith, j.ohns.mith, ...). Returns the regex SOURCE only (no flags) —
+ * the case-insensitive flag is supplied separately via `$options` in
+ * `emailQueryFilter` so regex options are specified exactly once.
+ * Bounded to short local parts: the pattern grows 2^n paths, so long
+ * usernames skip the fallback (rare, and unlikely to have a dotted twin).
  */
-const gmailDotVariantRegex = (email: string): RegExp | null => {
+const gmailDotVariantPattern = (email: string): string | null => {
   const normalized = normalizeEmail(email);
   const at = normalized.lastIndexOf('@');
   if (at <= 0) return null;
@@ -87,5 +95,5 @@ const gmailDotVariantRegex = (email: string): RegExp | null => {
     .split('')
     .map((ch) => `${ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.?`)
     .join('');
-  return new RegExp(`^${pattern}@gmail\\.com$`, 'i');
+  return `^${pattern}@gmail\\.com$`;
 };

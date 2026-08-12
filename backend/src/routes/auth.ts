@@ -68,11 +68,6 @@ const REFRESH_TOKEN_DAYS = 7;
 const REFRESH_TOKEN_MAX_AGE = REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000; // 7 days in ms
 const MAX_REFRESH_TOKENS_PER_USER = 5; // Multi-tab: keep up to N valid tokens per user
 
-// In development, set cookie domain to 'localhost' so cookies work across ports
-// (frontend on 5173, backend on 8000). In production, omit domain.
-const isDev = process.env.NODE_ENV !== 'production';
-const COOKIE_DOMAIN = isDev ? { domain: 'localhost' } : {};
-
 // Helper function to get user's teams
 const getUserTeams = async (userId: string): Promise<TeamInfo[]> => {
   const teamMembers = await TeamMember.find({ userId: userId as any })
@@ -152,21 +147,22 @@ const createAndSetRefreshToken = async (
   });
 
   // Set the raw token as an httpOnly cookie
-  const cookieOpts = {
+  res.cookie(REFRESH_COOKIE, rawToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    sameSite: 'lax',
     path: '/',
     maxAge: REFRESH_TOKEN_MAX_AGE,
-    ...COOKIE_DOMAIN,
-  };
-  res.cookie(REFRESH_COOKIE, rawToken, cookieOpts);
+  });
 
   // Set a non-httpOnly flag cookie so the frontend can detect session presence
   // without making a 401-generating refresh call on every page load.
   res.cookie(SESSION_COOKIE, 'true', {
-    ...cookieOpts,
     httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: REFRESH_TOKEN_MAX_AGE,
   });
 };
 
@@ -193,8 +189,8 @@ const validateAndRotateRefreshToken = async (
       // Expired token — clean it up
       await RefreshToken.deleteOne({ tokenHash });
     }
-    res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-    res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
     return null;
   }
 
@@ -419,8 +415,8 @@ router.post('/logout', apiLimiter, asyncHandler(async (req: Request, res: Respon
     const tokenHash = hashToken(rawToken);
     await RefreshToken.deleteMany({ tokenHash });
   }
-  res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-  res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+  res.clearCookie(REFRESH_COOKIE, { path: '/' });
+  res.clearCookie(SESSION_COOKIE, { path: '/' });
   res.json({ message: 'Logged out successfully' });
 }));
 
@@ -440,8 +436,8 @@ router.post('/refresh', authLimiter, asyncHandler(async (req: Request, res: Resp
   if (!user) {
     return res.status(401).json({ message: 'User not found' });
   }    if (!user.isActive) {
-    res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-    res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
     return res.status(403).json({ message: 'Account is inactive' });
   }
 
@@ -571,8 +567,8 @@ router.post('/password-reset/confirm',
 
     // Invalidate all existing refresh tokens (password changed — force re-login)
     await RefreshToken.deleteMany({ userId: userId as any });
-    res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-    res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
 
     // Notify user that password was changed
     await sendPasswordChangedEmail(userId).catch(() => {});
@@ -702,8 +698,8 @@ router.post('/change-password',
 
     // Invalidate all existing refresh tokens (password changed — force re-login)
     await RefreshToken.deleteMany({ userId: userId as any });
-    res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-    res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
 
     return res.json({ message: 'Password updated successfully. Please log in again.' });
   })
@@ -918,7 +914,6 @@ router.get('/google/login', authLimiter, asyncHandler(async (req: Request, res: 
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 10 * 60 * 1000,
-    ...COOKIE_DOMAIN,
   });
 
   const authUrl = loginOAuthClient.generateAuthUrl({
@@ -947,7 +942,7 @@ router.get('/google/login/callback', authLimiter, asyncHandler(async (req: Reque
   const frontendUrl = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
 
   const fail = (reason: string) => {
-    res.clearCookie(LOGIN_STATE_COOKIE, { ...COOKIE_DOMAIN });
+    res.clearCookie(LOGIN_STATE_COOKIE);
     return res.redirect(`${frontendUrl}/login?googleLogin=error&reason=${encodeURIComponent(reason)}`);
   };
 
@@ -1005,7 +1000,7 @@ router.get('/google/login/callback', authLimiter, asyncHandler(async (req: Reque
   const email = normalizeEmail(googleEmail);
   const name = (payload.name || email.split('@')[0] || 'Google User').trim();
 
-  res.clearCookie(LOGIN_STATE_COOKIE, { ...COOKIE_DOMAIN });
+  res.clearCookie(LOGIN_STATE_COOKIE);
 
   try {
     // ── Account linking ──────────────────────────────────────────────────
@@ -1024,10 +1019,7 @@ router.get('/google/login/callback', authLimiter, asyncHandler(async (req: Reque
     // The frontend restores the access token via POST /auth/refresh on mount.
     await createAndSetRefreshToken(res, user._id.toString());
 
-    // New Google users (no password) go to profile to set one.
-    // Existing users go to the dashboard.
-    const hasPassword = Boolean(user.hashedPassword);
-    return res.redirect(`${frontendUrl}/dashboard${hasPassword ? '' : '/profile'}`);
+    return res.redirect(`${frontendUrl}/dashboard`);
   } catch (error) {
     log.error('Google login session setup failed', {
       error: error instanceof Error ? error.message : String(error),
@@ -1054,7 +1046,6 @@ router.post('/google/init', apiLimiter, authenticate, asyncHandler(async (req: A
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 10 * 60 * 1000,
-    ...COOKIE_DOMAIN,
   });
 
   res.cookie(OAUTH_UID_COOKIE, userId, {
@@ -1062,7 +1053,6 @@ router.post('/google/init', apiLimiter, authenticate, asyncHandler(async (req: A
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 10 * 60 * 1000,
-    ...COOKIE_DOMAIN,
   });
 
   const authUrl = oauthClient.generateAuthUrl({
@@ -1103,8 +1093,10 @@ router.get('/google/callback', authLimiter, asyncHandler(async (req: Request, re
     expiry_date: tokens.expiry_date,
     token_type: tokens.token_type,
     scope: tokens.scope,
-  });    res.clearCookie(OAUTH_STATE_COOKIE, { ...COOKIE_DOMAIN });
-    res.clearCookie(OAUTH_UID_COOKIE, { ...COOKIE_DOMAIN });
+  });
+
+  res.clearCookie(OAUTH_STATE_COOKIE);
+  res.clearCookie(OAUTH_UID_COOKIE);
 
   const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
   return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=1`);
@@ -1156,8 +1148,8 @@ router.delete('/me',
     // removing the user record and all of their data.
     await user.deleteOne();
 
-    res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-    res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
     log.info('User permanently deleted their account', { userId });
 
     return res.json({ message: 'Account deleted successfully' });
