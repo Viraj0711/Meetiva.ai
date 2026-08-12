@@ -192,11 +192,7 @@ const RegisterPage: React.FC = () => {
                 {registerMutation.isPending ? 'Creating...' : 'Create free workspace'} <ArrowRight size={15} />
               </button>
 
-              <div className="flex items-center justify-center gap-1.5">
-                <Check size={12} style={{ color: GRAD }} />
-                <span className="text-[11px] text-[#64607A]">Free forever · No credit card · Cancel anytime</span>
-              </div>
-
+            
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-[#E4E0F5]" />
                 <span className="text-[11px] text-[#64607A]">or</span>
