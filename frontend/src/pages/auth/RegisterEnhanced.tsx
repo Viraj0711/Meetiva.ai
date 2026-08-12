@@ -4,6 +4,7 @@ import { ChevronRight, ArrowRight, Check, Building2, User, ArrowLeft } from 'luc
 import { useRegister } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
+import { apiClient } from '@/services/api.client';
 
 const GRAD = '#5B3FD6';
 const GRAD2 = '#8B5CF6';
@@ -46,15 +47,7 @@ const RegisterPage: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/organizations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: orgName, contactEmail: orgEmail }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || 'Failed to submit request');
-      }
+      await apiClient.post('/organizations', { name: orgName, contactEmail: orgEmail });
       setStep('pending');
     } catch (err) {
       const e = err as { message?: string };
