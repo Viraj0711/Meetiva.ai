@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ArrowRight } from 'lucide-react';
 import { useLogin } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { toast } from 'sonner';
 
 const GRAD = '#5B3FD6';
@@ -75,7 +76,7 @@ const LoginPage: React.FC = () => {
                 Forgot password?
               </button>
             </div>
-            <Input placeholder="Enter your password" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
+            <PasswordInput placeholder="Enter your password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" />
           </div>
 
           <button onClick={handleSubmit} disabled={loginMutation.isPending}

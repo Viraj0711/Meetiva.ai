@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Input } from '@/components/ui/Input';
+
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 import { useChangePassword, useLogout } from '@/hooks/useAuth';
 import { useAppSelector } from '@/store/hooks';
@@ -60,15 +61,15 @@ export const ForcePasswordChangeGate: React.FC<{ children: React.ReactNode }> = 
         <div className="space-y-4">
           <div>
             <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Current Password</label>
-            <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+            <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
           </div>
           <div>
             <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">New Password</label>
-            <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
           </div>
           <div>
             <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Confirm New Password</label>
-            <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            <PasswordInput value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
           </div>
         </div>
 

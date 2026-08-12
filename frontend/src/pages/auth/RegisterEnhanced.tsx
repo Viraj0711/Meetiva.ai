@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ArrowRight, Check, Building2, User, ArrowLeft } from 'lucide-react';
 import { useRegister } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { toast } from 'sonner';
 import { apiClient } from '@/services/api.client';
 
@@ -171,11 +172,11 @@ const RegisterPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Password</label>
-                  <Input placeholder="Create" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
+                  <PasswordInput placeholder="Create" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Confirm</label>
-                  <Input placeholder="Repeat" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+                  <PasswordInput placeholder="Repeat" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
                 </div>
               </div>
 

@@ -1,6 +1,7 @@
 export { Button } from './Button';
 export { Card } from './Card';
 export { Input } from './Input';
+export { PasswordInput } from './PasswordInput';
 export { Textarea } from './Textarea';
 export { Badge, StatusBadge } from './Badge';
 export { Avatar } from './Avatar';

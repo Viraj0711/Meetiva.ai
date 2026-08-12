@@ -3,6 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { ChevronRight, ArrowRight, Check, Lock, Mail } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useRequestPasswordReset, useResetPassword } from '@/hooks/useAuth';
 import {
   passwordResetSchema,
@@ -213,32 +214,26 @@ const ResetPassword: React.FC = () => {
 
           <div>
             <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">New password</label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64607A]" />
-              <Input
-                type="password"
-                id="new-password"
-                error={resetForm.formState.errors.password?.message}
-                className="pl-11"
-                placeholder="Minimum 8 characters"
-                {...resetForm.register('password')}
-              />
-            </div>
+            <PasswordInput
+              icon={Lock}
+              id="new-password"
+              error={resetForm.formState.errors.password?.message}
+              placeholder="Minimum 8 characters"
+              autoComplete="new-password"
+              {...resetForm.register('password')}
+            />
           </div>
 
           <div>
             <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Confirm new password</label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64607A]" />
-              <Input
-                type="password"
-                id="confirm-password"
-                error={resetForm.formState.errors.confirmPassword?.message}
-                className="pl-11"
-                placeholder="Repeat your password"
-                {...resetForm.register('confirmPassword')}
-              />
-            </div>
+            <PasswordInput
+              icon={Lock}
+              id="confirm-password"
+              error={resetForm.formState.errors.confirmPassword?.message}
+              placeholder="Repeat your password"
+              autoComplete="new-password"
+              {...resetForm.register('confirmPassword')}
+            />
           </div>
 
           <button type="submit"
