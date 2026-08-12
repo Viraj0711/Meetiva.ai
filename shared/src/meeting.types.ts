@@ -10,6 +10,9 @@ export interface Meeting {
   priority: MeetingPriority;
   audioUrl?: string | null;
   videoUrl?: string | null;
+  fileUrl?: string | null;
+  fileKind?: 'audio' | 'video' | 'text' | null;
+  fileStoragePath?: string | null;
   duration?: number | null;
   participants: string[];
   processingProgress?: number | null;

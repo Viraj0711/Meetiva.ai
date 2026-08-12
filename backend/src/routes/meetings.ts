@@ -15,6 +15,14 @@ import {
 import { syncMeetingStatusFromTasks } from '../services/meetingStatus';
 import { apiLimiter, uploadLimiter } from '../lib/rateLimiters';
 import {
+  isFirebaseStorageConfigured,
+  uploadMeetingFile,
+  getSignedUrlForPath,
+  deleteFileFromFirebase,
+  getFileKind,
+  FIREBASE_SIGNED_URL_TTL_SECONDS,
+} from '../lib/firebaseStorage';
+import {
   validate,
   validateObjectIdParam,
   updateMeetingSchema,
@@ -208,7 +216,8 @@ router.get('/',
   }));
 
 router.get('/:id', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const meeting = await Meeting.findById(req.params.id).lean();
+  // Exclude fileStoragePath — it is an internal Firebase object path, not for clients.
+  const meeting = await Meeting.findById(req.params.id).select('-fileStoragePath').lean();
 
   if (!meeting) {
     return res.status(404).json({ message: 'Meeting not found' });
@@ -220,6 +229,29 @@ router.get('/:id', apiLimiter, authenticate, asyncHandler(async (req: AuthReques
   }
 
   res.json({ ...meeting, id: meeting._id.toString() });
+}));
+
+// ── GET /meetings/:id/file-url — fresh signed URL for the stored file ──
+// Signed URLs expire (default 7 days), so this regenerates one on demand.
+router.get('/:id/file-url', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const meeting = await Meeting.findById(req.params.id)
+    .select('fileStoragePath fileKind userId')
+    .lean();
+
+  if (!meeting) {
+    return res.status(404).json({ message: 'Meeting not found' });
+  }
+
+  if (!(await canViewUserData(req.userId!, meeting.userId.toString(), req.userTeams || []))) {
+    return res.status(403).json({ message: 'You do not have permission to view this meeting' });
+  }
+
+  if (!meeting.fileStoragePath) {
+    return res.status(404).json({ message: 'No stored file for this meeting', code: 'NO_STORED_FILE' });
+  }
+
+  const url = await getSignedUrlForPath(meeting.fileStoragePath);
+  res.json({ url, kind: meeting.fileKind ?? 'text', expiresIn: FIREBASE_SIGNED_URL_TTL_SECONDS });
 }));
 
 router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handleMulterError, asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -357,6 +389,42 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
     userId: new Types.ObjectId(req.userId!),
   });
 
+  // ── Step 2b: persist the raw file to Firebase Storage (optional) ─────────
+  // The transcript is always stored in MongoDB; the original audio/video/text
+  // file is kept in Firebase Storage when it is configured, and a signed URL is
+  // saved on the meeting so the user can play/download it.
+  let storedFile: { storagePath: string; signedUrl: string } | null = null;
+  if (req.file && isFirebaseStorageConfigured()) {
+    try {
+      storedFile = await uploadMeetingFile({
+        buffer: req.file.buffer,
+        originalname: req.file.originalname,
+        mimeType: req.file.mimetype,
+        meetingId: createdMeeting._id.toString(),
+      });
+      const fileKind = getFileKind(req.file.originalname);
+      const urlField =
+        fileKind === 'audio'
+          ? { audioUrl: storedFile.signedUrl }
+          : fileKind === 'video'
+            ? { videoUrl: storedFile.signedUrl }
+            : { fileUrl: storedFile.signedUrl };
+      await Meeting.findByIdAndUpdate(createdMeeting._id, {
+        ...urlField,
+        fileKind,
+        fileStoragePath: storedFile.storagePath,
+      });
+    } catch (err) {
+      // Graceful: storage is optional — log and continue without persisting the file.
+      console.warn('[upload] Failed to persist file to Firebase Storage:', err);
+      // If the file reached storage but the DB write failed, remove the orphan.
+      if (storedFile) {
+        deleteFileFromFirebase(storedFile.storagePath).catch(() => {});
+      }
+      storedFile = null;
+    }
+  }
+
   // ── Step 3: persist transcript only (no analysis yet — user chooses later) ──
   try {
     await Transcript.create({
@@ -383,6 +451,7 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
 
     await Meeting.findByIdAndUpdate(createdMeeting._id, { status: 'completed', processingProgress: 100, completedAt: new Date() });
   } catch (err) {
+    // The cascade pre-hook on findByIdAndDelete removes the stored file too.
     await Meeting.findByIdAndDelete(createdMeeting._id);
     throw err;
   }

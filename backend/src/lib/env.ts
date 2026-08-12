@@ -44,6 +44,10 @@ export const validateBackendEnv = (): void => {
     optionalMissing.push('SMTP_HOST / SMTP_USER / SMTP_PASSWORD (email delivery disabled — OTP codes logged to console in dev)');
   }
 
+  if (!process.env.FIREBASE_STORAGE_BUCKET) {
+    optionalMissing.push('FIREBASE_STORAGE_BUCKET + service account JSON (Firebase Storage — uploaded files are not persisted until configured; transcripts still work)');
+  }
+
   if (optionalMissing.length > 0) {
     log.warn(
       'Optional AI environment variables are missing. Related features may fail',
