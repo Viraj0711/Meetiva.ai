@@ -10,6 +10,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "db:seed": "tsx src/scripts/seed.ts",
+    "db:seed:admin": "tsx src/scripts/seed-admin.ts",
     "db:migrate:pro-to-team": "tsx src/scripts/migrate-pro-to-team.ts",
     "test:rate-limit": "tsx src/tests/rateLimiters.test.ts",
     "test:e2e": "tsx tests/e2e-team-rbac.test.ts",
