@@ -16,6 +16,13 @@
  *   3. as any casts on API payloads
  *   4. Form submissions using raw onSubmit without react-hook-form
  *   5. Unvalidated string interpolation in API URLs (path injection)
+ *
+ * Exemptions:
+ *   - A `// input-safety-ok` comment (trailing the line or on the line above)
+ *     marks a *warning* as reviewed & safe — use it only when validation
+ *     happens server-side or the input is a server-generated id. Error-level
+ *     findings (direct fetch, `as any`) can never be suppressed this way.
+ *   - `JSON.parse` calls inside a `try { ... } catch` block are not flagged.
  */
 
 import * as fs from 'fs';
@@ -51,13 +58,17 @@ interface Violation {
   severity: 'error' | 'warning';
 }
 
-// ── Detection patterns ──────────────────────────────────────────────────────
-
-const DANGEROUS_PATTERNS: Array<{
+interface SafetyPattern {
   regex: RegExp;
   message: string;
   severity: 'error' | 'warning';
-}> = [
+  /** Optional context guard: return true to suppress a match (e.g. JSON.parse inside try-catch). */
+  isSafe?: (content: string, matchIndex: number) => boolean;
+}
+
+// ── Detection patterns ──────────────────────────────────────────────────────
+
+const DANGEROUS_PATTERNS: SafetyPattern[] = [
   // ── Error: direct fetch() bypassing apiClient ──
   {
     // Direct fetch to API endpoints — bypasses auth token injection,
@@ -116,13 +127,99 @@ const DANGEROUS_PATTERNS: Array<{
 
   // ── Warning: JSON.parse on user input without try-catch ──
   {
-    // JSON.parse without surrounding try-catch (crashes on invalid JSON)
-    regex: /(?<!try\s*\{[^}]*)JSON\.parse\s*\(/g,
+    // JSON.parse without a surrounding try-catch crashes on malformed JSON.
+    // Matches inside `try { ... } catch` blocks are suppressed by isSafe below.
+    regex: /JSON\.parse\s*\(/g,
     message:
       'JSON.parse without visible try-catch. Wrap in try-catch to handle malformed JSON gracefully.',
     severity: 'warning',
+    isSafe: (content, matchIndex) => isInsideTryCatch(content, matchIndex),
   },
 ];
+
+// ── Allowlist & context helpers ─────────────────────────────────────────────
+
+// A line containing this marker is treated as reviewed and exempt from the scan.
+// Usage: `apiClient.post('/x', payload); // input-safety-ok: server-side validated`
+const ALLOW_COMMENT = /\/\/\s*input-safety-ok/;
+
+/**
+ * Heuristic: is the code at `matchIndex` inside a `try { ... } catch` block?
+ * Uses brace matching while skipping strings, template literals, and comments
+ * so stray `{`/`}` in those can't corrupt the block boundaries.
+ */
+function isInsideTryCatch(content: string, matchIndex: number): boolean {
+  // Track positions of unclosed `{` up to the match.
+  const stack: number[] = [];
+  let quote: '"' | "'" | '`' | null = null;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (let i = 0; i < matchIndex; i++) {
+    const ch = content[i];
+    const next = content[i + 1];
+
+    if (lineComment) {
+      if (ch === '\n') lineComment = false;
+      continue;
+    }
+    if (blockComment) {
+      if (ch === '*' && next === '/') {
+        blockComment = false;
+        i++;
+      }
+      continue;
+    }
+    if (quote) {
+      if (ch === '\\') {
+        i++;
+      } else if (ch === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (ch === '/' && next === '/') {
+      lineComment = true;
+      i++;
+      continue;
+    }
+    if (ch === '/' && next === '*') {
+      blockComment = true;
+      i++;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      quote = ch;
+      continue;
+    }
+    if (ch === '{') stack.push(i);
+    else if (ch === '}' && stack.length > 0) stack.pop();
+  }
+
+  // Walk from the innermost enclosing block outward.
+  while (stack.length > 0) {
+    const blockStart = stack.pop()!;
+    const header = content.slice(0, blockStart).trimEnd();
+    if (!/try\s*$/.test(header)) continue;
+
+    // Find the closing brace of this try block, then check for `catch`
+    // (a generous window covers comments between `}` and `catch`).
+    let depth = 1;
+    for (let j = blockStart + 1; j < content.length; j++) {
+      const ch = content[j];
+      if (ch === '{') depth++;
+      else if (ch === '}') {
+        depth--;
+        if (depth === 0) {
+          const after = content.slice(j + 1, j + 200);
+          return /\bcatch\s*[{(/]/.test(after);
+        }
+      }
+    }
+    return false;
+  }
+  return false;
+}
 
 // ── Scanner ─────────────────────────────────────────────────────────────────
 
@@ -153,25 +250,59 @@ function scanFile(filePath: string): Violation[] {
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split('\n');
 
+  // Absolute offset of each line start — used to resolve a match within the
+  // whole file so context-aware checks (e.g. try-catch) can run.
+  const lineStarts: number[] = [];
+  let offset = 0;
+  for (const line of lines) {
+    lineStarts.push(offset);
+    offset += line.length + 1; // +1 for the '\n'
+  }
+
+  // Set when a pure-comment line carries the `// input-safety-ok` marker;
+  // the next non-comment line is then exempt too (reason sits above the call).
+  let allowNext = false;
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
-    // Skip pure comments and imports
-    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('import ')) {
+    const isPureComment = trimmed.startsWith('//') || trimmed.startsWith('*');
+
+    // Skip pure comments and imports; a marker comment also exempts the
+    // following line.
+    if (isPureComment) {
+      if (ALLOW_COMMENT.test(line)) allowNext = true;
       continue;
     }
+    if (trimmed.startsWith('import ')) continue;
+
+    // Lines explicitly reviewed and whitelisted with `// input-safety-ok`
+    // (either trailing the code or on the comment line directly above it).
+    // This only suppresses *warning*-severity findings — error findings
+    // (direct fetch, `as any`) must never be silenced by an inline comment.
+    const exempt = allowNext || ALLOW_COMMENT.test(line);
+    allowNext = false;
 
     for (const pattern of DANGEROUS_PATTERNS) {
       pattern.regex.lastIndex = 0;
-      if (pattern.regex.test(line)) {
-        violations.push({
-          file: relativePath,
-          line: i + 1,
-          code: trimmed.length > 120 ? trimmed.slice(0, 117) + '...' : trimmed,
-          message: pattern.message,
-          severity: pattern.severity,
-        });
+      const match = pattern.regex.exec(line);
+      if (!match) continue;
+      if (exempt && pattern.severity !== 'error') continue;
+
+      // Let patterns suppress matches that are actually safe in context
+      // (e.g. a JSON.parse already wrapped in try-catch).
+      if (pattern.isSafe) {
+        const matchIndex = lineStarts[i] + (match.index ?? 0);
+        if (pattern.isSafe(content, matchIndex)) continue;
       }
+
+      violations.push({
+        file: relativePath,
+        line: i + 1,
+        code: trimmed.length > 120 ? trimmed.slice(0, 117) + '...' : trimmed,
+        message: pattern.message,
+        severity: pattern.severity,
+      });
     }
   }
 

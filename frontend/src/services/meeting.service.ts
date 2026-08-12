@@ -121,6 +121,7 @@ export const meetingService = {
    * Delete meeting
    */
   deleteMeeting: async (id: string): Promise<void> => {
+    // input-safety-ok: id is a server-generated ObjectId, validated by validateObjectIdParam
     await apiClient.delete(`/meetings/${id}`);
   },
 
@@ -200,6 +201,7 @@ export const taskService = {
    * Delete task
    */
   deleteTask: async (id: string): Promise<void> => {
+    // input-safety-ok: id is a server-generated ObjectId, validated by validateObjectIdParam
     await apiClient.delete(`/action-items/${id}`);
   },
 
