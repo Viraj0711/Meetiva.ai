@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, CheckCircle, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
+import { ChevronRight, ArrowRight, Check, Lock, Mail } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useRequestPasswordReset, useResetPassword } from '@/hooks/useAuth';
 import {
@@ -24,6 +22,14 @@ const resetFormSchema = passwordResetConfirmSchema.extend({
 
 type ResetFormData = SchemaOutput<typeof resetFormSchema>;
 
+const GRAD = '#5B3FD6';
+const GRAD2 = '#8B5CF6';
+
+const DOT_GRID: React.CSSProperties = {
+  backgroundImage: 'radial-gradient(circle, rgba(91,63,214,0.08) 1.5px, transparent 1.5px)',
+  backgroundSize: '26px 26px',
+};
+
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -36,7 +42,6 @@ const ResetPassword: React.FC = () => {
   const requestPasswordReset = useRequestPasswordReset();
   const resetPassword = useResetPassword();
 
-  // ── Email request form (step 1) ──────────────────────────────────────────
   const requestForm = useForm<RequestFormData>({
     resolver: zodResolver(passwordResetSchema),
     defaultValues: { email: '' },
@@ -53,7 +58,6 @@ const ResetPassword: React.FC = () => {
     }
   };
 
-  // ── Password reset form (step 2) ─────────────────────────────────────────
   const resetForm = useForm<ResetFormData>({
     resolver: zodResolver(resetFormSchema),
     defaultValues: { token: token || '', password: '', confirmPassword: '' },
@@ -70,242 +74,185 @@ const ResetPassword: React.FC = () => {
     }
   };
 
-  // ── Done state (shared) ──────────────────────────────────────────────────
   if (step === 'done') {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(91,63,214,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(244,114,182,0.16),transparent_26%)]" />
-        <div className="absolute inset-0 fine-grid opacity-40" />
-
-        <Link to="/" className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 backdrop-blur-xl transition hover:bg-white/[0.08] hover:text-white">
-          <ArrowLeft className="h-4 w-4" />
-          Back to home
-        </Link>
-
-        <div className="relative z-10 flex min-h-screen items-center justify-center px-6">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-md rounded-[2rem] border border-white/10 bg-slate-950/75 p-10 shadow-[0_40px_120px_rgba(0,0,0,0.45)] backdrop-blur-2xl text-center"
-          >
-            <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-2xl bg-emerald-500/20 shadow-[0_0_40px_rgba(52,211,153,0.2)]">
-              <CheckCircle className="h-8 w-8 text-emerald-400" />
-            </div>
-            <h2 className="mb-3 text-2xl font-bold tracking-tight text-white">
-              {token ? 'Password updated' : 'Check your inbox'}
-            </h2>
-            <p className="mb-8 text-sm leading-6 text-white/55">
-              {token
-                ? 'Your password has been updated successfully. You can now sign in with your new password.'
-                : 'If an account with that email exists, we\'ve sent a password reset link. Please check your inbox and spam folder.'}
-            </p>
-            <Button size="lg" className="w-full" onClick={() => navigate('/login')}>
-              Back to sign in
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </motion.div>
+      <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4 py-12"
+        style={{ background: '#FCFBFF' }}>
+        <div className="absolute inset-0 pointer-events-none" style={DOT_GRID} />
+        <div className="relative w-full max-w-[420px] bg-white rounded-[24px] px-8 py-10 text-center"
+          style={{ border: '1px solid rgba(91,63,214,0.12)', boxShadow: '0 4px 6px rgba(0,0,0,0.03), 0 16px 48px rgba(91,63,214,0.10)' }}>
+          <div className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #10B981, #34D399)' }}>
+            <Check className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-[#1D1B22] mb-3">
+            {token ? 'Password updated' : 'Check your inbox'}
+          </h1>
+          <p className="text-sm text-[#64607A] mb-6">
+            {token
+              ? 'Your password has been updated successfully. You can now sign in with your new password.'
+              : "If an account with that email exists, we've sent a password reset link. Please check your inbox and spam folder."}
+          </p>
+          <button onClick={() => navigate('/login')}
+            className="w-full py-3 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90"
+            style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
+            Back to sign in
+          </button>
         </div>
       </div>
     );
   }
 
-  // ── Request form (no token) ──────────────────────────────────────────────
   if (step === 'request') {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(91,63,214,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(244,114,182,0.16),transparent_26%)]" />
-        <div className="absolute inset-0 fine-grid opacity-40" />
+      <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4 py-12"
+        style={{ background: '#FCFBFF' }}>
+        <div className="absolute inset-0 pointer-events-none" style={DOT_GRID} />
+        <div className="absolute -top-32 left-1/4 w-[600px] h-[600px] rounded-full pointer-events-none"
+          style={{ background: `radial-gradient(circle, ${GRAD}0C 0%, transparent 60%)`, filter: 'blur(60px)' }} />
+        <div className="absolute -bottom-32 right-1/4 w-[500px] h-[500px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(244,114,182,0.07) 0%, transparent 60%)', filter: 'blur(60px)' }} />
 
-        <Link to="/login" className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 backdrop-blur-xl transition hover:bg-white/[0.08] hover:text-white">
-          <ArrowLeft className="h-4 w-4" />
-          Back to sign in
-        </Link>
-
-        <div className="relative z-10 grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="hidden flex-col justify-between p-10 lg:flex">
-            <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80 backdrop-blur-xl">
-                <Sparkles className="h-3.5 w-3.5" />
-                Password reset
-              </div>
-              <div className="max-w-xl space-y-5">
-                <h1 className="font-display text-6xl font-bold leading-[0.92] tracking-tight text-white xl:text-7xl">Never lose access to your flow.</h1>
-                <p className="max-w-lg text-lg leading-8 text-white/60">
-                  Enter your registered email and we'll send you a secure link to reset your password. The link expires in one hour.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid max-w-xl gap-4 md:grid-cols-3">
-              {[
-                ['Secure tokens', '256-bit encrypted'],
-                ['One-hour expiry', 'Auto-invalidates'],
-                ['Instant recovery', 'Back in minutes'],
-              ].map(([title, description]) => (
-                <div key={title} className="glass-panel rounded-[1.5rem] p-5">
-                  <p className="text-sm font-semibold text-white">{title}</p>
-                  <p className="mt-2 text-sm text-white/55">{description}</p>
-                </div>
-              ))}
-            </div>
+        <div className="relative w-full max-w-[420px] mb-8">
+          <button onClick={() => navigate('/')}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold mb-5 transition-colors"
+            style={{ color: '#64607A' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = GRAD; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64607A'; }}>
+            <ChevronRight size={13} className="rotate-180" /> Back to home
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg"
+              style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>M</div>
+            <span className="font-bold text-[#1D1B22] text-xl tracking-tight">Meetiva</span>
           </div>
+        </div>
 
-          <div className="flex items-center justify-center px-6 py-20 lg:justify-end lg:px-10">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-slate-950/75 p-8 shadow-[0_40px_120px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
-            >
-              <div className="mb-8 space-y-3 text-center">
-                <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(91,63,214,0.35)]">
-                  <Lock className="h-7 w-7 text-white" />
-                </div>
-                <h2 className="text-3xl font-bold tracking-tight text-white">Reset password</h2>
-                <p className="text-sm text-white/55">Enter the email you used to sign up.</p>
+        <div className="relative w-full max-w-[420px] bg-white rounded-[24px] px-8 py-8"
+          style={{ border: '1px solid rgba(91,63,214,0.12)', boxShadow: '0 4px 6px rgba(0,0,0,0.03), 0 16px 48px rgba(91,63,214,0.10), inset 0 1px 0 rgba(255,255,255,1)' }}>
+          <h1 className="text-[26px] font-bold text-[#1D1B22] tracking-tight mb-1">Reset password</h1>
+          <p className="text-sm text-[#64607A] mb-7">Enter the email you used to sign up.</p>
+
+          {serverError && (
+            <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              {serverError}
+            </div>
+          )}
+
+          <form onSubmit={requestForm.handleSubmit(handleRequestSubmit)} className="space-y-5">
+            <div>
+              <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Email address</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64607A]" />
+                <Input
+                  type="email"
+                  id="reset-email"
+                  error={requestForm.formState.errors.email?.message}
+                  className="pl-11"
+                  placeholder="you@company.com"
+                  {...requestForm.register('email')}
+                />
               </div>
+            </div>
 
-              {serverError && (
-                <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{serverError}</div>
-              )}
+            <button type="submit"
+              disabled={requestForm.formState.isSubmitting}
+              className="w-full py-3 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
+              {requestForm.formState.isSubmitting ? 'Sending reset link' : 'Send reset link'}
+              {!requestForm.formState.isSubmitting && <ArrowRight className="h-4 w-4" />}
+            </button>
+          </form>
 
-              <form onSubmit={requestForm.handleSubmit(handleRequestSubmit)} className="space-y-5">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/75">Email address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-                    <Input
-                      type="email"
-                      id="reset-email"
-                      error={requestForm.formState.errors.email?.message}
-                      className="pl-11"
-                      placeholder="you@company.com"
-                      {...requestForm.register('email')}
-                    />
-                  </div>
-                </div>
-
-                <Button type="submit" size="lg" className="w-full" isLoading={requestForm.formState.isSubmitting}>
-                  {requestForm.formState.isSubmitting ? 'Sending reset link' : 'Send reset link'}
-                  {!requestForm.formState.isSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}
-                </Button>
-              </form>
-
-              <div className="mt-8 border-t border-white/10 pt-6 text-center text-sm text-white/55">
-                Remember your password?{' '}
-                <Link to="/login" className="font-medium text-cyan-300 transition hover:text-white">Sign in</Link>
-              </div>
-            </motion.div>
+          <div className="mt-6 border-t border-[#E4E0F5] pt-5 text-center text-sm text-[#64607A]">
+            Remember your password?{' '}
+            <Link to="/login" className="font-semibold hover:underline" style={{ color: GRAD }}>Sign in</Link>
           </div>
         </div>
       </div>
     );
   }
 
-  // ── Reset form (token present) ───────────────────────────────────────────
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(91,63,214,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(244,114,182,0.16),transparent_26%)]" />
-      <div className="absolute inset-0 fine-grid opacity-40" />
+    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4 py-12"
+      style={{ background: '#FCFBFF' }}>
+      <div className="absolute inset-0 pointer-events-none" style={DOT_GRID} />
+      <div className="absolute -top-32 right-1/4 w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{ background: `radial-gradient(circle, ${GRAD2}0C 0%, transparent 60%)`, filter: 'blur(60px)' }} />
+      <div className="absolute -bottom-32 left-1/4 w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(244,114,182,0.07) 0%, transparent 60%)', filter: 'blur(60px)' }} />
 
-      <Link to="/login" className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 backdrop-blur-xl transition hover:bg-white/[0.08] hover:text-white">
-        <ArrowLeft className="h-4 w-4" />
-        Back to sign in
-      </Link>
-
-      <div className="relative z-10 grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="hidden flex-col justify-between p-10 lg:flex">
-          <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80 backdrop-blur-xl">
-              <Sparkles className="h-3.5 w-3.5" />
-              New password
-            </div>
-            <div className="max-w-xl space-y-5">
-              <h1 className="font-display text-6xl font-bold leading-[0.92] tracking-tight text-white xl:text-7xl">Set a strong new password.</h1>
-              <p className="max-w-lg text-lg leading-8 text-white/60">
-                Create a new password for your account. Make it at least eight characters — a mix of letters, numbers, and symbols is best.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid max-w-xl gap-4 md:grid-cols-3">
-            {[
-              ['8+ characters', 'Minimum length'],
-              ['Strong security', 'Bcrypt hashed'],
-              ['Instant effect', 'Old one revoked'],
-            ].map(([title, description]) => (
-              <div key={title} className="glass-panel rounded-[1.5rem] p-5">
-                <p className="text-sm font-semibold text-white">{title}</p>
-                <p className="mt-2 text-sm text-white/55">{description}</p>
-              </div>
-            ))}
-          </div>
+      <div className="relative w-full max-w-[420px] mb-8">
+        <button onClick={() => navigate('/')}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold mb-5 transition-colors"
+          style={{ color: '#64607A' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = GRAD; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#64607A'; }}>
+          <ChevronRight size={13} className="rotate-180" /> Back to home
+        </button>
+        <div className="flex items-center gap-3">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg"
+            style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>M</div>
+          <span className="font-bold text-[#1D1B22] text-xl tracking-tight">Meetiva</span>
         </div>
+      </div>
 
-        <div className="flex items-center justify-center px-6 py-20 lg:justify-end lg:px-10">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-slate-950/75 p-8 shadow-[0_40px_120px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
-          >
-            <div className="mb-8 space-y-3 text-center">
-              <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary shadow-[0_18px_40px_rgba(91,63,214,0.35)]">
-                <ShieldCheck className="h-7 w-7 text-white" />
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight text-white">Choose new password</h2>
-              <p className="text-sm text-white/55">Must be at least 8 characters.</p>
+      <div className="relative w-full max-w-[420px] bg-white rounded-[24px] px-8 py-8"
+        style={{ border: '1px solid rgba(91,63,214,0.12)', boxShadow: '0 4px 6px rgba(0,0,0,0.03), 0 16px 48px rgba(91,63,214,0.10), inset 0 1px 0 rgba(255,255,255,1)' }}>
+        <h1 className="text-[26px] font-bold text-[#1D1B22] tracking-tight mb-1">Choose new password</h1>
+        <p className="text-sm text-[#64607A] mb-7">Must be at least 8 characters.</p>
+
+        {serverError && (
+          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            {serverError}
+          </div>
+        )}
+
+        <form onSubmit={resetForm.handleSubmit(handleResetSubmit)} className="space-y-5">
+          <input type="hidden" {...resetForm.register('token')} />
+
+          <div>
+            <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">New password</label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64607A]" />
+              <Input
+                type="password"
+                id="new-password"
+                error={resetForm.formState.errors.password?.message}
+                className="pl-11"
+                placeholder="Minimum 8 characters"
+                {...resetForm.register('password')}
+              />
             </div>
+          </div>
 
-            {serverError && (
-              <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{serverError}</div>
-            )}
-
-            <form onSubmit={resetForm.handleSubmit(handleResetSubmit)} className="space-y-5">
-              <input type="hidden" {...resetForm.register('token')} />
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-white/75">New password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-                  <Input
-                    type="password"
-                    id="new-password"
-                    error={resetForm.formState.errors.password?.message}
-                    className="pl-11"
-                    placeholder="Minimum 8 characters"
-                    {...resetForm.register('password')}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-white/75">Confirm new password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
-                  <Input
-                    type="password"
-                    id="confirm-password"
-                    error={resetForm.formState.errors.confirmPassword?.message}
-                    className="pl-11"
-                    placeholder="Repeat your password"
-                    {...resetForm.register('confirmPassword')}
-                  />
-                </div>
-              </div>
-
-              <Button type="submit" size="lg" className="w-full" isLoading={resetForm.formState.isSubmitting}>
-                {resetForm.formState.isSubmitting ? 'Updating password' : 'Update password'}
-                {!resetForm.formState.isSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
-            </form>
-
-            <div className="mt-8 border-t border-white/10 pt-6 text-center text-sm text-white/55">
-              Changed your mind?{' '}
-              <Link to="/login" className="font-medium text-cyan-300 transition hover:text-white">Sign in</Link>
+          <div>
+            <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Confirm new password</label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#64607A]" />
+              <Input
+                type="password"
+                id="confirm-password"
+                error={resetForm.formState.errors.confirmPassword?.message}
+                className="pl-11"
+                placeholder="Repeat your password"
+                {...resetForm.register('confirmPassword')}
+              />
             </div>
-          </motion.div>
+          </div>
+
+          <button type="submit"
+            disabled={resetForm.formState.isSubmitting}
+            className="w-full py-3 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+            style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
+            {resetForm.formState.isSubmitting ? 'Updating password' : 'Update password'}
+            {!resetForm.formState.isSubmitting && <ArrowRight className="h-4 w-4" />}
+          </button>
+        </form>
+
+        <div className="mt-6 border-t border-[#E4E0F5] pt-5 text-center text-sm text-[#64607A]">
+          Changed your mind?{' '}
+          <Link to="/login" className="font-semibold hover:underline" style={{ color: GRAD }}>Sign in</Link>
         </div>
       </div>
     </div>
