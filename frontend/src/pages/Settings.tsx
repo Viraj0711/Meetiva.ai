@@ -102,6 +102,9 @@ const Settings: React.FC = () => {
   }, []);
 
   // ── Change Password state ──────────────────────────────────────────────
+  // Accounts created via Google have no password yet (hasPassword === false)
+  // — they get a "Set Password" flow without a current-password field.
+  const hasPassword = user?.hasPassword !== false;
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -110,7 +113,7 @@ const Settings: React.FC = () => {
   const handleChangePassword = async () => {
     setPasswordError(null);
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    if ((hasPassword && !currentPassword) || !newPassword || !confirmPassword) {
       setPasswordError('All fields are required.');
       return;
     }
@@ -126,7 +129,9 @@ const Settings: React.FC = () => {
     }
 
     try {
-      await changePasswordMutation.mutateAsync({ currentPassword, newPassword });
+      await changePasswordMutation.mutateAsync(
+        hasPassword ? { currentPassword, newPassword } : { newPassword }
+      );
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -135,7 +140,11 @@ const Settings: React.FC = () => {
         logoutMutation.mutate();
       }, 1500);
     } catch {
-      setPasswordError('Failed to change password. Please check your current password.');
+      setPasswordError(
+        hasPassword
+          ? 'Failed to change password. Please check your current password.'
+          : 'Failed to set password. Please try again.'
+      );
     }
   };
 
@@ -362,12 +371,20 @@ const Settings: React.FC = () => {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-bold mb-6">Change Password</h2>
+            <h2 className="text-xl font-bold mb-6">{hasPassword ? 'Change Password' : 'Set Password'}</h2>
+            {!hasPassword && (
+              <p className="text-sm text-muted-foreground mb-4">
+                You signed up with Google. Set a password to also sign in with your email and
+                password.
+              </p>
+            )}
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Current Password</label>
-                <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
-              </div>
+              {hasPassword && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Current Password</label>
+                  <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium mb-2">New Password</label>
                 <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
@@ -386,7 +403,13 @@ const Settings: React.FC = () => {
                 onClick={handleChangePassword}
                 disabled={changePasswordMutation.isPending}
               >
-                {changePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+                {changePasswordMutation.isPending
+                  ? hasPassword
+                    ? 'Updating...'
+                    : 'Setting...'
+                  : hasPassword
+                    ? 'Update Password'
+                    : 'Set Password'}
               </Button>
             </div>
           </Card>

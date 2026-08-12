@@ -82,7 +82,9 @@ export const passwordResetConfirmSchema = z.object({
 });
 
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Current password is required'),
+  // Optional so accounts without a password yet (Google Sign-In users) can set
+  // one. The route requires currentPassword only when the user HAS a password.
+  currentPassword: z.string().min(1, 'Current password is required').optional(),
   newPassword: passwordField,
 });
 

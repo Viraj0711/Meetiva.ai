@@ -13,6 +13,8 @@ export const ForcePasswordChangeGate: React.FC<{ children: React.ReactNode }> = 
   const changePasswordMutation = useChangePassword();
   const logoutMutation = useLogout();
 
+  // Google-created accounts have no password yet — they set (not change) one.
+  const hasPassword = user?.hasPassword !== false;
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,7 +26,7 @@ export const ForcePasswordChangeGate: React.FC<{ children: React.ReactNode }> = 
 
   const handleSubmit = async () => {
     setError('');
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    if ((hasPassword && !currentPassword) || !newPassword || !confirmPassword) {
       setError('All fields are required.');
       return;
     }
@@ -37,10 +39,16 @@ export const ForcePasswordChangeGate: React.FC<{ children: React.ReactNode }> = 
       return;
     }
     try {
-      await changePasswordMutation.mutateAsync({ currentPassword, newPassword });
+      await changePasswordMutation.mutateAsync(
+        hasPassword ? { currentPassword, newPassword } : { newPassword }
+      );
       setTimeout(() => logoutMutation.mutate(), 1500);
     } catch {
-      setError('Failed to change password. Please check your current password.');
+      setError(
+        hasPassword
+          ? 'Failed to change password. Please check your current password.'
+          : 'Failed to set password. Please try again.'
+      );
     }
   };
 
@@ -59,10 +67,12 @@ export const ForcePasswordChangeGate: React.FC<{ children: React.ReactNode }> = 
         </p>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Current Password</label>
-            <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
-          </div>
+          {hasPassword && (
+            <div>
+              <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Current Password</label>
+              <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
+            </div>
+          )}
           <div>
             <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">New Password</label>
             <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
@@ -83,7 +93,11 @@ export const ForcePasswordChangeGate: React.FC<{ children: React.ReactNode }> = 
             Logout
           </Button>
           <Button className="flex-1 rounded-full bg-gradient-to-r from-[#5B3FD6] to-[#8B5CF6] text-white" onClick={handleSubmit} disabled={changePasswordMutation.isPending}>
-            {changePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+            {changePasswordMutation.isPending
+              ? 'Updating...'
+              : hasPassword
+                ? 'Update Password'
+                : 'Set Password'}
           </Button>
         </div>
       </div>

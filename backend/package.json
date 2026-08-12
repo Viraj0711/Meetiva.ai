@@ -11,6 +11,7 @@
     "start": "node dist/index.js",
     "db:seed": "tsx src/scripts/seed.ts",
     "db:migrate:pro-to-team": "tsx src/scripts/migrate-pro-to-team.ts",
+    "db:migrate:google-passwordless": "tsx src/scripts/migrate-google-passwordless.ts",
     "test:rate-limit": "tsx src/tests/rateLimiters.test.ts",
     "test:e2e": "tsx tests/e2e-team-rbac.test.ts",
     "lint:security": "tsx scripts/check-query-safety.ts",

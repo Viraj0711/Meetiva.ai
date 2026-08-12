@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ArrowRight, Check, Building2, User, ArrowLeft } from 'lucide-react';
 import { useRegister } from '@/hooks/useAuth';
+import { authService } from '@/services';
 import { Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { toast } from 'sonner';
@@ -199,11 +200,21 @@ const RegisterPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { name: 'Google', color: '#4285F4', letter: 'G' },
-                  { name: 'GitHub', color: '#24292F', letter: 'GH' },
+                  {
+                    name: 'Google',
+                    color: '#4285F4',
+                    letter: 'G',
+                    signIn: authService.googleLoginRedirect,
+                  },
+                  {
+                    name: 'GitHub',
+                    color: '#24292F',
+                    letter: 'GH',
+                    signIn: () => toast.info('GitHub sign-up coming soon.'),
+                  },
                 ].map(p => (
                   <button key={p.name}
-                    onClick={() => toast.info(`${p.name} sign-up coming soon.`)}
+                    onClick={p.signIn}
                     className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all bg-white text-[#1D1B22]"
                     style={{ borderColor: 'rgba(91,63,214,0.14)' }}
                     onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.28)'; el.style.background = '#EDE9FF'; }}

@@ -1,4 +1,10 @@
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load backend/.env so scripts work standalone (same behavior as src/index.ts).
+// override: true keeps .env authoritative, matching the main app.
+dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true });
 
 /**
  * Migration: PRO → TEAM tier rename + enterprise field defaults
