@@ -5,8 +5,9 @@ import {
   Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, Shield,
 } from "lucide-react";
 import { authApi, setToken } from "@/lib/api";
+import type { MeUser } from "@/lib/api";
 
-export function LoginPage({ onLogin }: { onLogin: () => void }) {
+export function LoginPage({ onLogin }: { onLogin: (user: MeUser) => void }) {
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw]     = useState(false);
@@ -19,10 +20,10 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
     if (!email.trim() || !password.trim()) { setError("Please enter your email and password."); return; }
     setLoading(true);
     try {
-      const { token } = await authApi.login(email, password);
+      const { token, user } = await authApi.login(email, password);
       setToken(token);
-      toast.success("Welcome back, Super Admin!");
-      onLogin();
+      toast.success(`Welcome back, ${user.name}!`);
+      onLogin(user);
     } catch (err: any) {
       setError(err.message || "Invalid credentials");
       setLoading(false);

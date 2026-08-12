@@ -1,21 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
 import TeamMember from '../models/TeamMember';
-import type { TeamRole, TeamInfo } from '../lib/shared';
+import User from '../models/User';
+import type { TeamRole, TeamInfo, OrgRole } from '../lib/shared';
 import { createLogger } from '../lib/logger';
 
 const log = createLogger('meetiva:auth');
 
-export type { TeamRole, TeamInfo };
+export type { TeamRole, TeamInfo, OrgRole };
 
 export interface AuthRequest extends Request {
   userId?: string;
   userTeams?: TeamInfo[];
+  userOrg?: {
+    orgRole: OrgRole;
+    organizationId: string | null;
+  };
 }
 
 interface JwtPayload {
   userId: string;
   email: string;
+  teams?: TeamInfo[];
+  orgRole?: OrgRole | null;
+  organizationId?: string | null;
+  tokenVersion?: number;
   iat?: number;
   exp?: number;
 }
@@ -44,7 +53,30 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
       return;
     }
 
+    // Check tokenVersion for instant revocation
+    const user = await User.findById(decoded.userId)
+      .select('tokenVersion orgRole organizationId isActive isRemoved')
+      .lean();
+
+    if (!user || !user.isActive || user.isRemoved) {
+      res.status(401).json({ message: 'Account is inactive or removed' });
+      return;
+    }
+
+    if (decoded.tokenVersion !== undefined && decoded.tokenVersion !== user.tokenVersion) {
+      res.status(401).json({ message: 'Session revoked! Please log in again.' });
+      return;
+    }
+
     req.userId = decoded.userId;
+
+    // Attach org context if present
+    if (user.orgRole) {
+      req.userOrg = {
+        orgRole: user.orgRole,
+        organizationId: user.organizationId?.toString() ?? null,
+      };
+    }
 
     const teamMembers = await TeamMember.find({
       userId: decoded.userId as any,

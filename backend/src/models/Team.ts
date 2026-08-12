@@ -6,7 +6,7 @@ import TeamChatMessage from './TeamChatMessage';
 export interface ITeam extends Document {
   name: string;
   description?: string | null;
-  managerId?: Types.ObjectId | null;
+  projectId?: Types.ObjectId | null;
   inviteCode: string;
   createdAt: Date;
   updatedAt: Date;
@@ -16,13 +16,13 @@ const teamSchema = new Schema<ITeam>(
   {
     name: { type: String, required: true },
     description: { type: String, default: null },
-    managerId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    projectId: { type: Schema.Types.ObjectId, ref: 'Project', default: null },
     inviteCode: { type: String, required: true, unique: true },
   },
   { timestamps: true, collection: 'teams' }
 );
 
-teamSchema.index({ managerId: 1 });
+teamSchema.index({ projectId: 1 });
 
 // ── Cascade delete: when a Team is deleted, remove members, invitations, chat messages ──
 teamSchema.pre('findOneAndDelete', async function () {

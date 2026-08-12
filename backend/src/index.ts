@@ -14,6 +14,8 @@ import teamsRoutes from './routes/teams';
 import calendarRoutes from './routes/calendar';
 import notificationsRoutes from './routes/notifications';
 import workspaceRoutes from './routes/workspace';
+import organizationsRoutes from './routes/organizations';
+import projectsRoutes from './routes/projects';
 import rateLimit from 'express-rate-limit';
 import { validateBackendEnv } from './lib/env';
 import { startDeadlineNotifier, stopDeadlineNotifier } from './jobs/deadlineNotifier';
@@ -100,6 +102,8 @@ app.use(`${API_PREFIX}/teams`, teamsRoutes);
 app.use(`${API_PREFIX}/calendar`, calendarRoutes);
 app.use(`${API_PREFIX}/notifications`, notificationsRoutes);
 app.use(`${API_PREFIX}/workspace`, workspaceRoutes);
+app.use(`${API_PREFIX}/organizations`, organizationsRoutes);
+app.use(`${API_PREFIX}/projects`, projectsRoutes);
 
 app.use('/auth', authRoutes);
 app.use('/calendar', calendarRoutes);

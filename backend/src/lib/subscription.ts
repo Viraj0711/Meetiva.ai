@@ -6,20 +6,20 @@ import { Types } from 'mongoose';
 
 const MONTHLY_MEETING_LIMITS: Record<string, number> = {
   FREE: 5,
-  PRO: 999_999, // effectively unlimited
   TEAM: 999_999,
+  ENTERPRISE: 999_999,
 };
 
-const TIERS_REQUIRING_SUBSCRIPTION = ['PRO', 'TEAM'];
+const TIERS_REQUIRING_SUBSCRIPTION = ['TEAM', 'ENTERPRISE'];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /**
  * Check if a user has an active subscription.
- * PRO and TEAM tiers are considered active. FREE is not.
+ * TEAM and ENTERPRISE tiers are considered active. FREE is not.
  */
 export const hasActiveSubscription = (tier: string, expiresAt?: Date | null): boolean => {
-  if (tier === 'PRO' || tier === 'TEAM') {
+  if (tier === 'TEAM' || tier === 'ENTERPRISE') {
     // If the subscription has an expiry, check it hasn't passed
     if (expiresAt && expiresAt < new Date()) {
       return false;
@@ -95,7 +95,7 @@ export const checkMeetingCredits = async (userId: string): Promise<void> => {
   if (!isSubscribed && meetingCountThisMonth >= limit) {
     throw new AppError(
       403,
-      `You've used all ${limit} free meetings this month. Upgrade to PRO for unlimited meetings.`,
+      `You've used all ${limit} free meetings this month. Upgrade to TEAM for unlimited meetings.`,
       'MEETING_LIMIT_REACHED'
     );
   }
@@ -127,7 +127,7 @@ export const requireSubscription = async (userId: string): Promise<void> => {
 
   if (!hasActiveSubscription(user.subscriptionTier, user.subscriptionExpiresAt)) {
     throw new AppError(403,
-      'A paid subscription is required for this action. Upgrade to PRO or TEAM.'
+      'A paid subscription is required for this action. Upgrade to TEAM or ENTERPRISE.'
     );
   }
 };

@@ -2,13 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, Users, FileText, ScrollText, Target, BarChart2,
-  Upload, Layout, Settings, LogOut, ChevronDown, User, Building2, Check,
+  Upload, Layout, Settings, LogOut, ChevronDown, Building2, User,
 } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
-import { setActiveTeam, setIndividual } from '@/store/slices/workspaceSlice';
-import { useTeams } from '@/hooks/useTeams';
 import { Avatar } from '@/components/ui/Avatar';
 
 const GRAD = '#5B3FD6';
@@ -30,50 +27,51 @@ const NAV = [
   { id: 'workspaces', label: 'Workspaces',     icon: Layout,      path: '/dashboard/workspace' },
 ];
 
+interface WorkspaceOption {
+  id: string;
+  name: string;
+  subtitle: string;
+  icon: React.ReactNode;
+}
+
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const queryClient = useQueryClient();
   const user = useAppSelector((state) => state.auth.user);
-  const { activeTeamId, activeTeamName } = useAppSelector((state) => state.workspace);
-  const { data: teams = [] } = useTeams();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const workspaceRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => location.pathname === path;
-
   const navTo = (path: string) => navigate(path);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false);
+    const handler = (e: MouseEvent) => {
+      if (workspaceRef.current && !workspaceRef.current.contains(e.target as Node)) {
+        setWorkspaceOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const invalidateWorkspaceQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ['meetings'] });
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
-  };
+  const isCorporate = user?.accountType === 'corporate' && user?.organizationId;
 
-  const handleSelectIndividual = () => {
-    dispatch(setIndividual());
-    setDropdownOpen(false);
-    invalidateWorkspaceQueries();
-  };
+  const workspaces: WorkspaceOption[] = isCorporate
+    ? [
+        { id: 'org', name: user?.name || 'Organization', subtitle: `${user?.orgRole || 'member'} · Organization`, icon: <Building2 size={14} /> },
+        ...(user?.teams ?? []).slice(0, 5).map((t) => ({
+          id: t.teamId,
+          name: `Team ${t.teamId.slice(-4)}`,
+          subtitle: `Role: ${t.role}`,
+          icon: <Users size={14} />,
+        })),
+      ]
+    : [
+        { id: 'personal', name: user?.name || 'Personal Account', subtitle: 'Free Plan', icon: <User size={14} /> },
+      ];
 
-  const handleSelectTeam = (teamId: string, teamName: string) => {
-    dispatch(setActiveTeam({ teamId, teamName }));
-    setDropdownOpen(false);
-    invalidateWorkspaceQueries();
-  };
-
-  const getInitial = (name: string) => name?.charAt(0)?.toUpperCase() || 'M';
+  const currentWorkspace = workspaces[0];
 
   return (
     <div className="w-[232px] flex-shrink-0 h-screen flex flex-col relative overflow-hidden"
@@ -82,13 +80,10 @@ const Sidebar: React.FC = () => {
         borderRight: '1px solid #E4E0F5',
         boxShadow: '1px 0 0 rgba(91,63,214,0.04)',
       }}>
-      {/* Subtle dot-grid on sidebar */}
       <div className="absolute inset-0 pointer-events-none" style={{ ...DOT_GRID, opacity: 0.25 }} />
-      {/* Very soft purple glow top */}
       <div className="absolute -top-16 -left-16 w-[220px] h-[220px] rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle, rgba(91,63,214,0.06) 0%, transparent 70%)' }} />
 
-      {/* Logo mark */}
       <div className="relative px-5 pt-5 pb-4">
         <div className="flex items-center gap-2.5 mb-5">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
@@ -101,72 +96,44 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* Workspace selector */}
-      <div className="relative px-4 pb-4" ref={dropdownRef}>
+      <div className="relative px-4 pb-4" ref={workspaceRef}>
         <button
-          onClick={() => setDropdownOpen(!dropdownOpen)}
+          onClick={() => setWorkspaceOpen(!workspaceOpen)}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-[#E4E0F5] bg-white/60 hover:bg-white transition-all duration-150 cursor-pointer"
         >
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
             style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
-            {activeTeamId ? getInitial(activeTeamName) : user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            {currentWorkspace.icon}
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <div className="text-sm font-semibold text-[#1D1B22] truncate">{activeTeamName}</div>
-            <div className="text-[10px] text-[#64607A] truncate">
-              {activeTeamId ? 'Team workspace' : 'Personal workspace'}
-            </div>
+            <div className="text-sm font-semibold text-[#1D1B22] truncate">{currentWorkspace.name}</div>
+            <div className="text-[10px] text-[#64607A] truncate">{currentWorkspace.subtitle}</div>
           </div>
-          <ChevronDown size={14} className={`flex-shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} style={{ color: '#64607A' }} />
+          <ChevronDown size={14} className={`flex-shrink-0 transition-transform duration-150 ${workspaceOpen ? 'rotate-180' : ''}`} style={{ color: '#64607A' }} />
         </button>
 
-        {/* Dropdown menu */}
-        {dropdownOpen && (
-          <div className="absolute left-4 right-4 top-full mt-1 bg-white rounded-xl border border-[#E4E0F5] shadow-lg overflow-hidden z-50"
-            style={{ boxShadow: '0 8px 32px rgba(91,63,214,0.12)' }}>
-            {/* Individual option */}
-            <button
-              onClick={handleSelectIndividual}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#F3EFFE]"
-            >
-              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-[#EDE9FF]">
-                <User size={14} style={{ color: GRAD }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-[#1D1B22]">Individual</div>
-                <div className="text-[10px] text-[#64607A]">Your personal workspace</div>
-              </div>
-              {!activeTeamId && <Check size={14} style={{ color: GRAD }} />}
-            </button>
-
-            {/* Teams */}
-            {teams.length > 0 && (
-              <>
-                <div className="px-3 py-1.5 border-t border-[#E4E0F5]">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[#9B97B0]">Teams</span>
+        {workspaceOpen && workspaces.length > 1 && (
+          <div className="absolute left-4 right-4 mt-1 bg-white rounded-xl border border-[#E4E0F5] shadow-lg overflow-hidden z-50">
+            {workspaces.map((ws) => (
+              <button
+                key={ws.id}
+                onClick={() => { setWorkspaceOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#F5F3FF] transition-colors"
+              >
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                  style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, fontSize: 10 }}>
+                  {ws.icon}
                 </div>
-                {teams.map((team) => (
-                  <button
-                    key={team.id}
-                    onClick={() => handleSelectTeam(team.id, team.name)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#F3EFFE]"
-                  >
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-[#EDE9FF]">
-                      <Building2 size={14} style={{ color: GRAD }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-[#1D1B22] truncate">{team.name}</div>
-                      <div className="text-[10px] text-[#64607A]">{team.role || 'Member'}</div>
-                    </div>
-                    {activeTeamId === team.id && <Check size={14} style={{ color: GRAD }} />}
-                  </button>
-                ))}
-              </>
-            )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-[#1D1B22] truncate">{ws.name}</div>
+                  <div className="text-[10px] text-[#64607A] truncate">{ws.subtitle}</div>
+                </div>
+              </button>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Nav */}
       <nav className="relative flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
         {NAV.map((item) => (
           <button
@@ -212,7 +179,6 @@ const Sidebar: React.FC = () => {
         </div>
       </nav>
 
-      {/* User footer */}
       <div className="relative p-4 border-t border-[#E4E0F5]">
         <div className="flex items-center gap-2.5 mb-3">
           <Avatar name={user?.name || 'User'} size="sm" />

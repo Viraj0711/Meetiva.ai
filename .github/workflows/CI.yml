@@ -18,6 +18,9 @@ env:
   # Pinning npm keeps `npm ci` strict-sync checks identical to local dev.
   NPM_VERSION: "11"
 
+permissions:
+  contents: read
+
 jobs:
   security-scan:
     name: Security — Secret scanning (Gitleaks)

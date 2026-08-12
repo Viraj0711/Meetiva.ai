@@ -9,6 +9,8 @@ import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store';
 import { loginSuccess } from '@/store/slices/authSlice';
 import { useChangePassword, useLogout } from '@/hooks/useAuth';
+import { Building2, ArrowRight, Check } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Integration {
   id: string;
@@ -143,6 +145,13 @@ const Settings: React.FC = () => {
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [prefsMessage, setPrefsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // ── Enterprise upgrade state ─────────────────────────────────────────
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [upgradeOrgName, setUpgradeOrgName] = useState('');
+  const [upgradeEmail, setUpgradeEmail] = useState(user?.email || '');
+  const [upgradeSubmitted, setUpgradeSubmitted] = useState(false);
+  const isSelfUser = user?.accountType === 'self' || !user?.accountType;
+
   // ── Handlers ───────────────────────────────────────────────────────────
   const handleProfileChange = (field: keyof typeof profileForm, value: string) => {
     setProfileForm((prev) => ({ ...prev, [field]: value }));
@@ -223,6 +232,29 @@ const Settings: React.FC = () => {
       setPrefsMessage({ type: 'error', text: 'Failed to save preferences.' });
     } finally {
       setSavingPrefs(false);
+    }
+  };
+
+  const handleEnterpriseUpgrade = async () => {
+    if (!upgradeOrgName.trim()) {
+      toast.error('Please enter your organization name.');
+      return;
+    }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/organizations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: upgradeOrgName, contactEmail: upgradeEmail }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Failed to submit request');
+      }
+      setUpgradeSubmitted(true);
+      toast.success('Enterprise request submitted!');
+    } catch (err) {
+      const e = err as { message?: string };
+      toast.error(e?.message || 'Failed to submit request');
     }
   };
 
@@ -364,6 +396,61 @@ const Settings: React.FC = () => {
               </Button>
             </div>
           </Card>
+
+          {isSelfUser && (
+            <Card className="p-6 border border-purple-500/20 bg-purple-500/5">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                  <Building2 className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-bold">Upgrade to Enterprise</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Get role-based access control, organization management, and unlimited seats for your team.
+                  </p>
+                  {!showUpgrade && !upgradeSubmitted && (
+                    <Button
+                      className="mt-4 rounded-full"
+                      onClick={() => setShowUpgrade(true)}
+                    >
+                      Upgrade Now <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  )}
+                  {showUpgrade && !upgradeSubmitted && (
+                    <div className="mt-4 space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Organization Name</label>
+                        <Input
+                          placeholder="Acme Corp"
+                          value={upgradeOrgName}
+                          onChange={(e) => setUpgradeOrgName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Contact Email</label>
+                        <Input
+                          type="email"
+                          placeholder="admin@acme.com"
+                          value={upgradeEmail}
+                          onChange={(e) => setUpgradeEmail(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="rounded-full" onClick={() => setShowUpgrade(false)}>Cancel</Button>
+                        <Button className="rounded-full" onClick={handleEnterpriseUpgrade}>Submit Request</Button>
+                      </div>
+                    </div>
+                  )}
+                  {upgradeSubmitted && (
+                    <div className="mt-4 flex items-center gap-2 text-sm text-purple-600">
+                      <Check className="w-4 h-4" />
+                      Request submitted! Our team will contact you with Admin credentials.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
       )}
 

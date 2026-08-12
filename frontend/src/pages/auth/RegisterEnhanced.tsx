@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ArrowRight } from 'lucide-react';
+import { ChevronRight, ArrowRight, Check, Building2, User, ArrowLeft } from 'lucide-react';
 import { useRegister } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
 import { toast } from 'sonner';
@@ -13,15 +13,20 @@ const DOT_GRID: React.CSSProperties = {
   backgroundSize: '26px 26px',
 };
 
+type Step = 'type' | 'individual' | 'organization' | 'pending';
+
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const registerMutation = useRegister();
+  const [step, setStep] = useState<Step>('type');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
+  const [orgName, setOrgName] = useState('');
+  const [orgEmail, setOrgEmail] = useState('');
 
-  const handleSubmit = async () => {
+  const handleIndividualSubmit = async () => {
     if (pw !== pw2) {
       toast.error('Passwords do not match.');
       return;
@@ -34,6 +39,55 @@ const RegisterPage: React.FC = () => {
       toast.error(e?.message || 'Registration failed.');
     }
   };
+
+  const handleOrganizationSubmit = async () => {
+    if (!orgName.trim() || !orgEmail.trim()) {
+      toast.error('Please fill in all fields.');
+      return;
+    }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/organizations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: orgName, contactEmail: orgEmail }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Failed to submit request');
+      }
+      setStep('pending');
+    } catch (err) {
+      const e = err as { message?: string };
+      toast.error(e?.message || 'Failed to submit request');
+    }
+  };
+
+  if (step === 'pending') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4 py-12"
+        style={{ background: '#FCFBFF' }}>
+        <div className="absolute inset-0 pointer-events-none" style={DOT_GRID} />
+        <div className="relative w-full max-w-[440px] bg-white rounded-[24px] px-8 py-10 text-center"
+          style={{ border: '1px solid rgba(91,63,214,0.12)', boxShadow: '0 4px 6px rgba(0,0,0,0.03), 0 16px 48px rgba(91,63,214,0.10)' }}>
+          <div className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
+            <Check className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-[#1D1B22] mb-3">Request Submitted</h1>
+          <p className="text-sm text-[#64607A] mb-2">
+            Thank you for your interest in Meetiva Enterprise, <strong>{orgName}</strong>.
+          </p>
+          <p className="text-sm text-[#64607A] mb-6">
+            Our team will review your request and contact you at <strong>{orgEmail}</strong> with your Admin credentials.
+          </p>
+          <button onClick={() => navigate('/login')}
+            className="w-full py-3 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90"
+            style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
+            Back to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4 py-12"
@@ -60,53 +114,148 @@ const RegisterPage: React.FC = () => {
 
       <div className="relative w-full max-w-[440px] bg-white rounded-[24px] px-8 py-8"
         style={{ border: '1px solid rgba(91,63,214,0.12)', boxShadow: '0 4px 6px rgba(0,0,0,0.03), 0 16px 48px rgba(91,63,214,0.10), inset 0 1px 0 rgba(255,255,255,1)' }}>
-        <h1 className="text-[26px] font-bold text-[#1D1B22] tracking-tight mb-1">Create your account</h1>
-        <p className="text-sm text-[#64607A] mb-7">Join thousands of teams that never miss a moment.</p>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Full name</label>
-            <Input placeholder="Jane Smith" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
+        {step === 'type' && (
+          <>
+            <h1 className="text-[26px] font-bold text-[#1D1B22] tracking-tight mb-1">Create your account</h1>
+            <p className="text-sm text-[#64607A] mb-7">Join thousands of teams that never miss a moment.</p>
 
-          <div>
-            <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Email</label>
-            <Input placeholder="you@company.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
+            <div className="space-y-3">
+              <button onClick={() => setStep('individual')}
+                className="w-full flex items-center gap-4 p-5 rounded-2xl border text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+                style={{ borderColor: 'rgba(91,63,214,0.14)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = GRAD; (e.currentTarget as HTMLElement).style.background = '#F5F3FF'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(91,63,214,0.14)'; (e.currentTarget as HTMLElement).style.background = 'white'; }}>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${GRAD}15, ${GRAD2}15)` }}>
+                  <User size={22} style={{ color: GRAD }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-[#1D1B22]">Individual</p>
+                  <p className="text-xs text-[#64607A] mt-0.5">Personal workspace for you and your team</p>
+                </div>
+                <ArrowRight size={16} className="text-[#94A3B8]" />
+              </button>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Password</label>
-              <Input placeholder="Create" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
+              <button onClick={() => setStep('organization')}
+                className="w-full flex items-center gap-4 p-5 rounded-2xl border text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+                style={{ borderColor: 'rgba(91,63,214,0.14)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = GRAD; (e.currentTarget as HTMLElement).style.background = '#F5F3FF'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(91,63,214,0.14)'; (e.currentTarget as HTMLElement).style.background = 'white'; }}>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${GRAD}15, ${GRAD2}15)` }}>
+                  <Building2 size={22} style={{ color: GRAD }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-[#1D1B22]">Organization</p>
+                  <p className="text-xs text-[#64607A] mt-0.5">Enterprise plan with role-based access control</p>
+                </div>
+                <ArrowRight size={16} className="text-[#94A3B8]" />
+              </button>
             </div>
-            <div>
-              <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Confirm</label>
-              <Input placeholder="Repeat" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+          </>
+        )}
+
+        {step === 'individual' && (
+          <>
+            <div className="flex items-center gap-2 mb-5">
+              <button onClick={() => setStep('type')} className="p-1 rounded-lg hover:bg-[#F5F3FF] transition-colors">
+                <ArrowLeft size={16} style={{ color: GRAD }} />
+              </button>
+              <h1 className="text-[26px] font-bold text-[#1D1B22] tracking-tight">Create your account</h1>
             </div>
-          </div>
+            <p className="text-sm text-[#64607A] mb-7">Join thousands of teams that never miss a moment.</p>
 
-          <button onClick={handleSubmit} disabled={registerMutation.isPending}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 8px 28px rgba(91,63,214,0.38)` }}>
-            {registerMutation.isPending ? 'Creating...' : 'Create free workspace'} <ArrowRight size={15} />
-          </button>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Full name</label>
+                <Input placeholder="Jane Smith" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-[#E4E0F5]" />
-            <span className="text-[11px] text-[#64607A]">or</span>
-            <div className="flex-1 h-px bg-[#E4E0F5]" />
-          </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Email</label>
+                <Input placeholder="you@company.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
 
-          <button
-            onClick={() => toast.info('Google sign-up coming soon.')}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all bg-white text-[#1D1B22]"
-            style={{ borderColor: 'rgba(91,63,214,0.14)' }}
-            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.28)'; el.style.background = '#EDE9FF'; }}
-            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.14)'; el.style.background = 'white'; }}>
-            <span className="rounded-full flex items-center justify-center text-[8px] font-black text-white flex-shrink-0" style={{ background: '#4285F4', width: 18, height: 18 }}>G</span>
-            Continue with Google
-          </button>
-        </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Password</label>
+                  <Input placeholder="Create" type="password" value={pw} onChange={(e) => setPw(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Confirm</label>
+                  <Input placeholder="Repeat" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+                </div>
+              </div>
+
+              <button onClick={handleIndividualSubmit} disabled={registerMutation.isPending}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 8px 28px rgba(91,63,214,0.38)` }}>
+                {registerMutation.isPending ? 'Creating...' : 'Create free workspace'} <ArrowRight size={15} />
+              </button>
+
+              <div className="flex items-center justify-center gap-1.5">
+                <Check size={12} style={{ color: GRAD }} />
+                <span className="text-[11px] text-[#64607A]">Free forever · No credit card · Cancel anytime</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-[#E4E0F5]" />
+                <span className="text-[11px] text-[#64607A]">or</span>
+                <div className="flex-1 h-px bg-[#E4E0F5]" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { name: 'Google', color: '#4285F4', letter: 'G' },
+                  { name: 'GitHub', color: '#24292F', letter: 'GH' },
+                ].map(p => (
+                  <button key={p.name}
+                    onClick={() => toast.info(`${p.name} sign-up coming soon.`)}
+                    className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-all bg-white text-[#1D1B22]"
+                    style={{ borderColor: 'rgba(91,63,214,0.14)' }}
+                    onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.28)'; el.style.background = '#EDE9FF'; }}
+                    onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(91,63,214,0.14)'; el.style.background = 'white'; }}>
+                    <span className="rounded-full flex items-center justify-center text-[8px] font-black text-white flex-shrink-0" style={{ background: p.color, width: 18, height: 18 }}>{p.letter}</span>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {step === 'organization' && (
+          <>
+            <div className="flex items-center gap-2 mb-5">
+              <button onClick={() => setStep('type')} className="p-1 rounded-lg hover:bg-[#F5F3FF] transition-colors">
+                <ArrowLeft size={16} style={{ color: GRAD }} />
+              </button>
+              <h1 className="text-[26px] font-bold text-[#1D1B22] tracking-tight">Enterprise Request</h1>
+            </div>
+            <p className="text-sm text-[#64607A] mb-7">Tell us about your organization. We'll set up your Enterprise workspace.</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Organization Name</label>
+                <Input placeholder="Acme Corp" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">Contact Email</label>
+                <Input placeholder="admin@acme.com" type="email" value={orgEmail} onChange={(e) => setOrgEmail(e.target.value)} />
+              </div>
+
+              <button onClick={handleOrganizationSubmit}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 hover:scale-[1.01] active:scale-[0.98]"
+                style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 8px 28px rgba(91,63,214,0.38)` }}>
+                Submit Request <ArrowRight size={15} />
+              </button>
+
+              <p className="text-center text-xs text-[#94A3B8]">
+                Our team will review your request and contact you with Admin credentials.
+              </p>
+            </div>
+          </>
+        )}
 
         <p className="mt-7 text-center text-sm text-[#64607A]">
           Already have an account?{' '}

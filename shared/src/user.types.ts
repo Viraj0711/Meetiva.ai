@@ -1,4 +1,4 @@
-import type { SubscriptionTier, TeamRole } from './enums.js';
+import type { SubscriptionTier, TeamRole, AccountType, OrgRole } from './enums.js';
 
 // ─── User ───────────────────────────────────────────────────────────────────
 
@@ -14,6 +14,14 @@ export interface User {
   meetingCountThisMonth: number;
   meetingCountResetAt: string | null;
   subscriptionExpiresAt: string | null;
+  // Enterprise fields
+  accountType?: AccountType;
+  orgRole?: OrgRole | null;
+  organizationId?: string | null;
+  createdByUserId?: string | null;
+  forcePasswordChange?: boolean;
+  isRemoved?: boolean;
+  tokenVersion?: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -78,10 +78,20 @@ const getUserTeams = async (userId: string): Promise<TeamInfo[]> => {
  * It is NOT persisted to localStorage.
  */
 const createAccessToken = async (userId: string, email: string): Promise<string> => {
-  const teams = await getUserTeams(userId);
+  const [teams, user] = await Promise.all([
+    getUserTeams(userId),
+    User.findById(userId).select('orgRole organizationId tokenVersion').lean(),
+  ]);
 
   return jwt.sign(
-    { userId, email, teams },
+    {
+      userId,
+      email,
+      teams,
+      orgRole: user?.orgRole ?? null,
+      organizationId: user?.organizationId?.toString() ?? null,
+      tokenVersion: user?.tokenVersion ?? 0,
+    },
     process.env.JWT_SECRET!,
     { expiresIn: ACCESS_TOKEN_EXPIRY }
   );
@@ -190,7 +200,7 @@ const validateAndRotateRefreshToken = async (
  */
 const sendAuthResponse = async (
   res: Response,
-  user: { _id: any; email: string; name: string; isVerified: boolean; createdAt: Date; updatedAt: Date },
+  user: { _id: any; email: string; name: string; isVerified: boolean; createdAt: Date; updatedAt: Date; accountType?: string; orgRole?: string | null; organizationId?: any; forcePasswordChange?: boolean },
   statusCode = 200
 ): Promise<void> => {
   const userId = user._id.toString();
@@ -204,6 +214,10 @@ const sendAuthResponse = async (
       email: user.email,
       name: user.name,
       isVerified: user.isVerified,
+      accountType: user.accountType ?? 'self',
+      orgRole: user.orgRole ?? null,
+      organizationId: user.organizationId?.toString() ?? null,
+      forcePasswordChange: user.forcePasswordChange ?? false,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     },
@@ -691,16 +705,16 @@ router.post('/admin/set-tier',
 
     const { tier } = req.body as { tier?: string };
 
-    if (!tier || !['PRO', 'TEAM'].includes(tier)) {
+    if (!tier || !['TEAM', 'ENTERPRISE'].includes(tier)) {
       return res.status(400).json({
-        message: 'Provide tier (PRO or TEAM)',
+        message: 'Provide tier (TEAM or ENTERPRISE)',
       });
     }
 
     const updated = await User.findByIdAndUpdate(
       currentUser._id,
       {
-        subscriptionTier: tier as 'PRO' | 'TEAM',
+        subscriptionTier: tier as 'TEAM' | 'ENTERPRISE',
         subscriptionExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
       },
       { returnDocument: 'after' }
