@@ -31,6 +31,9 @@ export function Organization() {
   const [showProvision, setShowProvision] = useState(false);
   const [provisionForm, setProvisionForm] = useState({ email: "", name: "", role: "manager" });
   const [provisionResult, setProvisionResult] = useState<{ tempPassword: string } | null>(null);
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [addAdminForm, setAddAdminForm] = useState({ email: "", name: "" });
+  const [addAdminResult, setAddAdminResult] = useState<{ tempPassword: string } | null>(null);
 
   const isSuperAdmin = user?.orgRole === "super_admin";
   const isAdmin = user?.orgRole === "admin";
@@ -48,8 +51,8 @@ export function Organization() {
           const org = await organizationsApi.get(me.organizationId);
           setSelectedOrg(org);
           const [usersRes, projectsRes] = await Promise.allSettled([
-            organizationsApi.listUsers(org._id),
-            projectsApi.list(org._id),
+            organizationsApi.listUsers(org.id),
+            projectsApi.list(org.id),
           ]);
           if (usersRes.status === "fulfilled") setOrgUsers(usersRes.value.users ?? []);
           if (projectsRes.status === "fulfilled") setOrgProjects(projectsRes.value.projects ?? []);
@@ -81,7 +84,7 @@ export function Organization() {
   const handleProvision = async () => {
     if (!selectedOrg) return;
     try {
-      const res = await organizationsApi.provision(selectedOrg._id, provisionForm);
+      const res = await organizationsApi.provision(selectedOrg.id, provisionForm);
       setProvisionResult({ tempPassword: res.tempPassword });
       toast.success(`User ${provisionForm.name} provisioned successfully`);
       setOrgUsers((prev) => [...prev, res.user]);
@@ -95,7 +98,7 @@ export function Organization() {
     try {
       await organizationsApi.activate(orgId);
       toast.success("Organization activated");
-      setOrganizations((prev) => prev.map((o) => (o._id === orgId ? { ...o, status: "active" } : o)));
+      setOrganizations((prev) => prev.map((o) => (o.id === orgId ? { ...o, status: "active" } : o)));
     } catch (err: any) {
       toast.error(err.message || "Failed to activate");
     }
@@ -105,9 +108,22 @@ export function Organization() {
     try {
       await organizationsApi.suspend(orgId);
       toast.success("Organization suspended");
-      setOrganizations((prev) => prev.map((o) => (o._id === orgId ? { ...o, status: "suspended" } : o)));
+      setOrganizations((prev) => prev.map((o) => (o.id === orgId ? { ...o, status: "suspended" } : o)));
     } catch (err: any) {
       toast.error(err.message || "Failed to suspend");
+    }
+  };
+
+  const handleAddAdmin = async () => {
+    if (!selectedOrg) return;
+    try {
+      const res = await organizationsApi.addAdmin(selectedOrg.id, addAdminForm);
+      setAddAdminResult({ tempPassword: res.user.tempPassword });
+      toast.success(`Admin ${addAdminForm.name} added successfully`);
+      setOrgUsers((prev) => [...prev, res.user]);
+      setAddAdminForm({ email: "", name: "" });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add admin");
     }
   };
 
@@ -150,6 +166,7 @@ export function Organization() {
             <thead>
               <tr className="border-b border-[#E5F4F7]">
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Organization</th>
+                <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Contact</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Status</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Seats</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Created</th>
@@ -158,7 +175,7 @@ export function Organization() {
             </thead>
             <tbody>
               {organizations.map((org) => (
-                <tr key={org._id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors cursor-pointer" onClick={() => loadOrgDetails(org._id)}>
+                <tr key={org.id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors cursor-pointer" onClick={() => loadOrgDetails(org.id)}>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#06B6D4] to-[#4F46E5] flex items-center justify-center text-white text-xs font-bold">{org.name.charAt(0)}</div>
@@ -168,19 +185,20 @@ export function Organization() {
                       </div>
                     </div>
                   </td>
+                  <td className="px-5 py-4 text-sm text-[#64748B]">{org.contactEmail || "—"}</td>
                   <td className="px-5 py-4"><span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[org.status] ?? "bg-gray-50 text-gray-600"}`}>{org.status}</span></td>
                   <td className="px-5 py-4 text-sm text-[#0F172A]">{org.seatsUsed}/{org.seatLimit}</td>
                   <td className="px-5 py-4 text-sm text-[#94A3B8]">{new Date(org.createdAt).toLocaleDateString()}</td>
-                  <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {org.status === "pending" && <button onClick={() => handleActivate(org._id)} className="px-3 py-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors">Activate</button>}
-                      {org.status === "active" && <button onClick={() => handleSuspend(org._id)} className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">Suspend</button>}
+                      {org.status === "pending" && <button onClick={(e) => { e.stopPropagation(); loadOrgDetails(org.id); }} className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">Review</button>}
+                      {org.status === "active" && <button onClick={(e) => { e.stopPropagation(); handleSuspend(org.id); }} className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">Suspend</button>}
                     </div>
                   </td>
                 </tr>
               ))}
               {organizations.length === 0 && (
-                <tr><td colSpan={5} className="px-5 py-12 text-center text-sm text-[#94A3B8]">No organizations found</td></tr>
+                <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-[#94A3B8]">No organizations found</td></tr>
               )}
             </tbody>
           </table>
@@ -199,13 +217,23 @@ export function Organization() {
             )}
           </div>
           <h1 className="text-2xl font-bold text-[#0F172A]">{selectedOrg?.name ?? "Organization"}</h1>
-          <p className="text-sm text-[#94A3B8]">Manage organization users, projects, and settings</p>
+          <p className="text-sm text-[#94A3B8]">
+            {selectedOrg?.contactEmail && <span>Contact: <strong className="text-[#64748B]">{selectedOrg.contactEmail}</strong> · </span>}
+            Manage organization users, projects, and settings
+          </p>
         </div>
-        {isAdmin && selectedOrg && (
-          <button onClick={() => setShowProvision(true)} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] text-white rounded-xl text-sm font-semibold shadow-sm shadow-[#06B6D4]/25 hover:shadow-md transition-all">
-            <UserPlus className="w-4 h-4" /> Provision User
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {isSuperAdmin && selectedOrg && (
+            <button onClick={() => setShowAddAdmin(true)} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-purple-500/25 hover:shadow-md transition-all">
+              <Shield className="w-4 h-4" /> Add Admin
+            </button>
+          )}
+          {isAdmin && selectedOrg && (
+            <button onClick={() => setShowProvision(true)} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] text-white rounded-xl text-sm font-semibold shadow-sm shadow-[#06B6D4]/25 hover:shadow-md transition-all">
+              <UserPlus className="w-4 h-4" /> Provision User
+            </button>
+          )}
+        </div>
       </div>
 
       {selectedOrg && (
@@ -240,7 +268,7 @@ export function Organization() {
               </thead>
               <tbody>
                 {orgUsers.map((u) => (
-                  <tr key={u._id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors">
+                  <tr key={u.id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#06B6D4] flex items-center justify-center text-white text-xs font-bold">{u.name.charAt(0).toUpperCase()}</div>
@@ -274,9 +302,9 @@ export function Organization() {
               </thead>
               <tbody>
                 {orgProjects.map((p) => (
-                  <tr key={p._id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors">
+                  <tr key={p.id} className="border-b border-[#F8FDFE] hover:bg-[#F8FDFE] transition-colors">
                     <td className="px-5 py-3"><p className="text-sm font-semibold text-[#0F172A]">{p.name}</p>{p.description && <p className="text-xs text-[#94A3B8] truncate max-w-xs">{p.description}</p>}</td>
-                    <td className="px-5 py-3 text-sm text-[#94A3B8]">{p.managerUserId ?? "Unassigned"}</td>
+                    <td className="px-5 py-3 text-sm text-[#94A3B8]">{p.manager?.name || "Unassigned"}</td>
                     <td className="px-5 py-3 text-sm text-[#94A3B8]">{new Date(p.createdAt).toLocaleDateString()}</td>
                   </tr>
                 ))}
@@ -287,6 +315,49 @@ export function Organization() {
             </table>
           </div>
         </>
+      )}
+
+      {showAddAdmin && selectedOrg && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowAddAdmin(false); setAddAdminResult(null); }}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#E5F4F7]">
+              <h3 className="text-lg font-bold text-[#0F172A]">{addAdminResult ? "Admin Added" : "Add Organization Admin"}</h3>
+              <button onClick={() => { setShowAddAdmin(false); setAddAdminResult(null); }} className="w-8 h-8 rounded-lg hover:bg-[#F5FEFF] flex items-center justify-center transition-all"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              {addAdminResult ? (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-purple-800 mb-2">Admin account created successfully</p>
+                  <p className="text-xs text-purple-700">Temporary password:</p>
+                  <code className="block mt-1 px-3 py-2 bg-white rounded-lg text-sm font-mono text-[#0F172A] border border-purple-200 select-all">{addAdminResult.tempPassword}</code>
+                  <p className="text-xs text-purple-600 mt-2">Share this password securely. The admin will be forced to change it on first login.</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Email</label>
+                    <input type="email" value={addAdminForm.email} onChange={(e) => setAddAdminForm((f) => ({ ...f, email: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" placeholder="admin@company.com" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Full Name</label>
+                    <input type="text" value={addAdminForm.name} onChange={(e) => setAddAdminForm((f) => ({ ...f, name: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" placeholder="John Admin" />
+                  </div>
+                  <p className="text-xs text-[#94A3B8]">The new admin will have full access to this organization only. If an admin already exists, they will be replaced.</p>
+                </>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t border-[#E5F4F7]">
+              <button onClick={() => { setShowAddAdmin(false); setAddAdminResult(null); }} className="px-4 py-2 bg-[#F5FEFF] border border-[#E5F4F7] rounded-xl text-sm font-medium text-[#0F172A] hover:bg-[#F8FDFE] transition-all">
+                {addAdminResult ? "Close" : "Cancel"}
+              </button>
+              {!addAdminResult && (
+                <button onClick={handleAddAdmin} className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-all">
+                  Add Admin
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {showProvision && selectedOrg && (
@@ -317,6 +388,7 @@ export function Organization() {
                   <div>
                     <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Role</label>
                     <select value={provisionForm.role} onChange={(e) => setProvisionForm((f) => ({ ...f, role: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all">
+                      {isSuperAdmin && <option value="admin">Admin</option>}
                       <option value="manager">Manager</option>
                       <option value="team_leader">Team Leader</option>
                       <option value="member">Member</option>

@@ -49,6 +49,20 @@ export const meetingService = {
   },
 
   /**
+   * Get a fresh signed URL for the file stored on the meeting (Firebase Storage).
+   * Signed URLs expire, so this regenerates one on demand.
+   */
+  getMeetingFileUrl: async (meetingId: string): Promise<{
+    url: string;
+    kind: 'audio' | 'video' | 'text' | null;
+    expiresIn?: number;
+  }> => {
+    // input-safety-ok: meetingId is a server-generated ObjectId, validated by validateObjectIdParam
+    const response = await apiClient.get<{ url: string; kind: 'audio' | 'video' | 'text' | null; expiresIn?: number }>(`/meetings/${meetingId}/file-url`);
+    return response;
+  },
+
+  /**
    * Create new meeting
    */
   createMeeting: async (data: CreateMeetingRequest): Promise<Meeting> => {

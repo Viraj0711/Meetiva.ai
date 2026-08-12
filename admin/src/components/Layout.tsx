@@ -14,7 +14,7 @@ const allNavItems: { id: Page; label: string; icon: React.ElementType; minRole?:
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "users", label: "Users", icon: Users, minRole: "super_admin" },
   { id: "teams", label: "Teams", icon: Users2 },
-  { id: "organization", label: "Organization", icon: Building2, minRole: "super_admin" },
+  { id: "organization", label: "Organization", icon: Building2, minRole: "admin" },
   { id: "ai", label: "AI Usage", icon: Brain },
   { id: "logs", label: "Logs", icon: ScrollText },
   { id: "settings", label: "Settings", icon: Settings },

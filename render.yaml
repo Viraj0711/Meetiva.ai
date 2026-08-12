@@ -10,7 +10,7 @@
 #      under Service → Environment. Everything else has a sane default.
 #   4. Deploy. Render health-checks GET /health before routing traffic.
 #
-# Note: pick Node 20.x in the service's Runtime settings to match CI.
+# Note: pick Node 24.x in the service's Runtime settings to match CI.
 #
 # The backend uses the platform-injected PORT automatically (backend/src/lib/env.ts)
 # and NODE_ENV=production is set below.
@@ -27,7 +27,7 @@ services:
     plan: free
     buildCommand: |
       # Pin the latest stable npm so lockfiles (npm-11 format) install cleanly
-      # regardless of the Node runtime Render bundles (Node 20 ships npm 10).
+      # regardless of the Node runtime Render bundles (Node 20/24 ship npm 10/11).
       npm i -g npm@11
       npm ci --include=dev
       cd shared && npx tsc
@@ -71,6 +71,11 @@ services:
         sync: false
       # Must be https://<your-app>.onrender.com/auth/google/callback
       - key: GOOGLE_REDIRECT_URI
+        sync: false
+      # Google Sign-In — must ALSO be registered in the Google Cloud Console
+      # alongside GOOGLE_REDIRECT_URI:
+      # https://<your-app>.onrender.com/auth/google/login/callback
+      - key: GOOGLE_LOGIN_REDIRECT_URI
         sync: false
       - key: ADMIN_EMAIL
         sync: false

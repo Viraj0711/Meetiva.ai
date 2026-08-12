@@ -25,9 +25,9 @@ const TIERS = [
     color: 'text-gray-400',
     features: [
       { text: '5 meetings/month', included: true },
-      { text: 'AI summaries (Grok)', included: true },
-      { text: 'Task extraction', included: true },
-      { text: 'Excel export', included: true },
+      { text: 'AI summaries', included: true },
+      { text: 'Minutes Extraction', included: true },
+      { text: 'Minutes PDF', included: true },
       { text: 'Team collaboration', included: false },
       { text: 'Calendar sync', included: false },
       { text: 'Analytics dashboard', included: false },
@@ -36,22 +36,38 @@ const TIERS = [
     highlight: false,
   },
   {
-    name: 'PRO',
-    price: '—',
-    period: 'admin setup',
+    name: 'Team',
+    price: '$29',
+    period: '/seat/mo',
     icon: Crown,
     color: 'text-cyan-500',
     features: [
-      { text: 'Unlimited meetings', included: true },
-      { text: 'AI summaries (Grok)', included: true },
+      { text: '15 meetings/month', included: true },
+      { text: 'AI summaries', included: true },
       { text: 'Task extraction', included: true },
       { text: 'Excel export', included: true },
       { text: 'Team collaboration', included: true },
       { text: 'Calendar sync', included: true },
       { text: 'Analytics dashboard', included: true },
     ],
-    cta: 'Upgrade to PRO',
+    cta: 'Upgrade to Team',
     highlight: true,
+  },
+  {
+    name: 'Enterprise',
+    price: 'Custom',
+    period: 'tailored',
+    icon: ShieldCheck,
+    color: 'text-purple-500',
+    features: [
+      { text: 'Everything in Team', included: true },
+      { text: 'SSO / SAML', included: true },
+      { text: 'Dedicated support', included: true },
+      { text: 'Custom onboarding', included: true },
+      { text: 'Policy controls', included: true },
+    ],
+    cta: 'Contact sales',
+    highlight: false,
   },
 ];
 
@@ -73,7 +89,7 @@ const SubscriptionUpgrade: React.FC = () => {
   const handleConfirmUpgrade = async () => {
     setShowConfirm(false);
     try {
-      await upgradeMutation.mutateAsync('PRO');
+      await upgradeMutation.mutateAsync('TEAM');
     } catch {
       // Toast handles the error message
     }
@@ -97,7 +113,7 @@ const SubscriptionUpgrade: React.FC = () => {
             </p>
             <p className="mt-1 text-sm leading-6 text-amber-700">
               You've used all 5 free meetings this month, so that action was
-              blocked. Upgrade to PRO for unlimited meetings, team
+              blocked. Upgrade to Team for unlimited meetings, team
               collaboration, and calendar sync.
             </p>
           </div>
@@ -105,15 +121,14 @@ const SubscriptionUpgrade: React.FC = () => {
       )}
       <ConfirmDialog
         isOpen={showConfirm}
-        title="Upgrade to PRO?"
-        message="This will upgrade your account to the PRO tier, giving you unlimited meetings, team collaboration, and calendar sync. This action cannot be undone automatically."
-        confirmText="Yes, upgrade to PRO"
+        title="Upgrade to Team?"
+        message="This will upgrade your account to the Team tier, giving you unlimited meetings, team collaboration, and calendar sync. This action cannot be undone automatically."
+        confirmText="Yes, upgrade to Team"
         cancelText="Cancel"
         variant="info"
         onConfirm={handleConfirmUpgrade}
         onCancel={() => setShowConfirm(false)}
-      />
-      <motion.div
+      />        <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
@@ -135,16 +150,16 @@ const SubscriptionUpgrade: React.FC = () => {
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-gray-500">
             Unlock unlimited meetings, team collaboration, calendar sync, and analytics —
-            request a PRO upgrade from your workspace admin.
+            upgrade to Team for your workspace.
           </p>
         </div>
       </motion.div>
 
       {/* Tier comparison cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:gap-8">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-3 lg:gap-8">
         {TIERS.map((tier, index) => {
           const Icon = tier.icon;
-          const isCurrentPlan = !tier.highlight && !isAlreadySubscribed;
+          const isCurrentPlan = tier.name === 'Free' && !isAlreadySubscribed;
           const isTargetPlan = tier.highlight;
           const isCurrentTarget =
             isTargetPlan && isAlreadySubscribed;
@@ -155,9 +170,10 @@ const SubscriptionUpgrade: React.FC = () => {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 * (index + 1), ease: [0.22, 1, 0.36, 1] }}
+              className="h-full"
             >
                <Card
-                className={`relative overflow-hidden p-8 ${
+                className={`relative overflow-hidden p-8 h-full flex flex-col ${
                   tier.highlight
                     ? 'border-cyan-400/30 bg-[radial-gradient(circle_at_top_right,rgba(48,213,246,0.08),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(91,63,214,0.06),transparent_40%),white]'
                     : 'bg-white'
@@ -170,7 +186,7 @@ const SubscriptionUpgrade: React.FC = () => {
                   </>
                 )}
 
-                <div className="relative">
+                <div className="relative flex flex-col h-full">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div
@@ -208,7 +224,7 @@ const SubscriptionUpgrade: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="mt-8 space-y-3">
+                  <div className="mt-8 space-y-3 flex-1">
                     {tier.features.map((feature) => (
                       <div key={feature.text} className="flex items-center gap-3">
                         {feature.included ? (
@@ -231,7 +247,7 @@ const SubscriptionUpgrade: React.FC = () => {
                     {isAlreadySubscribed ? (
                       <Button disabled className="w-full" variant="outline" size="lg">
                         <Crown className="mr-2 h-4 w-4 text-cyan-500" />
-                        You're on PRO
+                        You're on Team
                       </Button>
                     ) : (
                       <>
@@ -248,11 +264,11 @@ const SubscriptionUpgrade: React.FC = () => {
                             ) : (
                               <>
                                 <Sparkles className="mr-2 h-4 w-4" />
-                                Upgrade to PRO
+                                Upgrade to Team
                               </>
                             )}
                           </Button>
-                        ) : (
+                        ) : isCurrentPlan ? (
                           <Button
                             disabled
                             className="w-full"
@@ -260,6 +276,15 @@ const SubscriptionUpgrade: React.FC = () => {
                             variant="outline"
                           >
                             Current plan
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => navigate('/contact')}
+                            className="w-full"
+                            size="lg"
+                            variant="outline"
+                          >
+                            Contact sales
                           </Button>
                         )}
                       </>
@@ -294,7 +319,7 @@ const SubscriptionUpgrade: React.FC = () => {
                     handled through an admin-controlled flow. If your account email
                     matches the <code className="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-cyan-600">ADMIN_EMAIL</code>{' '}
                     environment variable configured on the server, the
-                    <strong className="text-gray-700"> Upgrade to PRO</strong> button above
+                    <strong className="text-gray-700"> Upgrade to Team</strong> button above
                     will upgrade your account immediately.
                   </p>
                   <p className="mt-3 text-sm leading-7 text-gray-500">
@@ -313,7 +338,7 @@ const SubscriptionUpgrade: React.FC = () => {
                       <span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-cyan-100 text-xs text-cyan-600">
                         2
                       </span>
-                      Upgrade you directly via the database
+                      Upgrade you to Team or Enterprise via the database
                     </li>
                   </ul>
                   <p className="mt-4 text-xs text-gray-400">

@@ -28,6 +28,15 @@ export const authService = {
   },
 
   /**
+   * Redirect the browser to the backend Google Sign-In endpoint.
+   * A full-page navigation (not fetch) is required so the OAuth flow and its
+   * cookies work normally; the backend bounces back to /dashboard on success.
+   */
+  googleLoginRedirect: (): void => {
+    window.location.href = `${API_BASE_URL}/auth/google/login`;
+  },
+
+  /**
    * Get current user's subscription info and meeting credits.
    */
   getSubscription: async (): Promise<{
@@ -123,11 +132,18 @@ export const authService = {
   },
 
   /**
-   * Change password (authenticated user)
+   * Change password (authenticated user).
+   * currentPassword is omitted for accounts that have no password yet
+   * (Google Sign-In users setting their first password) — the server only
+   * requires it when the account already has a password.
    */
-  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+  changePassword: async (currentPassword: string | undefined, newPassword: string): Promise<void> => {
     // input-safety-ok: validated server-side by changePasswordSchema
-    await apiClient.post('/auth/change-password', { currentPassword, newPassword });
+    const body: { currentPassword?: string; newPassword: string } = { newPassword };
+    if (currentPassword) {
+      body.currentPassword = currentPassword;
+    }
+    await apiClient.post('/auth/change-password', body);
   },
 
   /**
@@ -144,6 +160,16 @@ export const authService = {
   resendOtp: async (email: string): Promise<void> => {
     // input-safety-ok: email validated server-side by resendOtpSchema
     await apiClient.post('/auth/verify-otp/resend', { email });
+  },
+
+  /**
+   * Permanently delete the authenticated user's account.
+   * Requires the current password. Self-accounts are hard-deleted together
+   * with all of their data; corporate accounts are rejected (org admin flow).
+   */
+  deleteAccount: async (password: string): Promise<void> => {
+    // input-safety-ok: password validated server-side by deleteAccountSchema
+    await apiClient.delete('/auth/me', { password });
   },
 
   /**

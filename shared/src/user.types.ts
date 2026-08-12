@@ -10,6 +10,8 @@ export interface User {
   teams?: TeamInfo[];
   isActive: boolean;
   isVerified: boolean;
+  /** Whether the account has a password set (false for Google-only users). */
+  hasPassword?: boolean;
   subscriptionTier: SubscriptionTier;
   meetingCountThisMonth: number;
   meetingCountResetAt: string | null;

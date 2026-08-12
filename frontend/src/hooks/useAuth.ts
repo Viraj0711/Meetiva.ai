@@ -127,8 +127,13 @@ export const useChangePassword = () => {
   const dispatch = useAppDispatch();
 
   return useMutation({
-    mutationFn: ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) =>
-      authService.changePassword(currentPassword, newPassword),
+    mutationFn: ({
+      currentPassword,
+      newPassword,
+    }: {
+      currentPassword?: string;
+      newPassword: string;
+    }) => authService.changePassword(currentPassword, newPassword),
     onSuccess: () => {
       dispatch(
         addToast({ type: 'success', message: 'Password updated successfully. Please log in again.' })
@@ -193,7 +198,7 @@ export const useUpgradeToPro = () => {
   return useMutation({
     mutationFn: (tier: string) => authService.upgradeToPro(tier),
     onSuccess: () => {
-      dispatch(addToast({ type: 'success', message: 'Subscription upgraded to PRO! 🎉' }));
+      dispatch(addToast({ type: 'success', message: 'Subscription upgraded to Team! 🎉' }));
       queryClient.invalidateQueries({ queryKey: ['user', 'subscription'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
     },

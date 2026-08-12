@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
+import { hashPassword, verifyPassword } from '../lib/password';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import z from 'zod';
+import { google } from 'googleapis';
 import { TeamInfo } from '../middleware/auth';
 import {
   getGoogleOAuthClient,
@@ -21,6 +22,7 @@ import {
   verifyOtpSchema,
   resendOtpSchema,
   changePasswordSchema,
+  deleteAccountSchema,
   updateProfileSchema,
 } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
@@ -47,12 +49,16 @@ import GoogleCalendarAuth from '../models/GoogleCalendarAuth';
 import { createLogger } from '../lib/logger';
 import { verificationOtp, passwordReset, passwordChanged } from '../lib/emailTemplates';
 
+
 const log = createLogger('meetiva:auth');
 
 const router = Router();
 
 const OAUTH_STATE_COOKIE = 'google_oauth_state';
 const OAUTH_UID_COOKIE = 'google_oauth_uid';
+// Google Sign-In state cookie — separate from the Calendar OAuth cookies so
+// the two flows can never collide.
+const LOGIN_STATE_COOKIE = 'google_login_state';
 const REFRESH_COOKIE = 'refresh_token';
 const SESSION_COOKIE = 'session_exists';
 
@@ -201,7 +207,7 @@ const validateAndRotateRefreshToken = async (
  */
 const sendAuthResponse = async (
   res: Response,
-  user: { _id: any; email: string; name: string; isVerified: boolean; createdAt: Date; updatedAt: Date; accountType?: string; orgRole?: string | null; organizationId?: any; forcePasswordChange?: boolean },
+  user: { _id: any; email: string; name: string; isVerified: boolean; createdAt: Date; updatedAt: Date; accountType?: string; orgRole?: string | null; organizationId?: any; forcePasswordChange?: boolean; hashedPassword?: string | null },
   statusCode = 200
 ): Promise<void> => {
   const userId = user._id.toString();
@@ -219,6 +225,7 @@ const sendAuthResponse = async (
       orgRole: user.orgRole ?? null,
       organizationId: user.organizationId?.toString() ?? null,
       forcePasswordChange: user.forcePasswordChange ?? false,
+      hasPassword: Boolean(user.hashedPassword),
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     },
@@ -276,9 +283,9 @@ router.post('/register',
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const { salt, hashedPassword } = await hashPassword(password);
 
-    const user = await User.create({ email, name, hashedPassword });
+    const user = await User.create({ email, name, hashedPassword, passwordSalt: salt });
 
     // Generate and send verification OTP
     const otp = generateOtp();
@@ -299,7 +306,7 @@ router.get('/subscription', apiLimiter, authenticate, asyncHandler(async (req: A
     return res.status(404).json({ message: 'User not found' });
   }
 
-  const monthlyLimit = user.subscriptionTier === 'FREE' ? 5 : 999_999;
+  const monthlyLimit = user.subscriptionTier === 'FREE' ? 5 : user.subscriptionTier === 'TEAM' ? 15 : 999_999;
   const meetingsRemaining = Math.max(0, monthlyLimit - user.meetingCountThisMonth);
 
   res.json({
@@ -320,11 +327,13 @@ router.post('/login',
     const { email, password } = req.body as z.infer<typeof loginSchema>;
 
     const user = await User.findOne({ email }).lean() as any;
-    if (!user) {
+    // Accounts without a password (Google-only) can't sign in with a password —
+    // keep the generic message so we don't reveal which emails exist.
+    if (!user || !user.hashedPassword) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const valid = await bcrypt.compare(password, user.hashedPassword);
+    const valid = await verifyPassword(password, user.hashedPassword);
     if (!valid) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -340,7 +349,7 @@ router.post('/login',
 // Get current authenticated user (access token required)
 router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = await User.findById(req.userId!)
-    .select('email name isVerified createdAt updatedAt')
+    .select('email name isVerified hashedPassword accountType orgRole organizationId forcePasswordChange createdAt updatedAt')
     .lean();
 
   if (!user) {
@@ -352,6 +361,11 @@ router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest
     email: user.email,
     name: user.name,
     isVerified: user.isVerified,
+    hasPassword: Boolean(user.hashedPassword),
+    accountType: user.accountType ?? 'self',
+    orgRole: user.orgRole ?? null,
+    organizationId: user.organizationId?.toString() ?? null,
+    forcePasswordChange: user.forcePasswordChange ?? false,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   });
@@ -379,7 +393,7 @@ router.patch(
     }
 
     const updated = await User.findByIdAndUpdate(req.userId!, data, { returnDocument: 'after' })
-      .select('email name createdAt updatedAt')
+      .select('email name hashedPassword createdAt updatedAt')
       .lean();
 
     if (!updated) {
@@ -415,7 +429,7 @@ router.post('/refresh', authLimiter, asyncHandler(async (req: Request, res: Resp
   }
 
   const user = await User.findById(userId)
-    .select('email name isActive isVerified createdAt updatedAt')
+    .select('email name isActive isVerified hashedPassword createdAt updatedAt')
     .lean();
   if (!user) {
     return res.status(401).json({ message: 'User not found' });
@@ -434,6 +448,7 @@ router.post('/refresh', authLimiter, asyncHandler(async (req: Request, res: Resp
       email: user.email,
       name: user.name,
       isVerified: user.isVerified,
+      hasPassword: Boolean(user.hashedPassword),
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     },
@@ -542,8 +557,8 @@ router.post('/password-reset/confirm',
       return res.status(400).json({ message: 'Invalid or expired reset token' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await User.findByIdAndUpdate(userId, { hashedPassword });
+    const { salt, hashedPassword } = await hashPassword(password);
+    await User.findByIdAndUpdate(userId, { hashedPassword, passwordSalt: salt });
 
     await deleteResetToken(token);
 
@@ -661,13 +676,20 @@ router.post('/change-password',
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const isMatch = await bcrypt.compare(currentPassword, user.hashedPassword);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Current password is incorrect' });
+    // Accounts created via Google have no password yet — let them set one
+    // without a current password. Everyone else must prove the current one.
+    if (user.hashedPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Current password is required' });
+      }
+      const isMatch = await verifyPassword(currentPassword, user.hashedPassword);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await User.findByIdAndUpdate(userId, { hashedPassword });
+    const { salt, hashedPassword } = await hashPassword(newPassword);
+    await User.findByIdAndUpdate(userId, { hashedPassword, passwordSalt: salt });
 
     // Invalidate all existing refresh tokens (password changed — force re-login)
     await RefreshToken.deleteMany({ userId: userId as any });
@@ -744,6 +766,189 @@ router.post('/admin/set-tier',
   })
 );
 
+// ── Google Sign-In (separate from Calendar OAuth) ─────────────────────────
+// Scopes are limited to identity (openid/email/profile). No calendar access is
+// requested here — a user who signs in with Google connects Google Calendar
+// separately afterwards (POST /auth/google/init).
+const LOGIN_SCOPES = ['openid', 'email', 'profile'];
+
+const getGoogleLoginOAuthClient = () => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Google OAuth env vars are missing');
+  }
+
+  return new google.auth.OAuth2(
+    clientId,
+    clientSecret,
+    process.env.GOOGLE_LOGIN_REDIRECT_URI || 'http://localhost:8000/auth/google/login/callback'
+  );
+};
+
+/**
+ * GET /auth/google/login — start Google Sign-In.
+ * Bounces the browser to Google's consent screen with identity-only scopes.
+ */
+router.get('/google/login', authLimiter, asyncHandler(async (req: Request, res: Response) => {
+  const loginOAuthClient = getGoogleLoginOAuthClient();
+  const state = crypto.randomBytes(24).toString('hex');
+
+  res.cookie(LOGIN_STATE_COOKIE, state, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 10 * 60 * 1000,
+  });
+
+  const authUrl = loginOAuthClient.generateAuthUrl({
+    access_type: 'online',
+    scope: LOGIN_SCOPES,
+    state,
+    prompt: 'select_account',
+  });
+
+  return res.redirect(authUrl);
+}));
+
+/**
+ * GET /auth/google/login/callback — Google redirects here after consent.
+ *
+ * Verifies the Google identity, then links the account:
+ *  - existing user (matched by googleId, then by email) → reuse that Meetiva
+ *    account, never create a duplicate User document
+ *  - new user → create the Meetiva account (email already verified by Google,
+ *    no password since login happens through Google)
+ *
+ * Starts a Meetiva session via the same httpOnly refresh-cookie mechanism and
+ * redirects to the frontend, which restores the session through /auth/refresh.
+ */
+router.get('/google/login/callback', authLimiter, asyncHandler(async (req: Request, res: Response) => {
+  const frontendUrl = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
+
+  const fail = (reason: string) => {
+    res.clearCookie(LOGIN_STATE_COOKIE);
+    return res.redirect(`${frontendUrl}/login?googleLogin=error&reason=${encodeURIComponent(reason)}`);
+  };
+
+  const returnedState = typeof req.query.state === 'string' ? req.query.state : '';
+  const stateFromCookie = req.cookies?.[LOGIN_STATE_COOKIE] as string | undefined;
+
+  if (!returnedState || !stateFromCookie || returnedState !== stateFromCookie) {
+    return fail('invalid_state');
+  }
+
+  // User denied consent on Google's screen — return them to the login page
+  // with a friendly message instead of a generic failure.
+  if (typeof req.query.error === 'string') {
+    return fail('denied');
+  }
+
+  const code = typeof req.query.code === 'string' ? req.query.code : '';
+  if (!code) {
+    return fail('missing_code');
+  }
+
+  let payload;
+  try {
+    const loginOAuthClient = getGoogleLoginOAuthClient();
+    const { tokens } = await loginOAuthClient.getToken(code);
+
+    if (!tokens.id_token) {
+      return fail('verification_failed');
+    }
+
+    // Verify the ID token signature + audience — this is the proof that the
+    // identity came from Google for OUR client, not a forged token.
+    const ticket = await loginOAuthClient.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch (error) {
+    log.error('Google login token verification failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return fail('verification_failed');
+  }
+
+  const emailVerified = payload?.email_verified === true;
+  const googleEmail = payload?.email;
+  const googleId = payload?.sub;
+  // sub is always present on valid Google ID tokens, but guard it anyway:
+  // querying with an undefined googleId would match users that have no Google
+  // link yet (googleId: null), which could link the wrong account.
+  if (!payload || !googleId || !emailVerified || !googleEmail) {
+    return fail('unverified_email');
+  }
+
+  const email = googleEmail.toLowerCase().trim();
+  const name = (payload.name || email.split('@')[0] || 'Google User').trim();
+
+  res.clearCookie(LOGIN_STATE_COOKIE);
+
+  try {
+    // ── Account linking ──────────────────────────────────────────────────
+    // Match by Google ID first, then by email, so someone who registered with
+    // email/password can sign in with Google and keep the same Meetiva account.
+    let user = await User.findOne({ googleId }).lean() as any;
+    if (!user) {
+      user = await User.findOne({ email }).lean() as any;
+    }
+
+    if (user) {
+      // Existing account — link the Google identity and mark email verified
+      // (Google has already verified it).
+      if (user.googleId !== googleId || !user.isVerified) {
+        await User.updateOne({ _id: user._id }, { $set: { googleId, isVerified: true } });
+        user.googleId = googleId;
+        user.isVerified = true;
+      }
+    } else {
+      // New account via Google — no password yet (hashedPassword: null). The
+      // user can set one later in Settings to also log in with email/password.
+      try {
+        const created = await User.create({
+          email,
+          name,
+          hashedPassword: null,
+          isVerified: true,
+          googleId,
+        });
+        user = created.toObject() as any;
+      } catch (error: any) {
+        // Concurrent sign-ins for the same brand-new Google account: the
+        // sparse unique index on googleId rejects the second create. Re-fetch
+        // and link instead of failing.
+        if (error?.code === 11000) {
+          user = await User.findOne({ googleId }).lean() as any;
+          if (user) {
+            await User.updateOne({ _id: user._id }, { $set: { googleId, isVerified: true } });
+          }
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    if (!user || !user.isActive) {
+      return fail('inactive');
+    }
+
+    // Start a Meetiva session — same httpOnly refresh cookie as email login.
+    // The frontend restores the access token via POST /auth/refresh on mount.
+    await createAndSetRefreshToken(res, user._id.toString());
+
+    return res.redirect(`${frontendUrl}/dashboard`);
+  } catch (error) {
+    log.error('Google login session setup failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return fail('server_error');
+  }
+}));
+
 /**
  * POST /auth/google/init — Secure OAuth initialization.
  */
@@ -817,5 +1022,59 @@ router.get('/google/callback', authLimiter, asyncHandler(async (req: Request, re
   const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
   return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=1`);
 }));
+
+// ── Self-service account deletion ──────────────────────────────────────────
+// Regular ('self') accounts are permanently deleted together with ALL of
+// their data (meetings, summaries, transcripts, tasks, notifications, team
+// memberships, chat messages, OAuth + refresh tokens) via the User model's
+// cascade hooks. Corporate/enterprise users cannot self-delete — their org
+// admin must remove them through the soft-delete flow (removeUser) so
+// organization data and seats stay intact.
+router.delete('/me',
+  apiLimiter,
+  authenticate,
+  validate(deleteAccountSchema),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { password } = req.body as z.infer<typeof deleteAccountSchema>;
+    const userId = req.userId!;
+
+    const user = await User.findById(userId)
+      .select('hashedPassword accountType orgRole organizationId isRemoved');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isRemoved) {
+      return res.status(400).json({ message: 'Account is already removed' });
+    }
+
+    if (user.accountType === 'corporate') {
+      return res.status(403).json({
+        message:
+          'Your account is managed by your organization. Please contact your organization admin to have your account removed.',
+      });
+    }
+
+    // Google-only accounts have no password — the authenticated session is the
+    // proof of identity, so skip re-verification for them.
+    if (user.hashedPassword) {
+      const valid = await verifyPassword(password, user.hashedPassword);
+      if (!valid) {
+        return res.status(400).json({ message: 'Incorrect password' });
+      }
+    }
+
+    // Document deleteOne() triggers the User schema cascade hook, permanently
+    // removing the user record and all of their data.
+    await user.deleteOne();
+
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
+    log.info('User permanently deleted their account', { userId });
+
+    return res.json({ message: 'Account deleted successfully' });
+  })
+);
 
 export default router;

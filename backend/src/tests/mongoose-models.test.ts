@@ -63,6 +63,10 @@ async function setup(): Promise<void> {
   const uri = mongod.getUri();
   process.env.MONGODB_URI = uri;
   await mongoose.connect(uri);
+  // Ensure unique indexes (email, inviteCode, tokenHash, composite) are built
+  // before tests run — otherwise duplicate-key tests race the async index
+  // build and flakily pass/fail.
+  await mongoose.connection.syncIndexes();
 }
 
 async function teardown(): Promise<void> {
