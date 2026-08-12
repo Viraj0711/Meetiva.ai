@@ -5,6 +5,7 @@ import { requireOrgRole, requireSuperAdmin, requireOrgAccess } from '../middlewa
 import { apiLimiter } from '../lib/rateLimiters';
 import { validate } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
+import { hashPassword } from '../lib/password';
 import { createLogger } from '../lib/logger';
 import Organization from '../models/Organization';
 import User from '../models/User';
@@ -267,14 +268,14 @@ router.post(
     }
 
     // Create user
-    const bcrypt = await import('bcryptjs');
     const tempPassword = generateTempPassword();
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    const { salt, hashedPassword } = await hashPassword(tempPassword);
 
     const user = await User.create({
       email: email.toLowerCase(),
       name,
       hashedPassword,
+      passwordSalt: salt,
       accountType: 'corporate',
       orgRole: role,
       organizationId: new Types.ObjectId(orgId),
@@ -456,9 +457,8 @@ router.post(
       return res.status(409).json({ message: 'Email already registered' });
     }
 
-    const bcrypt = await import('bcryptjs');
     const tempPassword = generateTempPassword();
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    const { salt, hashedPassword } = await hashPassword(tempPassword);
 
     // If org already has an admin, deactivate the old one's admin role
     if (org.adminUserId) {
@@ -473,6 +473,7 @@ router.post(
       email: email.toLowerCase(),
       name,
       hashedPassword,
+      passwordSalt: salt,
       accountType: 'corporate',
       orgRole: 'admin',
       organizationId: new Types.ObjectId(orgId),
@@ -534,14 +535,14 @@ router.post(
       return res.status(409).json({ message: 'Email already registered' });
     }
 
-    const bcrypt = await import('bcryptjs');
     const tempPassword = generateTempPassword();
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    const { salt, hashedPassword } = await hashPassword(tempPassword);
 
     const adminUser = await User.create({
       email: email.toLowerCase(),
       name,
       hashedPassword,
+      passwordSalt: salt,
       accountType: 'corporate',
       orgRole: 'admin',
       organizationId: org._id,

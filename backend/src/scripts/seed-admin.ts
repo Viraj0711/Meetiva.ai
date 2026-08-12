@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import path from 'path';
 import dotenv from 'dotenv';
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '../lib/password';
 import User from '../models/User';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true });
@@ -19,7 +19,7 @@ async function main() {
   await mongoose.connect(MONGODB_URI);
   console.log('Connected\n');
 
-  const hashedPassword = await bcrypt.hash(DEMO_ADMIN.password, 10);
+  const { salt, hashedPassword } = await hashPassword(DEMO_ADMIN.password);
 
   const result = await User.findOneAndUpdate(
     { email: DEMO_ADMIN.email },
@@ -28,6 +28,7 @@ async function main() {
         email: DEMO_ADMIN.email,
         name: DEMO_ADMIN.name,
         hashedPassword,
+        passwordSalt: salt,
         isActive: true,
         isVerified: true,
         forcePasswordChange: false,

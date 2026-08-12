@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '../lib/password';
 import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { authorize } from '../middleware/authorize';
@@ -453,11 +453,12 @@ router.post(
 
     if (!user) {
       temporaryPassword = generateTemporaryPassword();
-      const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+      const { salt, hashedPassword } = await hashPassword(temporaryPassword);
       user = await User.create({
         email: normalizedEmail,
         name: buildDefaultNameFromEmail(normalizedEmail),
         hashedPassword,
+        passwordSalt: salt,
       });
     }
 
@@ -916,11 +917,11 @@ router.post(
     }
 
     const temporaryPassword = generateTemporaryPassword();
-    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+    const { salt, hashedPassword } = await hashPassword(temporaryPassword);
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { $set: { hashedPassword, isActive: true } },
+      { $set: { hashedPassword, passwordSalt: salt, isActive: true } },
       { returnDocument: 'after' }
     )
       .select('email name')

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
+import { hashPassword, verifyPassword } from '../lib/password';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
@@ -276,9 +276,9 @@ router.post('/register',
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const { salt, hashedPassword } = await hashPassword(password);
 
-    const user = await User.create({ email, name, hashedPassword });
+    const user = await User.create({ email, name, hashedPassword, passwordSalt: salt });
 
     // Generate and send verification OTP
     const otp = generateOtp();
@@ -324,7 +324,7 @@ router.post('/login',
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const valid = await bcrypt.compare(password, user.hashedPassword);
+    const valid = await verifyPassword(password, user.hashedPassword);
     if (!valid) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -546,8 +546,8 @@ router.post('/password-reset/confirm',
       return res.status(400).json({ message: 'Invalid or expired reset token' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await User.findByIdAndUpdate(userId, { hashedPassword });
+    const { salt, hashedPassword } = await hashPassword(password);
+    await User.findByIdAndUpdate(userId, { hashedPassword, passwordSalt: salt });
 
     await deleteResetToken(token);
 
@@ -665,13 +665,13 @@ router.post('/change-password',
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const isMatch = await bcrypt.compare(currentPassword, user.hashedPassword);
+    const isMatch = await verifyPassword(currentPassword, user.hashedPassword);
     if (!isMatch) {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await User.findByIdAndUpdate(userId, { hashedPassword });
+    const { salt, hashedPassword } = await hashPassword(newPassword);
+    await User.findByIdAndUpdate(userId, { hashedPassword, passwordSalt: salt });
 
     // Invalidate all existing refresh tokens (password changed — force re-login)
     await RefreshToken.deleteMany({ userId: userId as any });

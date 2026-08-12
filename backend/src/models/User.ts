@@ -13,6 +13,7 @@ export interface IUser extends Document {
   email: string;
   name: string;
   hashedPassword: string;
+  passwordSalt: string;
   isActive: boolean;
   isVerified: boolean;
   subscriptionTier: SubscriptionTier;
@@ -36,6 +37,10 @@ const userSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     name: { type: String, required: true },
     hashedPassword: { type: String, required: true },
+    // Per-user random salt used to hash `hashedPassword` (see lib/password.ts).
+    // bcrypt also embeds the salt in the hash string, so legacy records without
+    // this column still verify correctly.
+    passwordSalt: { type: String, default: '' },
     isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
     subscriptionTier: {
