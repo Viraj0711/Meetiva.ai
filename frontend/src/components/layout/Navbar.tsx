@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, LogOut, ChevronDown, Building2, User, Settings, Zap } from 'lucide-react';
+import { Bell, ChevronDown, Building2, User, Settings, Zap, LogOut } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
-import { Avatar } from '@/components/ui/Avatar';
 import { notificationService, type Notification } from '@/services/notification.service';
 
 const GRAD = '#5B3FD6';
@@ -133,7 +132,7 @@ const TopBar: React.FC = () => {
         </button>
       </div>
 
-      {/* Right: Notifications, Settings, Profile, Logout */}
+      {/* Right: Notifications, Settings, Logout */}
       <div className="flex items-center gap-2">
         {/* Notifications */}
         <div className="relative" ref={notifRef}>
@@ -198,19 +197,7 @@ const TopBar: React.FC = () => {
           <Settings size={18} style={{ color: '#64607A' }} />
         </button>
 
-        {/* Profile - goes directly to profile page */}
-        <button
-          onClick={() => navigate('/dashboard/profile')}
-          className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-[rgba(91,63,214,0.08)] transition-colors cursor-pointer border border-transparent hover:border-[#E4E0F5]"
-          title="View Profile"
-        >
-          <Avatar name={user?.name || 'User'} size="sm" />
-          <div className="hidden md:block text-left">
-            <p className="text-xs font-semibold text-[#1D1B22] truncate max-w-[100px]">{user?.name || 'User'}</p>
-          </div>
-        </button>
-
-        {/* Logout Button - directly visible */}
+        {/* Logout Button */}
         <button
           onClick={() => dispatch(logout())}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-red-50 transition-colors cursor-pointer text-xs font-medium text-[#64607A] hover:text-red-500"
