@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
+import { hashPassword, verifyPassword } from '../lib/password';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
@@ -22,6 +22,7 @@ import {
   verifyOtpSchema,
   resendOtpSchema,
   changePasswordSchema,
+  deleteAccountSchema,
   updateProfileSchema,
 } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
@@ -282,9 +283,9 @@ router.post('/register',
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const { salt, hashedPassword } = await hashPassword(password);
 
-    const user = await User.create({ email, name, hashedPassword });
+    const user = await User.create({ email, name, hashedPassword, passwordSalt: salt });
 
     // Generate and send verification OTP
     const otp = generateOtp();
@@ -305,7 +306,7 @@ router.get('/subscription', apiLimiter, authenticate, asyncHandler(async (req: A
     return res.status(404).json({ message: 'User not found' });
   }
 
-  const monthlyLimit = user.subscriptionTier === 'FREE' ? 5 : 999_999;
+  const monthlyLimit = user.subscriptionTier === 'FREE' ? 5 : user.subscriptionTier === 'TEAM' ? 15 : 999_999;
   const meetingsRemaining = Math.max(0, monthlyLimit - user.meetingCountThisMonth);
 
   res.json({
@@ -332,7 +333,7 @@ router.post('/login',
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const valid = await bcrypt.compare(password, user.hashedPassword);
+    const valid = await verifyPassword(password, user.hashedPassword);
     if (!valid) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -348,7 +349,7 @@ router.post('/login',
 // Get current authenticated user (access token required)
 router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = await User.findById(req.userId!)
-    .select('email name isVerified hashedPassword createdAt updatedAt')
+    .select('email name isVerified accountType orgRole organizationId forcePasswordChange createdAt updatedAt')
     .lean();
 
   if (!user) {
@@ -360,7 +361,10 @@ router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest
     email: user.email,
     name: user.name,
     isVerified: user.isVerified,
-    hasPassword: Boolean(user.hashedPassword),
+    accountType: user.accountType ?? 'self',
+    orgRole: user.orgRole ?? null,
+    organizationId: user.organizationId?.toString() ?? null,
+    forcePasswordChange: user.forcePasswordChange ?? false,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   });
@@ -552,8 +556,8 @@ router.post('/password-reset/confirm',
       return res.status(400).json({ message: 'Invalid or expired reset token' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await User.findByIdAndUpdate(userId, { hashedPassword });
+    const { salt, hashedPassword } = await hashPassword(password);
+    await User.findByIdAndUpdate(userId, { hashedPassword, passwordSalt: salt });
 
     await deleteResetToken(token);
 
@@ -671,20 +675,13 @@ router.post('/change-password',
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Accounts created via Google have no password yet — let them set one
-    // without a current password. Everyone else must prove the current one.
-    if (user.hashedPassword) {
-      if (!currentPassword) {
-        return res.status(400).json({ message: 'Current password is required' });
-      }
-      const isMatch = await bcrypt.compare(currentPassword, user.hashedPassword);
-      if (!isMatch) {
-        return res.status(400).json({ message: 'Current password is incorrect' });
-      }
+    const isMatch = await verifyPassword(currentPassword, user.hashedPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await User.findByIdAndUpdate(userId, { hashedPassword });
+    const { salt, hashedPassword } = await hashPassword(newPassword);
+    await User.findByIdAndUpdate(userId, { hashedPassword, passwordSalt: salt });
 
     // Invalidate all existing refresh tokens (password changed — force re-login)
     await RefreshToken.deleteMany({ userId: userId as any });
@@ -1017,5 +1014,55 @@ router.get('/google/callback', authLimiter, asyncHandler(async (req: Request, re
   const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
   return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=1`);
 }));
+
+// ── Self-service account deletion ──────────────────────────────────────────
+// Regular ('self') accounts are permanently deleted together with ALL of
+// their data (meetings, summaries, transcripts, tasks, notifications, team
+// memberships, chat messages, OAuth + refresh tokens) via the User model's
+// cascade hooks. Corporate/enterprise users cannot self-delete — their org
+// admin must remove them through the soft-delete flow (removeUser) so
+// organization data and seats stay intact.
+router.delete('/me',
+  apiLimiter,
+  authenticate,
+  validate(deleteAccountSchema),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { password } = req.body as z.infer<typeof deleteAccountSchema>;
+    const userId = req.userId!;
+
+    const user = await User.findById(userId)
+      .select('hashedPassword accountType orgRole organizationId isRemoved');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isRemoved) {
+      return res.status(400).json({ message: 'Account is already removed' });
+    }
+
+    if (user.accountType === 'corporate') {
+      return res.status(403).json({
+        message:
+          'Your account is managed by your organization. Please contact your organization admin to have your account removed.',
+      });
+    }
+
+    const valid = await verifyPassword(password, user.hashedPassword);
+    if (!valid) {
+      return res.status(400).json({ message: 'Incorrect password' });
+    }
+
+    // Document deleteOne() triggers the User schema cascade hook, permanently
+    // removing the user record and all of their data.
+    await user.deleteOne();
+
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
+    log.info('User permanently deleted their account', { userId });
+
+    return res.json({ message: 'Account deleted successfully' });
+  })
+);
 
 export default router;

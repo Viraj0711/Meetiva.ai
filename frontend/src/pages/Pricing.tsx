@@ -7,19 +7,19 @@ import { Card } from '@/components/ui/Card';
 
 const plans = [
   {
-    name: 'Starter',
-    price: '$29',
-    note: 'per seat / month',
-    description: 'For focused teams that want premium meeting intelligence without complexity.',
-    features: ['Unlimited summaries', 'Task extraction', 'Calendar sync', 'Team workspace'],
+    name: 'Free',
+    price: '$0',
+    note: 'forever',
+    description: 'Perfect for individuals and small teams getting started.',
+    features: ['5 meetings / month', 'AI summaries', 'Minutes Extraction', 'Minutes PDF'],
     highlighted: false,
   },
   {
-    name: 'Growth',
-    price: '$59',
+    name: 'Team',
+    price: '$29',
     note: 'per seat / month',
-    description: 'For teams that need structure, momentum, and clear accountability.',
-    features: ['Everything in Starter', 'Advanced analytics', 'Role-based access', 'Priority support'],
+    description: 'For growing teams that need unlimited intelligence and collaboration.',
+    features: ['15 meetings/month', 'Team collaboration', 'Calendar sync', 'Analytics dashboard', 'Priority support'],
     highlighted: true,
   },
   {
@@ -89,7 +89,7 @@ const PricingPage: React.FC = () => {
                 </ul>
                 <Link to="/register" className="mt-8 block">
                   <Button className="w-full" variant={plan.highlighted ? 'default' : 'outline'}>
-                    {plan.highlighted ? 'Start with Growth' : plan.name === 'Enterprise' ? 'Talk to sales' : 'Start free'}
+                    {plan.highlighted ? 'Start with Team' : plan.name === 'Enterprise' ? 'Talk to sales' : 'Start free'}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>

@@ -15,6 +15,13 @@
  *   3. Model.deleteOne(req.body)     — direct passthrough
  *   4. Any Model method with req.body/query/params as the sole filter arg
  *   5. Filter objects built from user input without $eq wrapping
+ *
+ * Exemptions:
+ *   - A `// input-safety-ok` comment (trailing the line or on the line above)
+ *     marks a *warning* as reviewed & safe — use it only when the user input
+ *     is cast or validated before reaching the query (e.g. ObjectId casting,
+ *     Zod schema). Error-level findings (direct req.body/query/params
+ *     passthrough) can never be suppressed this way.
  */
 
 import * as fs from 'fs';
@@ -94,6 +101,12 @@ const DANGEROUS_PATTERNS: Array<{
   },
 ];
 
+// ── Allowlist helper ────────────────────────────────────────────────────────
+
+// A line containing this marker is treated as reviewed and exempt from the scan.
+// Usage: `Model.find({ _id: { $in: ids } }); // input-safety-ok: ids cast to ObjectId`
+const ALLOW_COMMENT = /\/\/\s*input-safety-ok/;
+
 // ── Scanner ─────────────────────────────────────────────────────────────────
 
 function findTsFiles(dirs: string[]): string[] {
@@ -124,26 +137,44 @@ function scanFile(filePath: string): Violation[] {
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split('\n');
 
+  // Set when a pure-comment line carries the `// input-safety-ok` marker;
+  // the next non-comment line is then exempt too (reason sits above the call).
+  let allowNext = false;
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    // Skip pure comments and imports
     const trimmed = line.trim();
-    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('import ')) {
+    const isPureComment = trimmed.startsWith('//') || trimmed.startsWith('*');
+
+    // Skip pure comments and imports; a marker comment also exempts the
+    // following line.
+    if (isPureComment) {
+      if (ALLOW_COMMENT.test(line)) allowNext = true;
       continue;
     }
+    if (trimmed.startsWith('import ')) continue;
+
+    // Lines explicitly reviewed and whitelisted with `// input-safety-ok`
+    // (either trailing the code or on the comment line directly above it).
+    // This only suppresses *warning*-severity findings — error findings
+    // (direct req.body/query/params passthrough) must never be silenced by
+    // an inline comment.
+    const exempt = allowNext || ALLOW_COMMENT.test(line);
+    allowNext = false;
 
     for (const pattern of DANGEROUS_PATTERNS) {
       // Reset regex lastIndex for each line
       pattern.regex.lastIndex = 0;
-      if (pattern.regex.test(line)) {
-        violations.push({
-          file: relativePath,
-          line: i + 1,
-          code: trimmed.length > 100 ? trimmed.slice(0, 97) + '...' : trimmed,
-          message: pattern.message,
-          severity: pattern.severity,
-        });
-      }
+      if (!pattern.regex.test(line)) continue;
+      if (exempt && pattern.severity !== 'error') continue;
+
+      violations.push({
+        file: relativePath,
+        line: i + 1,
+        code: trimmed.length > 100 ? trimmed.slice(0, 97) + '...' : trimmed,
+        message: pattern.message,
+        severity: pattern.severity,
+      });
     }
   }
 

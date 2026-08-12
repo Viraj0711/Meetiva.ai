@@ -233,9 +233,10 @@ export const workspaceApi = {
 // ── Organization & Project API ──────────────────────────────────────────────
 
 export interface OrganizationData {
-  _id: string;
+  id: string;
   name: string;
   slug: string;
+  contactEmail: string | null;
   adminUserId: string;
   status: string;
   seatLimit: number;
@@ -245,21 +246,21 @@ export interface OrganizationData {
 }
 
 export interface OrgUser {
-  _id: string;
+  id: string;
   email: string;
   name: string;
   orgRole: string;
   isActive: boolean;
-  isVerified: boolean;
+  isVerified?: boolean;
   createdAt: string;
 }
 
 export interface ProjectData {
-  _id: string;
+  id: string;
   name: string;
   description: string | null;
   organizationId: string;
-  managerUserId: string | null;
+  manager: { id: string; name: string; email: string } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -271,7 +272,8 @@ export interface DispositionContent {
 
 export const organizationsApi = {
   get: (id: string) => request<OrganizationData>(`/organizations/${id}`),
-  listAll: () => request<OrganizationData[]>("/organizations"),
+  listAll: () =>
+    request<{ organizations: OrganizationData[] }>("/organizations").then((r) => r.organizations),
   create: (data: { name: string }) =>
     request<OrganizationData>("/organizations", { method: "POST", body: data }),
   update: (id: string, data: Partial<OrganizationData>) =>
@@ -296,9 +298,14 @@ export const organizationsApi = {
       body: { replacementUserId },
     }),
   activate: (id: string) =>
-    request(`/organizations/${id}/activate`, { method: "POST" }),
+    request(`/organizations/${id}/status`, { method: "PATCH", body: { status: "active" } }),
   suspend: (id: string) =>
-    request(`/organizations/${id}/suspend`, { method: "POST" }),
+    request(`/organizations/${id}/status`, { method: "PATCH", body: { status: "suspended" } }),
+  addAdmin: (id: string, data: { email: string; name: string }) =>
+    request<{ user: OrgUser & { tempPassword: string }; message: string }>(`/organizations/${id}/add-admin`, {
+      method: "POST",
+      body: data,
+    }),
   provisionAdmin: (id: string, data: { email: string; name: string }) =>
     request<{ user: OrgUser; tempPassword: string }>(`/organizations/${id}/provision-admin`, {
       method: "POST",

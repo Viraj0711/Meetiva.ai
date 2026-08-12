@@ -1,18 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Badge } from '@/components/ui/Badge';
-import { apiClient } from '@/services/api.client';
-import { useAppSelector } from '@/store/hooks';
-import { authService, integrationService } from '@/services';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/store';
-import { loginSuccess } from '@/store/slices/authSlice';
-import { useChangePassword, useLogout } from '@/hooks/useAuth';
-import { Building2, ArrowRight, Check } from 'lucide-react';
-import { toast } from 'sonner';
+import { integrationService } from '@/services';
 
 interface Integration {
   id: string;
@@ -54,23 +44,7 @@ const loadGeneralPrefs = () => {
 };
 
 const Settings: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const user = useAppSelector((state) => state.auth.user);
-  const changePasswordMutation = useChangePassword();
-  const logoutMutation = useLogout();
-
-  const [activeTab, setActiveTab] = useState<'profile' | 'integrations' | 'notifications' | 'preferences'>('profile');
-
-  // ── Profile state ──────────────────────────────────────────────────────
-  const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '', email: '', company: '', jobTitle: '' });
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  useEffect(() => {
-    const firstName = user?.name?.split(' ')[0] || '';
-    const lastName = user?.name?.split(' ').slice(1).join(' ') || '';
-    setProfileForm((prev) => ({ ...prev, firstName, lastName, email: user?.email || '' }));
-  }, [user?.name, user?.email]);
+  const [activeTab, setActiveTab] = useState<'integrations' | 'notifications' | 'preferences'>('integrations');
 
   // ── Integration state ──────────────────────────────────────────────────
   const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -101,53 +75,6 @@ const Settings: React.FC = () => {
     checkStatus();
   }, []);
 
-  // ── Change Password state ──────────────────────────────────────────────
-  // Accounts created via Google have no password yet (hasPassword === false)
-  // — they get a "Set Password" flow without a current-password field.
-  const hasPassword = user?.hasPassword !== false;
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-
-  const handleChangePassword = async () => {
-    setPasswordError(null);
-
-    if ((hasPassword && !currentPassword) || !newPassword || !confirmPassword) {
-      setPasswordError('All fields are required.');
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters.');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match.');
-      return;
-    }
-
-    try {
-      await changePasswordMutation.mutateAsync(
-        hasPassword ? { currentPassword, newPassword } : { newPassword }
-      );
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      // Log out after successful password change
-      setTimeout(() => {
-        logoutMutation.mutate();
-      }, 1500);
-    } catch {
-      setPasswordError(
-        hasPassword
-          ? 'Failed to change password. Please check your current password.'
-          : 'Failed to set password. Please try again.'
-      );
-    }
-  };
-
   // ── Notifications state ────────────────────────────────────────────────
   const [notifications, setNotifications] = useState(loadNotificationPrefs);
 
@@ -156,48 +83,7 @@ const Settings: React.FC = () => {
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [prefsMessage, setPrefsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // ── Enterprise upgrade state ─────────────────────────────────────────
-  const [showUpgrade, setShowUpgrade] = useState(false);
-  const [upgradeOrgName, setUpgradeOrgName] = useState('');
-  const [upgradeEmail, setUpgradeEmail] = useState(user?.email || '');
-  const [upgradeSubmitted, setUpgradeSubmitted] = useState(false);
-  const isSelfUser = user?.accountType === 'self' || !user?.accountType;
-
   // ── Handlers ───────────────────────────────────────────────────────────
-  const handleProfileChange = (field: keyof typeof profileForm, value: string) => {
-    setProfileForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleProfileCancel = () => {
-    const firstName = user?.name?.split(' ')[0] || '';
-    const lastName = user?.name?.split(' ').slice(1).join(' ') || '';
-    setProfileForm((prev) => ({ ...prev, firstName, lastName, email: user?.email || '' }));
-    setProfileMessage(null);
-  };
-
-  const handleProfileSave = async () => {
-    try {
-      setSavingProfile(true);
-      setProfileMessage(null);
-
-      const fullName = `${profileForm.firstName} ${profileForm.lastName}`.trim();
-      const response = await authService.updateProfile({
-        name: fullName,
-        email: profileForm.email.trim().toLowerCase(),
-      });
-
-      // response.token is automatically stored in-memory by authService.updateProfile
-      dispatch(loginSuccess({ user: response.user, token: response.token }));
-      setProfileMessage({ type: 'success', text: 'Profile updated successfully.' });
-    } catch (err: unknown) {
-      const apiError = err as { response?: { data?: { message?: string } }; message?: string };
-      const msg = apiError?.response?.data?.message || apiError?.message || 'Failed to save profile changes.';
-      setProfileMessage({ type: 'error', text: msg });
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
   const handleToggleIntegration = async (id: string) => {
     if (id === 'google-calendar') {
       const integration = integrations.find((i) => i.id === id);
@@ -209,7 +95,7 @@ const Settings: React.FC = () => {
             prev.map((int) => (int.id === id ? { ...int, connected: false, status: undefined } : int))
           );
         } catch {
-          setProfileMessage({ type: 'error', text: 'Failed to disconnect Google Calendar.' });
+          // error silently ignored
         }
       } else {
         // Connect — redirect to OAuth flow
@@ -217,7 +103,7 @@ const Settings: React.FC = () => {
           const { authUrl } = await integrationService.getGoogleAuthUrl('');
           window.location.href = authUrl;
         } catch {
-          setProfileMessage({ type: 'error', text: 'Failed to get Google Calendar authorization URL.' });
+          // error silently ignored
         }
       }
     }
@@ -246,21 +132,6 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleEnterpriseUpgrade = async () => {
-    if (!upgradeOrgName.trim()) {
-      toast.error('Please enter your organization name.');
-      return;
-    }
-    try {
-      await apiClient.post('/organizations', { name: upgradeOrgName, contactEmail: upgradeEmail });
-      setUpgradeSubmitted(true);
-      toast.success('Enterprise request submitted!');
-    } catch (err) {
-      const e = err as { message?: string };
-      toast.error(e?.message || 'Failed to submit request');
-    }
-  };
-
   return (
     <div className="flex-1 overflow-y-auto"
       style={{ background: 'radial-gradient(ellipse 70% 50% at 15% 5%, rgba(91,63,214,0.07) 0%, transparent 55%),radial-gradient(ellipse 50% 40% at 90% 90%, rgba(244,114,182,0.05) 0%, transparent 55%),#FCFBFF' }}>
@@ -277,7 +148,7 @@ const Settings: React.FC = () => {
       {/* Tabs */}
       <div className="border-b">
         <div className="flex gap-6">
-          {(['profile', 'integrations', 'preferences'] as const).map((tab) => (
+          {(['integrations', 'notifications', 'preferences'] as const).map((tab) => (
             <button
               key={tab}
               className={`pb-3 px-1 font-medium border-b-2 transition-colors capitalize ${
@@ -292,184 +163,6 @@ const Settings: React.FC = () => {
           ))}
         </div>
       </div>
-
-      {/* Profile Tab */}
-      {activeTab === 'profile' && (
-        <div className="space-y-6">
-          <Card className="p-6">
-            <h2 className="text-xl font-bold mb-6">Personal Information</h2>
-            {profileMessage && (
-              <div
-                className={`rounded-lg border px-4 py-3 mb-4 text-sm ${
-                  profileMessage.type === 'success'
-                    ? 'border-green-500/30 bg-green-500/10 text-green-300'
-                    : 'border-red-500/30 bg-red-500/10 text-red-300'
-                }`}
-              >
-                {profileMessage.text}
-              </div>
-            )}
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium mb-2">First Name</label>
-                  <Input
-                    type="text"
-                    placeholder="John"
-                    value={profileForm.firstName}
-                    onChange={(e) => handleProfileChange('firstName', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Last Name</label>
-                  <Input
-                    type="text"
-                    placeholder="Smith"
-                    value={profileForm.lastName}
-                    onChange={(e) => handleProfileChange('lastName', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <Input
-                  type="email"
-                  placeholder="john@example.com"
-                  value={profileForm.email}
-                  onChange={(e) => handleProfileChange('email', e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Company</label>
-                <Input
-                  type="text"
-                  placeholder="Acme Inc."
-                  value={profileForm.company}
-                  onChange={(e) => handleProfileChange('company', e.target.value)}
-                  disabled
-                />
-                <p className="text-xs text-muted-foreground mt-1">Company info persistence coming soon</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Job Title</label>
-                <Input
-                  type="text"
-                  placeholder="Product Manager"
-                  value={profileForm.jobTitle}
-                  onChange={(e) => handleProfileChange('jobTitle', e.target.value)}
-                  disabled
-                />
-                <p className="text-xs text-muted-foreground mt-1">Job title persistence coming soon</p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <Button variant="outline" className="rounded-full" onClick={handleProfileCancel}>Cancel</Button>
-              <Button className="rounded-full" onClick={handleProfileSave} disabled={savingProfile}>
-                {savingProfile ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="text-xl font-bold mb-6">{hasPassword ? 'Change Password' : 'Set Password'}</h2>
-            {!hasPassword && (
-              <p className="text-sm text-muted-foreground mb-4">
-                You signed up with Google. Set a password to also sign in with your email and
-                password.
-              </p>
-            )}
-            <div className="space-y-4">
-              {hasPassword && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">Current Password</label>
-                  <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium mb-2">New Password</label>
-                <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Confirm New Password</label>
-                <PasswordInput value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
-              </div>
-            </div>
-            {passwordError && (
-              <p className="text-sm text-destructive mt-3">{passwordError}</p>
-            )}
-            <div className="flex justify-end mt-6">
-              <Button
-                className="rounded-full"
-                onClick={handleChangePassword}
-                disabled={changePasswordMutation.isPending}
-              >
-                {changePasswordMutation.isPending
-                  ? hasPassword
-                    ? 'Updating...'
-                    : 'Setting...'
-                  : hasPassword
-                    ? 'Update Password'
-                    : 'Set Password'}
-              </Button>
-            </div>
-          </Card>
-
-          {isSelfUser && (
-            <Card className="p-6 border border-purple-500/20 bg-purple-500/5">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                  <Building2 className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-lg font-bold">Upgrade to Enterprise</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Get role-based access control, organization management, and unlimited seats for your team.
-                  </p>
-                  {!showUpgrade && !upgradeSubmitted && (
-                    <Button
-                      className="mt-4 rounded-full"
-                      onClick={() => setShowUpgrade(true)}
-                    >
-                      Upgrade Now <ArrowRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  )}
-                  {showUpgrade && !upgradeSubmitted && (
-                    <div className="mt-4 space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Organization Name</label>
-                        <Input
-                          placeholder="Acme Corp"
-                          value={upgradeOrgName}
-                          onChange={(e) => setUpgradeOrgName(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Contact Email</label>
-                        <Input
-                          type="email"
-                          placeholder="admin@acme.com"
-                          value={upgradeEmail}
-                          onChange={(e) => setUpgradeEmail(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" className="rounded-full" onClick={() => setShowUpgrade(false)}>Cancel</Button>
-                        <Button className="rounded-full" onClick={handleEnterpriseUpgrade}>Submit Request</Button>
-                      </div>
-                    </div>
-                  )}
-                  {upgradeSubmitted && (
-                    <div className="mt-4 flex items-center gap-2 text-sm text-purple-600">
-                      <Check className="w-4 h-4" />
-                      Request submitted! Our team will contact you with Admin credentials.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-          )}
-        </div>
-      )}
 
       {/* Integrations Tab */}
       {activeTab === 'integrations' && (

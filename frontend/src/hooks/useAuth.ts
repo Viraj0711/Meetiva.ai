@@ -198,7 +198,7 @@ export const useUpgradeToPro = () => {
   return useMutation({
     mutationFn: (tier: string) => authService.upgradeToPro(tier),
     onSuccess: () => {
-      dispatch(addToast({ type: 'success', message: 'Subscription upgraded to PRO! 🎉' }));
+      dispatch(addToast({ type: 'success', message: 'Subscription upgraded to Team! 🎉' }));
       queryClient.invalidateQueries({ queryKey: ['user', 'subscription'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
     },

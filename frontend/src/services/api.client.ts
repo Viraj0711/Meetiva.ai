@@ -235,8 +235,12 @@ class ApiClient {
     return this.request<T>('PATCH', url, data, config);
   }
 
-  async delete<T = unknown>(url: string, config?: FetchConfig): Promise<T> {
-    return this.request<T>('DELETE', url, undefined, config);
+  async delete<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: FetchConfig,
+  ): Promise<T> {
+    return this.request<T>('DELETE', url, data, config);
   }
 }
 

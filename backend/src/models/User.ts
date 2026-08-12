@@ -8,13 +8,13 @@ import Notification from './Notification';
 import RefreshToken from './RefreshToken';
 import GoogleCalendarAuth from './GoogleCalendarAuth';
 import TeamChatMessage from './TeamChatMessage';
+import Project from './Project';
 
 export interface IUser extends Document {
   email: string;
   name: string;
-  // null when the account has no password yet (e.g. created via Google Sign-In)
-  hashedPassword: string | null;
-  googleId: string | null;
+  hashedPassword: string;
+  passwordSalt: string;
   isActive: boolean;
   isVerified: boolean;
   subscriptionTier: SubscriptionTier;
@@ -37,12 +37,11 @@ const userSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     name: { type: String, required: true },
-    // Optional: null until the user sets a password (Google Sign-In users can
-    // set one later via the change-password endpoint to enable email login).
-    hashedPassword: { type: String, default: null },
-    // Set when the user signs in via Google. Used to link a Google account
-    // to the existing Meetiva account (same email) instead of duplicating it.
-    googleId: { type: String, default: null },
+    hashedPassword: { type: String, required: true },
+    // Per-user random salt used to hash `hashedPassword` (see lib/password.ts).
+    // bcrypt also embeds the salt in the hash string, so legacy records without
+    // this column still verify correctly.
+    passwordSalt: { type: String, default: '' },
     isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
     subscriptionTier: {
@@ -72,44 +71,41 @@ userSchema.index({ accountType: 1 });
 userSchema.index({ googleId: 1 }, { sparse: true, unique: true });
 
 // ── Cascade delete: when a User is deleted, remove all related data ────────
+// Meeting.deleteMany() cascades to meeting summaries, transcripts and tasks
+// via the Meeting model's pre('deleteMany') hook (and cleans up Firebase
+// files). Corporate users are blocked from hard-delete by the guards below.
+const deleteUserContent = async (userId: Types.ObjectId): Promise<void> => {
+  await Promise.all([
+    Meeting.deleteMany({ userId }),
+    Task.deleteMany({ userId }),
+    TeamMember.deleteMany({ userId }),
+    TeamInvitation.deleteMany({ invitedBy: userId }),
+    Notification.deleteMany({ userId }),
+    RefreshToken.deleteMany({ userId }),
+    GoogleCalendarAuth.deleteMany({ userId }),
+    TeamChatMessage.deleteMany({ userId }),
+    Project.deleteMany({ managerUserId: userId }),
+  ]);
+};
+
 userSchema.pre('findOneAndDelete', async function () {
   const doc = await this.model.findOne(this.getFilter());
-  if (doc) {
-    const userId = doc._id;
-    await Promise.all([
-      Meeting.deleteMany({ userId }),
-      Task.deleteMany({ userId }),
-      TeamMember.deleteMany({ userId }),
-      TeamInvitation.deleteMany({ invitedBy: userId }),
-      Notification.deleteMany({ userId }),
-      RefreshToken.deleteMany({ userId }),
-      GoogleCalendarAuth.deleteMany({ userId }),
-      TeamChatMessage.deleteMany({ userId }),
-    ]);
+  if (!doc) return;
+  if (doc.accountType === 'corporate' && !doc.isRemoved) {
+    throw new Error('Corporate users must be removed via removeUser()');
   }
+  await deleteUserContent(doc._id);
 });
 
 // ── Safety net: prevent accidental hard-delete of enterprise users ─────────
 // Corporate users must go through removeUser() service for soft-delete + seat
 // cleanup. These hooks throw to catch any raw deleteOne/deleteMany calls.
-userSchema.pre('deleteOne', { document: true }, async function (this: any) {
+userSchema.pre('deleteOne', { document: true }, async function (this: IUser) {
   const doc = this;
   if (doc?.accountType === 'corporate' && !doc.isRemoved) {
     throw new Error('Corporate users must be removed via removeUser()');
   }
-  if (doc) {
-    const userId = doc._id;
-    await Promise.all([
-      Meeting.deleteMany({ userId }),
-      Task.deleteMany({ userId }),
-      TeamMember.deleteMany({ userId }),
-      TeamInvitation.deleteMany({ invitedBy: userId }),
-      Notification.deleteMany({ userId }),
-      RefreshToken.deleteMany({ userId }),
-      GoogleCalendarAuth.deleteMany({ userId }),
-      TeamChatMessage.deleteMany({ userId }),
-    ]);
-  }
+  await deleteUserContent(doc._id);
 });
 
 userSchema.pre('deleteMany', async function (this: any) {
@@ -122,17 +118,7 @@ userSchema.pre('deleteMany', async function (this: any) {
   }
   for (const doc of docs) {
     if (doc.accountType !== 'corporate') {
-      const userId = doc._id;
-      await Promise.all([
-        Meeting.deleteMany({ userId }),
-        Task.deleteMany({ userId }),
-        TeamMember.deleteMany({ userId }),
-        TeamInvitation.deleteMany({ invitedBy: userId }),
-        Notification.deleteMany({ userId }),
-        RefreshToken.deleteMany({ userId }),
-        GoogleCalendarAuth.deleteMany({ userId }),
-        TeamChatMessage.deleteMany({ userId }),
-      ]);
+      await deleteUserContent(doc._id);
     }
   }
 });

@@ -72,4 +72,22 @@ meetingSchema.pre('findOneAndDelete', async function () {
   }
 });
 
+// Same cascade for bulk deletes (e.g. when a user account is deleted and all
+// of their meetings are removed via Meeting.deleteMany({ userId })).
+meetingSchema.pre('deleteMany', async function () {
+  const filter = this.getFilter();
+  const meetings = await this.model.find(filter).select('_id fileStoragePath').lean();
+  const meetingIds = meetings.map((m) => m._id);
+  if (meetingIds.length === 0) return;
+  await Promise.all([
+    MeetingSummary.deleteMany({ meetingId: { $in: meetingIds } }),
+    Transcript.deleteMany({ meetingId: { $in: meetingIds } }),
+    Task.deleteMany({ meetingId: { $in: meetingIds } }),
+    // Best-effort cleanup of stored files.
+    ...meetings
+      .filter((m: any) => m.fileStoragePath)
+      .map((m: any) => deleteFileFromFirebase(m.fileStoragePath)),
+  ]);
+});
+
 export default mongoose.model<IMeeting>('Meeting', meetingSchema);
