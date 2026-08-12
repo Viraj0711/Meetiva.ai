@@ -3,3 +3,4 @@ export * from './auth.service';
 export * from './meeting.service';
 export * from './integration.service';
 export * from './workspace.service';
+export * from './notification.service';

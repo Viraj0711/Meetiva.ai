@@ -254,3 +254,16 @@
     -webkit-text-fill-color: transparent;
   }
 }
+
+/* Mobile bottom nav safe area for devices with home indicators */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Ensure mobile content doesn't overflow behind bottom nav */
+@media (max-width: 767px) {
+  .pb-16 {
+    padding-bottom: 4rem;
+  }
+}
+

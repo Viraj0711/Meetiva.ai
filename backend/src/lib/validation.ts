@@ -19,6 +19,7 @@ export {
   verifyOtpSchema,
   resendOtpSchema,
   changePasswordSchema,
+  deleteAccountSchema,
   updateProfileSchema,
   createMeetingSchema,
   updateMeetingSchema,

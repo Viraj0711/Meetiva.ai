@@ -12,15 +12,15 @@ const TIERS = [
     price: '$0',
     period: 'forever',
     icon: Star,
-    features: ['5 meetings/month', 'AI summaries', 'Task extraction', 'Excel export'],
+    features: ['5 meetings/month', 'AI summaries', 'Minutes Extraction', 'Minutes PDF'],
     highlight: false,
   },
   {
-    name: 'PRO',
-    price: '—',
-    period: 'admin setup',
+    name: 'Team',
+    price: '$29',
+    period: '/seat/mo',
     icon: Crown,
-    features: ['Unlimited meetings', 'Team collaboration', 'Calendar sync', 'Analytics dashboard'],
+    features: ['15 meetings/month', 'Team collaboration', 'Calendar sync', 'Analytics dashboard'],
     highlight: true,
   },
 ];
@@ -54,7 +54,7 @@ const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ children })
           </div>
           <h1 className="text-3xl font-bold text-[#1D1B22] mb-3">Upgrade to unlock this feature</h1>
           <p className="text-[#64607A] max-w-lg mx-auto">
-            This feature is available on the PRO plan. Upgrade your workspace to access advanced analytics and team collaboration.
+            This feature is available on the Team plan. Upgrade your workspace to access advanced analytics and team collaboration.
           </p>
         </div>
 
@@ -106,7 +106,7 @@ const SubscriptionGate: React.FC<{ children: React.ReactNode }> = ({ children })
                   <button onClick={() => navigate('/dashboard/upgrade')}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
                     style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})`, boxShadow: `0 6px 24px ${GRAD}40` }}>
-                    Upgrade to PRO <ArrowRight size={14} />
+                    Upgrade to Team <ArrowRight size={14} />
                   </button>
                 ) : (
                   <button disabled

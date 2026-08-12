@@ -1,10 +1,11 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import z from 'zod';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { requireOrgRole, requireSuperAdmin, requireOrgAccess } from '../middleware/authorizeOrg';
 import { apiLimiter } from '../lib/rateLimiters';
 import { validate } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
+import { hashPassword } from '../lib/password';
 import { createLogger } from '../lib/logger';
 import Organization from '../models/Organization';
 import User from '../models/User';
@@ -34,7 +35,7 @@ const updateOrganizationSchema = z.object({
 const provisionUserSchema = z.object({
   email: z.string().email(),
   name: z.string().trim().min(2).max(50),
-  role: z.enum(['manager', 'team_leader', 'member']),
+  role: z.enum(['admin', 'manager', 'team_leader', 'member']),
 });
 
 const assignManagerSchema = z.object({
@@ -60,6 +61,47 @@ const slugify = (text: string): string =>
   text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 // ── Organization CRUD ──────────────────────────────────────────────────────
+
+// Public: Enterprise request (no auth required)
+const enterpriseRequestSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  contactEmail: z.string().email(),
+});
+
+router.post(
+  '/request',
+  apiLimiter,
+  validate(enterpriseRequestSchema),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { name, contactEmail } = req.body as z.infer<typeof enterpriseRequestSchema>;
+
+    const baseSlug = slugify(name);
+    let slug = baseSlug;
+    let counter = 1;
+    while (await Organization.findOne({ slug }).lean()) {
+      slug = `${baseSlug}-${counter++}`;
+    }
+
+    const org = await Organization.create({
+      name,
+      slug,
+      contactEmail,
+      status: 'pending',
+    });
+
+    log.info('Enterprise request submitted', { orgId: String(org._id), contactEmail });
+
+    res.status(201).json({
+      message: 'Request submitted. Our team will review and contact you with Admin credentials.',
+      organization: {
+        id: org._id.toString(),
+        name: org.name,
+        slug: org.slug,
+        status: org.status,
+      },
+    });
+  })
+);
 
 // Create organization (any authenticated user can request; goes to pending status)
 router.post(
@@ -194,6 +236,7 @@ router.post(
 
     // Role hierarchy check: who can create whom
     const canCreate: Record<string, string[]> = {
+      super_admin: ['admin', 'manager', 'team_leader', 'member'],
       admin: ['manager'],
       manager: ['team_leader'],
       team_leader: ['member'],
@@ -225,14 +268,14 @@ router.post(
     }
 
     // Create user
-    const bcrypt = await import('bcryptjs');
     const tempPassword = generateTempPassword();
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    const { salt, hashedPassword } = await hashPassword(tempPassword);
 
     const user = await User.create({
       email: email.toLowerCase(),
       name,
       hashedPassword,
+      passwordSalt: salt,
       accountType: 'corporate',
       orgRole: role,
       organizationId: new Types.ObjectId(orgId),
@@ -333,7 +376,7 @@ router.get(
   requireSuperAdmin,
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const orgs = await Organization.find()
-      .select('name slug status seatLimit seatsUsed adminUserId createdAt')
+      .select('name slug contactEmail status seatLimit seatsUsed adminUserId createdAt')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -342,10 +385,11 @@ router.get(
         id: o._id.toString(),
         name: o.name,
         slug: o.slug,
+        contactEmail: o.contactEmail ?? null,
         status: o.status,
         seatLimit: o.seatLimit,
         seatsUsed: o.seatsUsed,
-        adminUserId: o.adminUserId.toString(),
+        adminUserId: o.adminUserId?.toString() ?? null,
         createdAt: o.createdAt.toISOString(),
       })),
     });
@@ -385,6 +429,86 @@ router.patch(
   })
 );
 
+// ── Super Admin: add/replace admin for any org ─────────────────────────────
+
+const addAdminSchema = z.object({
+  email: z.string().email(),
+  name: z.string().trim().min(2).max(50),
+});
+
+router.post(
+  '/:id/add-admin',
+  apiLimiter,
+  authenticate,
+  requireSuperAdmin,
+  validate(addAdminSchema),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { email, name } = req.body as z.infer<typeof addAdminSchema>;
+    const orgId = req.params.id;
+
+    const org = await Organization.findById(orgId).lean();
+    if (!org) {
+      return res.status(404).json({ message: 'Organization not found' });
+    }
+
+    // Check email not already taken
+    const existing = await User.findOne({ email: email.toLowerCase() }).lean();
+    if (existing) {
+      return res.status(409).json({ message: 'Email already registered' });
+    }
+
+    const tempPassword = generateTempPassword();
+    const { salt, hashedPassword } = await hashPassword(tempPassword);
+
+    // If org already has an admin, deactivate the old one's admin role
+    if (org.adminUserId) {
+      await User.findByIdAndUpdate(org.adminUserId, {
+        orgRole: 'manager',
+      });
+      log.info('Previous admin demoted to manager', { orgId: orgId, prevAdminId: String(org.adminUserId) });
+    }
+
+    // Create new admin user
+    const adminUser = await User.create({
+      email: email.toLowerCase(),
+      name,
+      hashedPassword,
+      passwordSalt: salt,
+      accountType: 'corporate',
+      orgRole: 'admin',
+      organizationId: new Types.ObjectId(orgId),
+      createdByUserId: new Types.ObjectId(req.userId!),
+      forcePasswordChange: true,
+      isActive: true,
+      isVerified: true,
+    });
+
+    // Set as org admin and ensure org is active
+    await Organization.findByIdAndUpdate(orgId, {
+      adminUserId: adminUser._id,
+      status: 'active',
+    });
+
+    // Increment seats if there's room
+    await Organization.findByIdAndUpdate(orgId, { $inc: { seatsUsed: 1 } });
+
+    log.info('Admin added to organization', { orgId, adminUserId: String(adminUser._id), by: req.userId });
+
+    res.status(201).json({
+      user: {
+        id: adminUser._id.toString(),
+        email: adminUser.email,
+        name: adminUser.name,
+        orgRole: adminUser.orgRole,
+        isActive: adminUser.isActive,
+        createdAt: adminUser.createdAt.toISOString(),
+        tempPassword,
+      },
+      message: 'Admin account created. Share credentials securely. They will be forced to change their password on first login.',
+    });
+  })
+);
+
 // ── Super Admin: provision admin credentials for pending org ─────────────────
 
 router.post(
@@ -411,14 +535,14 @@ router.post(
       return res.status(409).json({ message: 'Email already registered' });
     }
 
-    const bcrypt = await import('bcryptjs');
     const tempPassword = generateTempPassword();
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    const { salt, hashedPassword } = await hashPassword(tempPassword);
 
     const adminUser = await User.create({
       email: email.toLowerCase(),
       name,
       hashedPassword,
+      passwordSalt: salt,
       accountType: 'corporate',
       orgRole: 'admin',
       organizationId: org._id,

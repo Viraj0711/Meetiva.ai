@@ -6,7 +6,7 @@ import { Types } from 'mongoose';
 
 const MONTHLY_MEETING_LIMITS: Record<string, number> = {
   FREE: 5,
-  TEAM: 999_999,
+  TEAM: 15,
   ENTERPRISE: 999_999,
 };
 
@@ -95,7 +95,7 @@ export const checkMeetingCredits = async (userId: string): Promise<void> => {
   if (!isSubscribed && meetingCountThisMonth >= limit) {
     throw new AppError(
       403,
-      `You've used all ${limit} free meetings this month. Upgrade to TEAM for unlimited meetings.`,
+      `You've used all ${limit} meetings this month. Upgrade to TEAM for 15 meetings/month.`,
       'MEETING_LIMIT_REACHED'
     );
   }

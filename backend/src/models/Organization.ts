@@ -4,6 +4,7 @@ import type { OrganizationStatus } from '../lib/shared';
 export interface IOrganization extends Document {
   name: string;
   slug: string;
+  contactEmail: string | null;
   adminUserId: Types.ObjectId;
   status: OrganizationStatus;
   seatLimit: number;
@@ -17,7 +18,8 @@ const organizationSchema = new Schema<IOrganization>(
   {
     name: { type: String, required: true },
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    adminUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    contactEmail: { type: String, default: null },
+    adminUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null as any },
     status: {
       type: String,
       enum: ['pending', 'active', 'suspended'],
