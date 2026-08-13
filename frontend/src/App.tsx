@@ -9,7 +9,6 @@ import ToastContainer from '@/components/ui/ToastContainer';
 import { authService } from '@/services';
 import { loginSuccess } from '@/store/slices/authSlice';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { ForcePasswordChangeGate } from '@/components/ForcePasswordChangeGate';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,9 +72,7 @@ const App: React.FC = () => {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthInitializer>
-              <ForcePasswordChangeGate>
-                <AppRouter />
-              </ForcePasswordChangeGate>
+              <AppRouter />
               <ToastContainer />
             </AuthInitializer>
           </ThemeProvider>

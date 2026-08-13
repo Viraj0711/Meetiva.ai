@@ -42,6 +42,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   if (user && !user.isVerified) {
     return <Navigate to={`/verify-email?email=${encodeURIComponent(user.email)}`} replace />;
   }
+
+  // Google sign-in users without a password must set one via Profile page
+  if (user && user.hasPassword === false && !window.location.pathname.includes('/dashboard/profile')) {
+    return <Navigate to="/dashboard/profile" replace />;
+  }
   
   return <>{children}</>;
 };
