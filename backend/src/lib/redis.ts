@@ -43,6 +43,12 @@ export const getRedisClient = (): Redis | null => {
       log.info('Connected');
     });
 
+    redis.on('end', () => {
+      log.warn('Connection ended — falling back to in-memory stores');
+      redis = null;
+      redisError = new Error('Redis connection ended');
+    });
+
     return redis;
   } catch (err) {
     redisError = err instanceof Error ? err : new Error(String(err));
@@ -56,8 +62,13 @@ export const createRateLimitStore = (): RedisStore | undefined => {
   if (!client || client.status !== 'ready') return undefined;
 
   return new RedisStore({
-    sendCommand: (...args: [string, ...string[]]) =>
-      client.call(...args) as Promise<boolean | number | string | (boolean | number | string)[]>,
+    sendCommand: (...args: [string, ...string[]]) => {
+      // Guard against using a client that closed after the initial ready check
+      if (!redis || redis.status !== 'ready') {
+        return Promise.resolve(0) as Promise<boolean | number | string | (boolean | number | string)[]>;
+      }
+      return redis.call(...args) as Promise<boolean | number | string | (boolean | number | string)[]>;
+    },
     prefix: 'meetiva:rl:',
   });
 };
