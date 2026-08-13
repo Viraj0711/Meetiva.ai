@@ -670,7 +670,7 @@ router.post('/verify-otp/resend',
     const otp = generateOtp();
     await setOtp(email, otp);
     await sendVerificationEmail(email, otp).catch((err) => {
-      console.error(`[OTP] Failed to resend verification email to ${email}:`, err.message);
+      console.error('[OTP] Failed to resend verification email to %s: %s', email, err.message);
     });
 
     // A fresh code resets the failed-attempt budget for this email.
