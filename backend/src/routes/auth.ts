@@ -244,7 +244,7 @@ const sendVerificationEmail = async (email: string, otp: string): Promise<void> 
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
   const smtpPassword = process.env.SMTP_PASSWORD;
-  const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
+  const emailFrom = process.env.EMAIL_FROM || smtpUser || 'noreply@meetiva.ai';
 
   if (smtpHost && smtpUser && smtpPassword) {
     const transporter = nodemailer.createTransport({
@@ -477,7 +477,7 @@ const sendPasswordResetEmail = async (email: string, token: string): Promise<voi
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
   const smtpPassword = process.env.SMTP_PASSWORD;
-  const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
+  const emailFrom = process.env.EMAIL_FROM || smtpUser || 'noreply@meetiva.ai';
   // Production default points to backend-served frontend (port 8000).
   // In development, set FRONTEND_APP_URL=http://localhost:5173 in backend/.env.
   const frontendUrl = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
@@ -515,7 +515,7 @@ const sendPasswordChangedEmail = async (userId: string): Promise<void> => {
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
   const smtpPassword = process.env.SMTP_PASSWORD;
-  const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
+  const emailFrom = process.env.EMAIL_FROM || smtpUser || 'noreply@meetiva.ai';
 
   if (smtpHost && smtpUser && smtpPassword) {
     const transporter = nodemailer.createTransport({
