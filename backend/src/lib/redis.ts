@@ -150,6 +150,23 @@ export const setOtp = async (email: string, otp: string): Promise<void> => {
 };
 
 /**
+ * Check whether a valid (non-expired) OTP currently exists for the email.
+ * Used by login so a fresh code is only (re)generated when the previous one
+ * has expired or is missing (e.g. server restarted with the in-memory
+ * fallback, or Redis was cleared).
+ */
+export const hasValidOtp = async (email: string): Promise<boolean> => {
+  const client = getRedisClient();
+  if (client) {
+    const ttl = await client.ttl(`${OTP_PREFIX}${email}`);
+    return ttl > 0;
+  }
+  const stored = fallbackOtpTokens.get(email);
+  if (!stored) return false;
+  return Date.now() - stored.createdAt < OTP_TTL * 1000;
+};
+
+/**
  * Retrieve and validate an OTP for the given email.
  * Returns `true` if the OTP matches, `false` otherwise.
  * The OTP is consumed (deleted) on successful validation.

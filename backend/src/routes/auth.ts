@@ -33,6 +33,7 @@ import {
   deleteResetToken,
   setOtp,
   verifyOtp,
+  hasValidOtp,
   getOtpCooldown,
   getOtpFailedAttempts,
   incrementOtpFailedAttempts,
@@ -332,12 +333,31 @@ router.get('/subscription', apiLimiter, authenticate, asyncHandler(async (req: A
   });
 }));
 
+// ── OTP regeneration helper ────────────────────────────────────────────────
+// Ensures an unverified user has a valid verification code available. Called
+// on login and on session restore (refresh) so the verify-email page always
+// has a working code — even when the previous one expired or was lost (e.g.
+// server restart with the in-memory fallback clears all codes).
+const ensureValidOtp = async (email: string): Promise<void> => {
+  const otpStillValid = await hasValidOtp(email);
+  if (otpStillValid) return;
+
+  const otp = generateOtp();
+  await setOtp(email, otp);
+  await sendVerificationEmail(email, otp).catch((err) => {
+    console.error('[OTP] Failed to send verification email to %s: %s', email, err.message);
+  });
+  // A fresh code resets the failed-attempt budget, matching the resend route.
+  await clearOtpFailedAttempts(email);
+};
+
 // Login
 router.post('/login',
   authLimiter,
   validate(loginSchema),
   asyncHandler(async (req: Request, res: Response) => {
     const { email: rawEmail, password } = req.body as z.infer<typeof loginSchema>;
+    const email = normalizeEmail(rawEmail);
 
     const user = await User.findOne(emailQueryFilter(rawEmail)).lean() as any;
     // Accounts without a password (Google-only) can't sign in with a password —
@@ -353,6 +373,14 @@ router.post('/login',
 
     if (!user.isActive) {
       return res.status(403).json({ message: 'Account is inactive' });
+    }
+
+    // Unverified users must verify their email before using the app. If their
+    // OTP has expired or is missing (e.g. the 5-minute TTL elapsed, Redis was
+    // cleared, or the server restarted with the in-memory fallback), generate
+    // and send a fresh one so the verify-email page always has a valid code.
+    if (!user.isVerified) {
+      await ensureValidOtp(email);
     }
 
     await sendAuthResponse(res, user);
@@ -450,6 +478,13 @@ router.post('/refresh', authLimiter, asyncHandler(async (req: Request, res: Resp
     res.clearCookie(REFRESH_COOKIE, { path: '/' });
     res.clearCookie(SESSION_COOKIE, { path: '/' });
     return res.status(403).json({ message: 'Account is inactive' });
+  }
+
+  // Session restored for an unverified user — make sure they have a valid
+  // verification code available when the frontend redirects them to
+  // verify-email (the previous code may have expired while they were away).
+  if (!user.isVerified) {
+    await ensureValidOtp(user.email);
   }
 
   const accessToken = await createAccessToken(userId, user.email);
