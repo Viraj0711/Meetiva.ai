@@ -30,16 +30,27 @@ const RegisterPage: React.FC = () => {
   const [orgEmail, setOrgEmail] = useState('');
 
   const handleIndividualSubmit = async () => {
+    if (!name.trim()) {
+      toast.error('Please enter your full name.');
+      return;
+    }
+    if (!email.trim()) {
+      toast.error('Please enter your email address.');
+      return;
+    }
+    if (pw.length < 8) {
+      toast.error('Password must be at least 8 characters.');
+      return;
+    }
     if (pw !== pw2) {
       toast.error('Passwords do not match.');
       return;
     }
     try {
-      await registerMutation.mutateAsync({ name, email, password: pw });
-      navigate(`/verify-email?email=${encodeURIComponent(email)}`);
-    } catch (err) {
-      const e = err as { message?: string };
-      toast.error(e?.message || 'Registration failed.');
+      await registerMutation.mutateAsync({ name: name.trim(), email: email.trim(), password: pw });
+      navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+    } catch {
+      // Error toast is already dispatched by useRegister.onError
     }
   };
 

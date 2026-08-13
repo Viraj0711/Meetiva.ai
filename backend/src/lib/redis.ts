@@ -21,8 +21,10 @@ export const getRedisClient = (): Redis | null => {
   try {
     redis = new Redis(REDIS_URL, {
       maxRetriesPerRequest: 3,
+      connectTimeout: 5000,
+      commandTimeout: 3000,
       retryStrategy(times) {
-        if (times > 5) {
+        if (times > 3) {
           log.warn('Max retries reached — falling back to in-memory stores');
           redis = null;
           redisError = new Error('Redis connection failed');
