@@ -302,7 +302,7 @@ router.post('/register',
     const otp = generateOtp();
     await setOtp(email, otp);
     await sendVerificationEmail(email, otp).catch((err) => {
-      console.error(`[OTP] Failed to send verification email to ${email}:`, err.message);
+      console.error('[OTP] Failed to send verification email to %s: %s', email, err.message);
     });
 
     await sendAuthResponse(res, user, 201);
