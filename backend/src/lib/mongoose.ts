@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { Types } from 'mongoose';
+import { Request, Response, NextFunction } from 'express';
 import { createLogger } from './logger';
 
 const log = createLogger('meetiva:db');
@@ -76,5 +77,21 @@ export const disconnectMongoose = async (): Promise<void> => {
 };
 
 export const isMongooseConnected = (): boolean => isConnected;
+
+/**
+ * Middleware that rejects requests with 503 when MongoDB is not connected.
+ * Prevents Mongoose from silently buffering queries indefinitely during
+ * cold starts or connection failures.
+ */
+export const requireDb = (req: Request, res: Response, next: NextFunction): void => {
+  if (isConnected) {
+    next();
+    return;
+  }
+  res.status(503).json({
+    message: 'Service temporarily unavailable. The database is reconnecting.',
+    retryAfter: 5,
+  });
+};
 
 export default mongoose;

@@ -255,16 +255,24 @@ const sendVerificationEmail = async (email: string, otp: string): Promise<void> 
         user: smtpUser,
         pass: smtpPassword,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
     });
 
     const emailContent = verificationOtp(otp);
-    await transporter.sendMail({
-      from: emailFrom,
-      to: email,
-      subject: emailContent.subject,
-      text: emailContent.text,
-      html: emailContent.html,
-    });
+    await Promise.race([
+      transporter.sendMail({
+        from: emailFrom,
+        to: email,
+        subject: emailContent.subject,
+        text: emailContent.text,
+        html: emailContent.html,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Email send timeout')), 15000),
+      ),
+    ]);
   } else {
     console.log(`[DEV] Verification OTP for ${email}: ${otp}`);
   }
@@ -290,9 +298,12 @@ router.post('/register',
     const user = await User.create({ email, name, hashedPassword, passwordSalt: salt });
 
     // Generate and send verification OTP
+    // Email failure is non-blocking — user can still register and resend later.
     const otp = generateOtp();
     await setOtp(email, otp);
-    await sendVerificationEmail(email, otp);
+    await sendVerificationEmail(email, otp).catch((err) => {
+      console.error(`[OTP] Failed to send verification email to ${email}:`, err.message);
+    });
 
     await sendAuthResponse(res, user, 201);
   })
@@ -658,7 +669,9 @@ router.post('/verify-otp/resend',
     // Generate new OTP (old one is automatically discarded by setOtp)
     const otp = generateOtp();
     await setOtp(email, otp);
-    await sendVerificationEmail(email, otp);
+    await sendVerificationEmail(email, otp).catch((err) => {
+      console.error(`[OTP] Failed to resend verification email to ${email}:`, err.message);
+    });
 
     // A fresh code resets the failed-attempt budget for this email.
     await clearOtpFailedAttempts(email);
