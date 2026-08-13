@@ -1019,7 +1019,10 @@ router.get('/google/login/callback', authLimiter, asyncHandler(async (req: Reque
     // The frontend restores the access token via POST /auth/refresh on mount.
     await createAndSetRefreshToken(res, user._id.toString());
 
-    return res.redirect(`${frontendUrl}/dashboard`);
+    // New Google-created accounts have no password (hashedPassword: null).
+    // Redirect them to Profile so they can set one before using the app.
+    const hasPassword = !!user.hashedPassword;
+    return res.redirect(`${frontendUrl}/dashboard${hasPassword ? '' : '/profile'}`);
   } catch (error) {
     log.error('Google login session setup failed', {
       error: error instanceof Error ? error.message : String(error),

@@ -32,6 +32,8 @@ const Profile: React.FC = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // ── Change Password state ──────────────────────────────────────────────
+  // ── Password setup/change ───────────────────────────────────────────
+  const needsPasswordSetup = user?.hasPassword === false;
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -73,9 +75,19 @@ const Profile: React.FC = () => {
   const handleChangePassword = async () => {
     setPasswordError(null);
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError('All fields are required.');
-      return;
+    // Validate fields based on mode
+    if (needsPasswordSetup) {
+      // Set Password mode: only newPassword + confirmPassword required
+      if (!newPassword || !confirmPassword) {
+        setPasswordError('Both password fields are required.');
+        return;
+      }
+    } else {
+      // Change Password mode: all 3 fields required
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        setPasswordError('All fields are required.');
+        return;
+      }
     }
 
     if (newPassword.length < 8) {
@@ -89,7 +101,11 @@ const Profile: React.FC = () => {
     }
 
     try {
-      await changePasswordMutation.mutateAsync({ currentPassword, newPassword });
+      await changePasswordMutation.mutateAsync(
+        needsPasswordSetup
+          ? { newPassword }
+          : { currentPassword, newPassword }
+      );
       setProfileMessage('Password updated successfully. You will be logged out shortly.');
       setCurrentPassword('');
       setNewPassword('');
@@ -99,7 +115,11 @@ const Profile: React.FC = () => {
         logoutMutation.mutate();
       }, 1500);
     } catch {
-      setPasswordError('Failed to change password. Please check your current password.');
+      setPasswordError(
+        needsPasswordSetup
+          ? 'Failed to set password. Please try again.'
+          : 'Failed to change password. Please check your current password.'
+      );
     }
   };
 
@@ -240,37 +260,48 @@ const Profile: React.FC = () => {
           </form>
         </Card>
 
-        {/* Change Password */}
+        {/* Password Section — shows Set or Change based on account state */}
         <Card className="p-6 mb-6">
           <div className="flex items-center gap-2 mb-2">
             <Lock className="w-5 h-5" style={{ color: GRAD }} />
-            <h2 className="text-lg font-bold text-[#1D1B22]">Change Password</h2>
+            <h2 className="text-lg font-bold text-[#1D1B22]">
+              {needsPasswordSetup ? 'Set Password' : 'Change Password'}
+            </h2>
           </div>
           <p className="text-sm text-[#64607A] mb-5">
-            Update your password to keep your account secure.
+            {needsPasswordSetup
+              ? 'Your account was created with Google and has no password yet. Set one so you can also log in with email and password.'
+              : 'Update your password to keep your account secure.'}
           </p>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">
-                Current Password
-              </label>
-              <Input
-                type="password"
-                placeholder="Enter current password"
-                value={currentPassword}
-                onChange={(e) => {
-                  setCurrentPassword(e.target.value);
-                  setPasswordError(null);
-                }}
-              />
+          {needsPasswordSetup && (
+            <div className="mb-4 rounded-xl px-4 py-3 text-sm border border-blue-200 bg-blue-50 text-blue-700">
+              Please set a password before continuing to use the app.
             </div>
+          )}
+          <div className="space-y-4">
+            {!needsPasswordSetup && (
+              <div>
+                <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">
+                  Current Password
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Enter current password"
+                  value={currentPassword}
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    setPasswordError(null);
+                  }}
+                />
+              </div>
+            )}
             <div>
               <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">
-                New Password
+                {needsPasswordSetup ? 'Password' : 'New Password'}
               </label>
               <Input
                 type="password"
-                placeholder="Enter new password"
+                placeholder={needsPasswordSetup ? 'Create a password' : 'Enter new password'}
                 value={newPassword}
                 onChange={(e) => {
                   setNewPassword(e.target.value);
@@ -280,11 +311,11 @@ const Profile: React.FC = () => {
             </div>
             <div>
               <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">
-                Confirm New Password
+                {needsPasswordSetup ? 'Repeat Password' : 'Confirm New Password'}
               </label>
               <Input
                 type="password"
-                placeholder="Confirm new password"
+                placeholder={needsPasswordSetup ? 'Repeat password' : 'Confirm new password'}
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
@@ -302,7 +333,9 @@ const Profile: React.FC = () => {
               disabled={changePasswordMutation.isPending}
             >
               <Lock className="w-4 h-4 mr-2" />
-              {changePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+              {changePasswordMutation.isPending
+                ? (needsPasswordSetup ? 'Setting...' : 'Updating...')
+                : (needsPasswordSetup ? 'Set Password' : 'Update Password')}
             </Button>
           </div>
         </Card>

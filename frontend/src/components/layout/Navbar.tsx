@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, LogOut, ChevronDown, Building2, User, Settings, Zap } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
-import { Avatar } from '@/components/ui/Avatar';
 import { notificationService, type Notification } from '@/services/notification.service';
 
 const GRAD = '#5B3FD6';
@@ -196,18 +195,6 @@ const TopBar: React.FC = () => {
           className="p-2 rounded-xl hover:bg-[rgba(91,63,214,0.08)] transition-colors cursor-pointer hidden sm:block"
         >
           <Settings size={18} style={{ color: '#64607A' }} />
-        </button>
-
-        {/* Profile - goes directly to profile page */}
-        <button
-          onClick={() => navigate('/dashboard/profile')}
-          className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-[rgba(91,63,214,0.08)] transition-colors cursor-pointer border border-transparent hover:border-[#E4E0F5]"
-          title="View Profile"
-        >
-          <Avatar name={user?.name || 'User'} size="sm" />
-          <div className="hidden md:block text-left">
-            <p className="text-xs font-semibold text-[#1D1B22] truncate max-w-[100px]">{user?.name || 'User'}</p>
-          </div>
         </button>
 
         {/* Logout Button - directly visible */}
