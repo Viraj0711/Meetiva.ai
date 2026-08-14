@@ -22,7 +22,7 @@ import { startDeadlineNotifier, stopDeadlineNotifier } from './jobs/deadlineNoti
 import { startRefreshTokenCleanup, stopRefreshTokenCleanup } from './jobs/refreshTokenCleanup';
 import { requestLogger } from './lib/requestLogger';
 import { errorHandler } from './middleware/errorHandler';
-import { connectMongoose, disconnectMongoose } from './lib/mongoose';
+import { connectMongoose, disconnectMongoose, requireDb } from './lib/mongoose';
 import { applyQuerySafetyPlugin } from './lib/querySafetyPlugin';
 import { disconnectRedis } from './lib/redis';
 import { createLogger } from './lib/logger';
@@ -52,9 +52,9 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https:"],
-      fontSrc: ["'self'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
       connectSrc: ["'self'"],
       formAction: ["'self'"],
       frameAncestors: ["'none'"],
@@ -93,6 +93,10 @@ app.use(requestLogger);
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Reject API requests with 503 if MongoDB isn't connected yet.
+// Prevents Mongoose from buffering queries indefinitely during cold starts.
+app.use(`${API_PREFIX}`, requireDb);
 
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/ai`, aiRoutes);

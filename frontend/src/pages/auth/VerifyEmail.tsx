@@ -69,12 +69,7 @@ const VerifyEmail: React.FC = () => {
     }
   }, [email, cooldown, resendOtp]);
 
-  // Auto-resend on mount if no cooldown
-  useEffect(() => {
-    if (email && cooldown === 0) {
-      handleResend();
-    }
-  }, [email]); // eslint-disable-line react-hooks/exhaustive-deps
+  // No auto-resend on mount — registration/login already sent the initial OTP.
 
   // ── Verified success state ──────────────────────────────────────────────
   if (verified) {

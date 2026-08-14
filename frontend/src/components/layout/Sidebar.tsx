@@ -29,8 +29,8 @@ const NAV = [
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const user = useAppSelector((state) => state.auth.user);
 
+  const user = useAppSelector((state) => state.auth.user);
   const isActive = (path: string) => location.pathname === path;
   const navTo = (path: string) => navigate(path);
 
@@ -81,11 +81,11 @@ const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      {/* Bottom: Profile + Logout */}
+      {/* Profile button at bottom */}
       <div className="relative p-4 border-t border-[#E4E0F5]">
         <button
           onClick={() => navTo('/dashboard/profile')}
-          className="flex items-center gap-2.5 mb-3 w-full text-left rounded-lg p-1 -m-1 transition-colors hover:bg-[rgba(91,63,214,0.04)] cursor-pointer"
+          className="flex items-center gap-2.5 w-full text-left rounded-lg p-1 -m-1 transition-colors hover:bg-[rgba(91,63,214,0.04)] cursor-pointer"
         >
           <Avatar name={user?.name || 'User'} size="sm" />
           <div className="flex-1 min-w-0">
@@ -93,7 +93,6 @@ const Sidebar: React.FC = () => {
             <div className="text-[10px] text-[#64607A] truncate">{user?.email || ''}</div>
           </div>
         </button>
-
       </div>
 
     </div>

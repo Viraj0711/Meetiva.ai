@@ -21,8 +21,10 @@ export const getRedisClient = (): Redis | null => {
   try {
     redis = new Redis(REDIS_URL, {
       maxRetriesPerRequest: 3,
+      connectTimeout: 5000,
+      commandTimeout: 3000,
       retryStrategy(times) {
-        if (times > 5) {
+        if (times > 3) {
           log.warn('Max retries reached — falling back to in-memory stores');
           redis = null;
           redisError = new Error('Redis connection failed');
@@ -41,6 +43,12 @@ export const getRedisClient = (): Redis | null => {
       log.info('Connected');
     });
 
+    redis.on('end', () => {
+      log.warn('Connection ended — falling back to in-memory stores');
+      redis = null;
+      redisError = new Error('Redis connection ended');
+    });
+
     return redis;
   } catch (err) {
     redisError = err instanceof Error ? err : new Error(String(err));
@@ -54,8 +62,13 @@ export const createRateLimitStore = (): RedisStore | undefined => {
   if (!client || client.status !== 'ready') return undefined;
 
   return new RedisStore({
-    sendCommand: (...args: [string, ...string[]]) =>
-      client.call(...args) as Promise<boolean | number | string | (boolean | number | string)[]>,
+    sendCommand: (...args: [string, ...string[]]) => {
+      // Guard against using a client that closed after the initial ready check
+      if (!redis || redis.status !== 'ready') {
+        return Promise.resolve(0) as Promise<boolean | number | string | (boolean | number | string)[]>;
+      }
+      return redis.call(...args) as Promise<boolean | number | string | (boolean | number | string)[]>;
+    },
     prefix: 'meetiva:rl:',
   });
 };
@@ -134,6 +147,23 @@ export const setOtp = async (email: string, otp: string): Promise<void> => {
       }
     }, OTP_TTL * 1000).unref();
   }
+};
+
+/**
+ * Check whether a valid (non-expired) OTP currently exists for the email.
+ * Used by login so a fresh code is only (re)generated when the previous one
+ * has expired or is missing (e.g. server restarted with the in-memory
+ * fallback, or Redis was cleared).
+ */
+export const hasValidOtp = async (email: string): Promise<boolean> => {
+  const client = getRedisClient();
+  if (client) {
+    const ttl = await client.ttl(`${OTP_PREFIX}${email}`);
+    return ttl > 0;
+  }
+  const stored = fallbackOtpTokens.get(email);
+  if (!stored) return false;
+  return Date.now() - stored.createdAt < OTP_TTL * 1000;
 };
 
 /**

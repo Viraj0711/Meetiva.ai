@@ -17,6 +17,7 @@ import {
 } from '../lib/validation';
 import type { NotificationType } from '../lib/shared';
 import { asyncHandler } from '../lib/errors';
+import { normalizeEmail, emailQueryFilter } from '../lib/email';
 import { requireSubscription } from '../lib/subscription';
 import User from '../models/User';
 import Team from '../models/Team';
@@ -429,7 +430,8 @@ router.post(
   validate(inviteMemberSchema),
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const { teamId } = req.params;
-    const normalizedEmail = String(req.body.email).toLowerCase();
+    const rawInviteEmail = String(req.body.email);
+    const normalizedEmail = normalizeEmail(rawInviteEmail);
 
     // Check if requester is member of this team
     const requesterMembership = await TeamMember.findOne({
@@ -447,7 +449,7 @@ router.post(
     }
 
     // Check if user already exists
-    let user = await User.findOne({ email: normalizedEmail }).lean();
+    let user = await User.findOne(emailQueryFilter(rawInviteEmail)).lean();
 
     let temporaryPassword: string | null = null;
 
@@ -527,7 +529,7 @@ router.get('/pending/invitations', apiLimiter, authenticate, asyncHandler(async 
   }
 
   const invitations = await TeamInvitation.find({
-    email: currentUser.email,
+    ...emailQueryFilter(currentUser.email),
     status: 'PENDING',
     expiresAt: { $gt: new Date() },
   })
@@ -574,7 +576,7 @@ router.post(
     // Get current user's email
     const currentUser = await User.findById(req.userId!).lean();
 
-    if (!currentUser || currentUser.email !== invitation.email) {
+    if (!currentUser || normalizeEmail(currentUser.email) !== normalizeEmail(invitation.email)) {
       return res.status(403).json({ message: 'This invitation is not for you' });
     }
 
@@ -860,7 +862,7 @@ router.patch(
     }
 
     if (typeof email === 'string' && email.trim()) {
-      data.email = email.toLowerCase().trim();
+      data.email = normalizeEmail(email);
     }
 
     if (Object.keys(data).length === 0) {

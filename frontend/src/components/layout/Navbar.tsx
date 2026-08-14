@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ChevronDown, Building2, User, Settings, Zap, LogOut } from 'lucide-react';
+import { Bell, LogOut, ChevronDown, Building2, User, Settings, Zap } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { notificationService, type Notification } from '@/services/notification.service';
@@ -132,7 +132,7 @@ const TopBar: React.FC = () => {
         </button>
       </div>
 
-      {/* Right: Notifications, Settings, Logout */}
+      {/* Right: Notifications, Settings, Profile, Logout */}
       <div className="flex items-center gap-2">
         {/* Notifications */}
         <div className="relative" ref={notifRef}>
@@ -197,7 +197,7 @@ const TopBar: React.FC = () => {
           <Settings size={18} style={{ color: '#64607A' }} />
         </button>
 
-        {/* Logout Button */}
+        {/* Logout Button - directly visible */}
         <button
           onClick={() => dispatch(logout())}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-red-50 transition-colors cursor-pointer text-xs font-medium text-[#64607A] hover:text-red-500"

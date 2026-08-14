@@ -10,7 +10,6 @@ import { authService } from '@/services';
 import { loginSuccess } from '@/store/slices/authSlice';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

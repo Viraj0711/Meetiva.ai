@@ -31,9 +31,8 @@ const Profile: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // ── Password state ──────────────────────────────────────────────────
-  // Google-created accounts have no password yet — they SET one.
-  // Regular accounts CHANGE their password.
+  // ── Change Password state ──────────────────────────────────────────────
+  // ── Password setup/change ───────────────────────────────────────────
   const needsPasswordSetup = user?.hasPassword === false;
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -76,14 +75,15 @@ const Profile: React.FC = () => {
   const handleChangePassword = async () => {
     setPasswordError(null);
 
+    // Validate fields based on mode
     if (needsPasswordSetup) {
-      // SET PASSWORD mode — only password + confirm needed
+      // Set Password mode: only newPassword + confirmPassword required
       if (!newPassword || !confirmPassword) {
-        setPasswordError('All fields are required.');
+        setPasswordError('Both password fields are required.');
         return;
       }
     } else {
-      // CHANGE PASSWORD mode — current + new + confirm needed
+      // Change Password mode: all 3 fields required
       if (!currentPassword || !newPassword || !confirmPassword) {
         setPasswordError('All fields are required.');
         return;
@@ -102,7 +102,9 @@ const Profile: React.FC = () => {
 
     try {
       await changePasswordMutation.mutateAsync(
-        needsPasswordSetup ? { newPassword } : { currentPassword, newPassword }
+        needsPasswordSetup
+          ? { newPassword }
+          : { currentPassword, newPassword }
       );
       setProfileMessage('Password updated successfully. You will be logged out shortly.');
       setCurrentPassword('');
@@ -258,7 +260,7 @@ const Profile: React.FC = () => {
           </form>
         </Card>
 
-        {/* Change Password / Set Password */}
+        {/* Password Section — shows Set or Change based on account state */}
         <Card className="p-6 mb-6">
           <div className="flex items-center gap-2 mb-2">
             <Lock className="w-5 h-5" style={{ color: GRAD }} />
@@ -268,9 +270,14 @@ const Profile: React.FC = () => {
           </div>
           <p className="text-sm text-[#64607A] mb-5">
             {needsPasswordSetup
-              ? 'Your account has no password yet. Set one so you can also log in with email and password.'
+              ? 'Your account was created with Google and has no password yet. Set one so you can also log in with email and password.'
               : 'Update your password to keep your account secure.'}
           </p>
+          {needsPasswordSetup && (
+            <div className="mb-4 rounded-xl px-4 py-3 text-sm border border-blue-200 bg-blue-50 text-blue-700">
+              Please set a password before continuing to use the app.
+            </div>
+          )}
           <div className="space-y-4">
             {!needsPasswordSetup && (
               <div>
@@ -290,7 +297,7 @@ const Profile: React.FC = () => {
             )}
             <div>
               <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">
-                Password
+                {needsPasswordSetup ? 'Password' : 'New Password'}
               </label>
               <Input
                 type="password"
@@ -304,11 +311,11 @@ const Profile: React.FC = () => {
             </div>
             <div>
               <label className="block text-[11px] font-bold text-[#1D1B22] uppercase tracking-widest mb-2">
-                Repeat Password
+                {needsPasswordSetup ? 'Repeat Password' : 'Confirm New Password'}
               </label>
               <Input
                 type="password"
-                placeholder="Confirm password"
+                placeholder={needsPasswordSetup ? 'Repeat password' : 'Confirm new password'}
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
@@ -327,10 +334,8 @@ const Profile: React.FC = () => {
             >
               <Lock className="w-4 h-4 mr-2" />
               {changePasswordMutation.isPending
-                ? 'Saving...'
-                : needsPasswordSetup
-                  ? 'Set Password'
-                  : 'Update Password'}
+                ? (needsPasswordSetup ? 'Setting...' : 'Updating...')
+                : (needsPasswordSetup ? 'Set Password' : 'Update Password')}
             </Button>
           </div>
         </Card>

@@ -26,12 +26,14 @@ import {
   updateProfileSchema,
 } from '../lib/validation';
 import { asyncHandler } from '../lib/errors';
+import { normalizeEmail, emailQueryFilter } from '../lib/email';
 import {
   setResetToken,
   getResetToken,
   deleteResetToken,
   setOtp,
   verifyOtp,
+  hasValidOtp,
   getOtpCooldown,
   getOtpFailedAttempts,
   incrementOtpFailedAttempts,
@@ -66,11 +68,6 @@ const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_DAYS = 7;
 const REFRESH_TOKEN_MAX_AGE = REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000; // 7 days in ms
 const MAX_REFRESH_TOKENS_PER_USER = 5; // Multi-tab: keep up to N valid tokens per user
-
-// In development, set cookie domain to 'localhost' so cookies work across ports
-// (frontend on 5173, backend on 8000). In production, omit domain.
-const isDev = process.env.NODE_ENV !== 'production';
-const COOKIE_DOMAIN = isDev ? { domain: 'localhost' } : {};
 
 // Helper function to get user's teams
 const getUserTeams = async (userId: string): Promise<TeamInfo[]> => {
@@ -151,21 +148,22 @@ const createAndSetRefreshToken = async (
   });
 
   // Set the raw token as an httpOnly cookie
-  const cookieOpts = {
+  res.cookie(REFRESH_COOKIE, rawToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    sameSite: 'lax',
     path: '/',
     maxAge: REFRESH_TOKEN_MAX_AGE,
-    ...COOKIE_DOMAIN,
-  };
-  res.cookie(REFRESH_COOKIE, rawToken, cookieOpts);
+  });
 
   // Set a non-httpOnly flag cookie so the frontend can detect session presence
   // without making a 401-generating refresh call on every page load.
   res.cookie(SESSION_COOKIE, 'true', {
-    ...cookieOpts,
     httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: REFRESH_TOKEN_MAX_AGE,
   });
 };
 
@@ -192,8 +190,8 @@ const validateAndRotateRefreshToken = async (
       // Expired token — clean it up
       await RefreshToken.deleteOne({ tokenHash });
     }
-    res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-    res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
     return null;
   }
 
@@ -247,7 +245,7 @@ const sendVerificationEmail = async (email: string, otp: string): Promise<void> 
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
   const smtpPassword = process.env.SMTP_PASSWORD;
-  const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
+  const emailFrom = process.env.EMAIL_FROM || smtpUser || 'noreply@meetiva.ai';
 
   if (smtpHost && smtpUser && smtpPassword) {
     const transporter = nodemailer.createTransport({
@@ -258,16 +256,24 @@ const sendVerificationEmail = async (email: string, otp: string): Promise<void> 
         user: smtpUser,
         pass: smtpPassword,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
     });
 
     const emailContent = verificationOtp(otp);
-    await transporter.sendMail({
-      from: emailFrom,
-      to: email,
-      subject: emailContent.subject,
-      text: emailContent.text,
-      html: emailContent.html,
-    });
+    await Promise.race([
+      transporter.sendMail({
+        from: emailFrom,
+        to: email,
+        subject: emailContent.subject,
+        text: emailContent.text,
+        html: emailContent.html,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Email send timeout')), 15000),
+      ),
+    ]);
   } else {
     console.log(`[DEV] Verification OTP for ${email}: ${otp}`);
   }
@@ -280,9 +286,10 @@ router.post('/register',
   authLimiter,
   validate(registerSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email, name, password } = req.body as z.infer<typeof registerSchema>;
+    const { email: rawEmail, name, password } = req.body as z.infer<typeof registerSchema>;
+    const email = normalizeEmail(rawEmail);
 
-    const existing = await User.findOne({ email }).lean();
+    const existing = await User.findOne(emailQueryFilter(rawEmail)).lean();
     if (existing) {
       return res.status(400).json({ message: 'Email already registered' });
     }
@@ -292,9 +299,12 @@ router.post('/register',
     const user = await User.create({ email, name, hashedPassword, passwordSalt: salt });
 
     // Generate and send verification OTP
+    // Email failure is non-blocking — user can still register and resend later.
     const otp = generateOtp();
     await setOtp(email, otp);
-    await sendVerificationEmail(email, otp);
+    await sendVerificationEmail(email, otp).catch((err) => {
+      console.error('[OTP] Failed to send verification email to %s: %s', email, err.message);
+    });
 
     await sendAuthResponse(res, user, 201);
   })
@@ -323,14 +333,33 @@ router.get('/subscription', apiLimiter, authenticate, asyncHandler(async (req: A
   });
 }));
 
+// ── OTP regeneration helper ────────────────────────────────────────────────
+// Ensures an unverified user has a valid verification code available. Called
+// on login and on session restore (refresh) so the verify-email page always
+// has a working code — even when the previous one expired or was lost (e.g.
+// server restart with the in-memory fallback clears all codes).
+const ensureValidOtp = async (email: string): Promise<void> => {
+  const otpStillValid = await hasValidOtp(email);
+  if (otpStillValid) return;
+
+  const otp = generateOtp();
+  await setOtp(email, otp);
+  await sendVerificationEmail(email, otp).catch((err) => {
+    console.error('[OTP] Failed to send verification email to %s: %s', email, err.message);
+  });
+  // A fresh code resets the failed-attempt budget, matching the resend route.
+  await clearOtpFailedAttempts(email);
+};
+
 // Login
 router.post('/login',
   authLimiter,
   validate(loginSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email, password } = req.body as z.infer<typeof loginSchema>;
+    const { email: rawEmail, password } = req.body as z.infer<typeof loginSchema>;
+    const email = normalizeEmail(rawEmail);
 
-    const user = await User.findOne({ email }).lean() as any;
+    const user = await User.findOne(emailQueryFilter(rawEmail)).lean() as any;
     // Accounts without a password (Google-only) can't sign in with a password —
     // keep the generic message so we don't reveal which emails exist.
     if (!user || !user.hashedPassword) {
@@ -344,6 +373,14 @@ router.post('/login',
 
     if (!user.isActive) {
       return res.status(403).json({ message: 'Account is inactive' });
+    }
+
+    // Unverified users must verify their email before using the app. If their
+    // OTP has expired or is missing (e.g. the 5-minute TTL elapsed, Redis was
+    // cleared, or the server restarted with the in-memory fallback), generate
+    // and send a fresh one so the verify-email page always has a valid code.
+    if (!user.isVerified) {
+      await ensureValidOtp(email);
     }
 
     await sendAuthResponse(res, user);
@@ -389,7 +426,7 @@ router.patch(
       data.name = name.trim();
     }
     if (typeof email === 'string' && email.trim()) {
-      data.email = email.trim().toLowerCase();
+      data.email = normalizeEmail(email);
     }
 
     if (Object.keys(data).length === 0) {
@@ -417,8 +454,8 @@ router.post('/logout', apiLimiter, asyncHandler(async (req: Request, res: Respon
     const tokenHash = hashToken(rawToken);
     await RefreshToken.deleteMany({ tokenHash });
   }
-  res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-  res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+  res.clearCookie(REFRESH_COOKIE, { path: '/' });
+  res.clearCookie(SESSION_COOKIE, { path: '/' });
   res.json({ message: 'Logged out successfully' });
 }));
 
@@ -438,9 +475,16 @@ router.post('/refresh', authLimiter, asyncHandler(async (req: Request, res: Resp
   if (!user) {
     return res.status(401).json({ message: 'User not found' });
   }    if (!user.isActive) {
-    res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-    res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
     return res.status(403).json({ message: 'Account is inactive' });
+  }
+
+  // Session restored for an unverified user — make sure they have a valid
+  // verification code available when the frontend redirects them to
+  // verify-email (the previous code may have expired while they were away).
+  if (!user.isVerified) {
+    await ensureValidOtp(user.email);
   }
 
   const accessToken = await createAccessToken(userId, user.email);
@@ -468,7 +512,7 @@ const sendPasswordResetEmail = async (email: string, token: string): Promise<voi
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
   const smtpPassword = process.env.SMTP_PASSWORD;
-  const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
+  const emailFrom = process.env.EMAIL_FROM || smtpUser || 'noreply@meetiva.ai';
   // Production default points to backend-served frontend (port 8000).
   // In development, set FRONTEND_APP_URL=http://localhost:5173 in backend/.env.
   const frontendUrl = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
@@ -506,7 +550,7 @@ const sendPasswordChangedEmail = async (userId: string): Promise<void> => {
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
   const smtpPassword = process.env.SMTP_PASSWORD;
-  const emailFrom = process.env.EMAIL_FROM || 'noreply@meetiva.ai';
+  const emailFrom = process.env.EMAIL_FROM || smtpUser || 'noreply@meetiva.ai';
 
   if (smtpHost && smtpUser && smtpPassword) {
     const transporter = nodemailer.createTransport({
@@ -531,8 +575,9 @@ router.post('/password-reset',
   authLimiter,
   validate(passwordResetSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email } = req.body as z.infer<typeof passwordResetSchema>;
-    const user = await User.findOne({ email }).lean();
+    const { email: rawEmail } = req.body as z.infer<typeof passwordResetSchema>;
+    const email = normalizeEmail(rawEmail);
+    const user = await User.findOne(emailQueryFilter(rawEmail)).lean();
 
     // Always return success to avoid revealing whether the email exists
     if (!user) {
@@ -568,8 +613,8 @@ router.post('/password-reset/confirm',
 
     // Invalidate all existing refresh tokens (password changed — force re-login)
     await RefreshToken.deleteMany({ userId: userId as any });
-    res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-    res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
 
     // Notify user that password was changed
     await sendPasswordChangedEmail(userId).catch(() => {});
@@ -585,8 +630,9 @@ router.post('/verify-otp',
   otpLimiter,
   validate(verifyOtpSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email, otp } = req.body as z.infer<typeof verifyOtpSchema>;
-    const user = await User.findOne({ email });
+    const { email: rawEmail, otp } = req.body as z.infer<typeof verifyOtpSchema>;
+    const email = normalizeEmail(rawEmail);
+    const user = await User.findOne(emailQueryFilter(rawEmail));
 
     if (!user) {
       return res.status(400).json({ message: 'Invalid or expired code' });
@@ -623,8 +669,9 @@ router.post('/verify-otp/resend',
   authLimiter,
   validate(resendOtpSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email } = req.body as z.infer<typeof resendOtpSchema>;
-    const user = await User.findOne({ email }).lean();
+    const { email: rawEmail } = req.body as z.infer<typeof resendOtpSchema>;
+    const email = normalizeEmail(rawEmail);
+    const user = await User.findOne(emailQueryFilter(rawEmail)).lean();
 
     // Always return success to avoid revealing whether the email exists
     if (!user) {
@@ -657,7 +704,9 @@ router.post('/verify-otp/resend',
     // Generate new OTP (old one is automatically discarded by setOtp)
     const otp = generateOtp();
     await setOtp(email, otp);
-    await sendVerificationEmail(email, otp);
+    await sendVerificationEmail(email, otp).catch((err) => {
+      console.error('[OTP] Failed to resend verification email to %s: %s', email, err.message);
+    });
 
     // A fresh code resets the failed-attempt budget for this email.
     await clearOtpFailedAttempts(email);
@@ -697,8 +746,8 @@ router.post('/change-password',
 
     // Invalidate all existing refresh tokens (password changed — force re-login)
     await RefreshToken.deleteMany({ userId: userId as any });
-    res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-    res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
 
     return res.json({ message: 'Password updated successfully. Please log in again.' });
   })
@@ -792,6 +841,115 @@ const getGoogleLoginOAuthClient = () => {
 };
 
 /**
+ * Link a Google identity (sub + verified email) to a Meetiva account and
+ * return the user document to start a session for (null if no account
+ * matched).
+ *
+ * Matching order: googleId first, then email — so an email/password account
+ * can sign in with Google and keep the same Meetiva account. Every write that
+ * touches the unique googleId index is guarded against duplicate-key errors:
+ * the index allows ONE Meetiva account per Google identity, and when a
+ * concurrent sign-in (or a pre-existing duplicate record) already claimed it,
+ * we sign into THAT account instead of failing. An account that is already
+ * linked to a different Google identity keeps its original link — it is never
+ * overwritten, so two Google accounts sharing one inbox can't ping-pong the
+ * link on every sign-in.
+ */
+const linkGoogleIdentity = async (
+  googleId: string,
+  email: string, // canonical email — used when creating a new account
+  rawEmail: string, // original Google email — used for legacy-dotted lookups
+  name: string
+): Promise<any | null> => {
+  let user = await User.findOne({ googleId }).lean() as any;
+  if (!user) {
+    user = await User.findOne(emailQueryFilter(rawEmail)).lean() as any;
+  }
+
+  if (user) {
+    // Existing account — mark the email verified (Google has already verified
+    // it). Only LINK the Google identity when the account has no link yet: if
+    // it is linked to a DIFFERENT Google account (two Google identities
+    // sharing one inbox), keep the original link instead of overwriting it —
+    // overwriting would ping-pong the link between the two identities on
+    // every sign-in.
+    const updates: Record<string, unknown> = {};
+    if (!user.googleId) {
+      updates.googleId = googleId;
+    }
+    if (!user.isVerified) {
+      updates.isVerified = true;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      try {
+        await User.updateOne({ _id: user._id }, { $set: updates });
+        if (updates.googleId) user.googleId = googleId;
+        if (updates.isVerified) user.isVerified = true;
+      } catch (error: any) {
+        // The Google identity was claimed by another account between our
+        // lookup and this write. Never steal it — sign into the owner.
+        if (error?.code === 11000) {
+          user = await User.findOne({ googleId }).lean() as any;
+          if (user && !user.isVerified) {
+            await User.updateOne({ _id: user._id }, { $set: { isVerified: true } });
+          }
+        } else {
+          throw error;
+        }
+      }
+    }
+    return user;
+  }
+
+  // New account via Google — no password yet (hashedPassword: null). The user
+  // can set one later in Settings to also log in with email/password.
+  try {
+    const created = await User.create({
+      email,
+      name,
+      hashedPassword: null,
+      isVerified: true,
+      googleId,
+    });
+    return created.toObject() as any;
+  } catch (error: any) {
+    if (error?.code !== 11000) throw error;
+    // Concurrent sign-in (or a registration that landed between our lookup and
+    // create): the sparse unique index on googleId — or the unique email index
+    // — rejected the create. Re-resolve and link instead of failing.
+    let winner = await User.findOne({ googleId }).lean() as any;
+    if (!winner) {
+      winner = await User.findOne(emailQueryFilter(rawEmail)).lean() as any;
+    }
+    if (winner) {
+      // Same rule as above: never overwrite an existing Google link.
+      const winnerUpdates: Record<string, unknown> = {};
+      if (!winner.googleId) {
+        winnerUpdates.googleId = googleId;
+      }
+      if (!winner.isVerified) {
+        winnerUpdates.isVerified = true;
+      }
+      if (Object.keys(winnerUpdates).length > 0) {
+        try {
+          await User.updateOne({ _id: winner._id }, { $set: winnerUpdates });
+          if (winnerUpdates.googleId) winner.googleId = googleId;
+          if (winnerUpdates.isVerified) winner.isVerified = true;
+        } catch (linkError: any) {
+          if (linkError?.code === 11000) {
+            winner = await User.findOne({ googleId }).lean() as any;
+          } else {
+            throw linkError;
+          }
+        }
+      }
+    }
+    return winner;
+  }
+};
+
+/**
  * GET /auth/google/login — start Google Sign-In.
  * Bounces the browser to Google's consent screen with identity-only scopes.
  */
@@ -804,7 +962,6 @@ router.get('/google/login', authLimiter, asyncHandler(async (req: Request, res: 
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 10 * 60 * 1000,
-    ...COOKIE_DOMAIN,
   });
 
   const authUrl = loginOAuthClient.generateAuthUrl({
@@ -833,7 +990,7 @@ router.get('/google/login/callback', authLimiter, asyncHandler(async (req: Reque
   const frontendUrl = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
 
   const fail = (reason: string) => {
-    res.clearCookie(LOGIN_STATE_COOKIE, { ...COOKIE_DOMAIN });
+    res.clearCookie(LOGIN_STATE_COOKIE);
     return res.redirect(`${frontendUrl}/login?googleLogin=error&reason=${encodeURIComponent(reason)}`);
   };
 
@@ -888,54 +1045,19 @@ router.get('/google/login/callback', authLimiter, asyncHandler(async (req: Reque
     return fail('unverified_email');
   }
 
-  const email = googleEmail.toLowerCase().trim();
+  const email = normalizeEmail(googleEmail);
   const name = (payload.name || email.split('@')[0] || 'Google User').trim();
 
-  res.clearCookie(LOGIN_STATE_COOKIE, { ...COOKIE_DOMAIN });
+  res.clearCookie(LOGIN_STATE_COOKIE);
 
   try {
     // ── Account linking ──────────────────────────────────────────────────
     // Match by Google ID first, then by email, so someone who registered with
-    // email/password can sign in with Google and keep the same Meetiva account.
-    let user = await User.findOne({ googleId }).lean() as any;
-    if (!user) {
-      user = await User.findOne({ email }).lean() as any;
-    }
-
-    if (user) {
-      // Existing account — link the Google identity and mark email verified
-      // (Google has already verified it).
-      if (user.googleId !== googleId || !user.isVerified) {
-        await User.updateOne({ _id: user._id }, { $set: { googleId, isVerified: true } });
-        user.googleId = googleId;
-        user.isVerified = true;
-      }
-    } else {
-      // New account via Google — no password yet (hashedPassword: null). The
-      // user can set one later in Settings to also log in with email/password.
-      try {
-        const created = await User.create({
-          email,
-          name,
-          hashedPassword: null,
-          isVerified: true,
-          googleId,
-        });
-        user = created.toObject() as any;
-      } catch (error: any) {
-        // Concurrent sign-ins for the same brand-new Google account: the
-        // sparse unique index on googleId rejects the second create. Re-fetch
-        // and link instead of failing.
-        if (error?.code === 11000) {
-          user = await User.findOne({ googleId }).lean() as any;
-          if (user) {
-            await User.updateOne({ _id: user._id }, { $set: { googleId, isVerified: true } });
-          }
-        } else {
-          throw error;
-        }
-      }
-    }
+    // email/password can sign in with Google and keep the same Meetiva
+    // account. Conflicts on the unique googleId index resolve to the account
+    // that already owns the identity instead of surfacing a duplicate-key
+    // error ("A record with this googleId already exists.").
+    const user = await linkGoogleIdentity(googleId, email, googleEmail, name);
 
     if (!user || !user.isActive) {
       return fail('inactive');
@@ -945,9 +1067,9 @@ router.get('/google/login/callback', authLimiter, asyncHandler(async (req: Reque
     // The frontend restores the access token via POST /auth/refresh on mount.
     await createAndSetRefreshToken(res, user._id.toString());
 
-    // New Google users (no password) go to profile to set one.
-    // Existing users go to the dashboard.
-    const hasPassword = Boolean(user.hashedPassword);
+    // New Google-created accounts have no password (hashedPassword: null).
+    // Redirect them to Profile so they can set one before using the app.
+    const hasPassword = !!user.hashedPassword;
     return res.redirect(`${frontendUrl}/dashboard${hasPassword ? '' : '/profile'}`);
   } catch (error) {
     log.error('Google login session setup failed', {
@@ -975,7 +1097,6 @@ router.post('/google/init', apiLimiter, authenticate, asyncHandler(async (req: A
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 10 * 60 * 1000,
-    ...COOKIE_DOMAIN,
   });
 
   res.cookie(OAUTH_UID_COOKIE, userId, {
@@ -983,7 +1104,6 @@ router.post('/google/init', apiLimiter, authenticate, asyncHandler(async (req: A
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 10 * 60 * 1000,
-    ...COOKIE_DOMAIN,
   });
 
   const authUrl = oauthClient.generateAuthUrl({
@@ -1024,8 +1144,10 @@ router.get('/google/callback', authLimiter, asyncHandler(async (req: Request, re
     expiry_date: tokens.expiry_date,
     token_type: tokens.token_type,
     scope: tokens.scope,
-  });    res.clearCookie(OAUTH_STATE_COOKIE, { ...COOKIE_DOMAIN });
-    res.clearCookie(OAUTH_UID_COOKIE, { ...COOKIE_DOMAIN });
+  });
+
+  res.clearCookie(OAUTH_STATE_COOKIE);
+  res.clearCookie(OAUTH_UID_COOKIE);
 
   const frontendRedirect = process.env.FRONTEND_APP_URL || 'http://localhost:8000';
   return res.redirect(`${frontendRedirect}/dashboard/workspace?googleConnected=1`);
@@ -1077,8 +1199,8 @@ router.delete('/me',
     // removing the user record and all of their data.
     await user.deleteOne();
 
-    res.clearCookie(REFRESH_COOKIE, { path: '/', ...COOKIE_DOMAIN });
-    res.clearCookie(SESSION_COOKIE, { path: '/', ...COOKIE_DOMAIN });
+    res.clearCookie(REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, { path: '/' });
     log.info('User permanently deleted their account', { userId });
 
     return res.json({ message: 'Account deleted successfully' });
