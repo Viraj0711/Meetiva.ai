@@ -4,8 +4,8 @@ import {
   Plus, Loader2, Shield, ShieldCheck, ShieldOff, UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
-import { authApi, organizationsApi, projectsApi } from "@/lib/api";
-import type { MeUser, OrganizationData, OrgUser, ProjectData } from "@/lib/api";
+import { authApi, organizationsApi, projectsApi, invitesApi } from "@/lib/api";
+import type { MeUser, OrganizationData, OrgUser, ProjectData, InviteData } from "@/lib/api";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-50 text-emerald-600",
@@ -34,6 +34,12 @@ export function Organization() {
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [addAdminForm, setAddAdminForm] = useState({ email: "", name: "" });
   const [addAdminResult, setAddAdminResult] = useState<{ tempPassword: string } | null>(null);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [projectForm, setProjectForm] = useState({ name: "", description: "" });
+  const [showInviteManager, setShowInviteManager] = useState<string | null>(null);
+  const [inviteForm, setInviteForm] = useState({ email: "" });
+  const [inviteResult, setInviteResult] = useState<{ inviteLink: string } | null>(null);
+  const [projectInvites, setProjectInvites] = useState<Record<string, InviteData[]>>({});
 
   const isSuperAdmin = user?.orgRole === "super_admin";
   const isAdmin = user?.orgRole === "admin";
@@ -111,6 +117,46 @@ export function Organization() {
       setOrganizations((prev) => prev.map((o) => (o.id === orgId ? { ...o, status: "suspended" } : o)));
     } catch (err: any) {
       toast.error(err.message || "Failed to suspend");
+    }
+  };
+
+  const handleCreateProject = async () => {
+    if (!selectedOrg || !projectForm.name.trim()) return;
+    try {
+      const project = await projectsApi.create({
+        name: projectForm.name.trim(),
+        description: projectForm.description.trim() || undefined,
+        organizationId: selectedOrg.id,
+      });
+      setOrgProjects((prev) => [...prev, { ...project, manager: null }]);
+      setProjectForm({ name: "", description: "" });
+      setShowCreateProject(false);
+      toast.success(`Project "${project.name}" created`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create project");
+    }
+  };
+
+  const handleSendInvite = async () => {
+    if (!showInviteManager) return;
+    try {
+      const result = await invitesApi.createProjectInvite({
+        projectId: showInviteManager,
+        email: inviteForm.email.trim() || undefined,
+      });
+      setInviteResult({ inviteLink: result.inviteLink });
+      toast.success("Invite link generated");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create invite");
+    }
+  };
+
+  const loadProjectInvites = async (projectId: string) => {
+    try {
+      const res = await invitesApi.listProjectInvites(projectId);
+      setProjectInvites((prev) => ({ ...prev, [projectId]: res.invites }));
+    } catch {
+      // ignore
     }
   };
 
@@ -290,7 +336,14 @@ export function Organization() {
           <div className="bg-white rounded-2xl border border-[#E5F4F7] overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5F4F7]">
               <h3 className="text-base font-bold text-[#0F172A]">Projects</h3>
-              <span className="text-xs text-[#94A3B8]">{orgProjects.length} projects</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-[#94A3B8]">{orgProjects.length} projects</span>
+                {isAdmin && (
+                  <button onClick={() => setShowCreateProject(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#06B6D4] text-white rounded-lg text-xs font-semibold hover:bg-[#0891B2] transition-colors">
+                    <Plus size={12} /> Create Project
+                  </button>
+                )}
+              </div>
             </div>
             <table className="w-full">
               <thead>
@@ -298,6 +351,7 @@ export function Organization() {
                   <th className="text-left px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Project</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Manager</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Created</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -306,10 +360,20 @@ export function Organization() {
                     <td className="px-5 py-3"><p className="text-sm font-semibold text-[#0F172A]">{p.name}</p>{p.description && <p className="text-xs text-[#94A3B8] truncate max-w-xs">{p.description}</p>}</td>
                     <td className="px-5 py-3 text-sm text-[#94A3B8]">{p.manager?.name || "Unassigned"}</td>
                     <td className="px-5 py-3 text-sm text-[#94A3B8]">{new Date(p.createdAt).toLocaleDateString()}</td>
+                    <td className="px-5 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => { setShowInviteManager(p.id); setInviteResult(null); setInviteForm({ email: "" }); }} className="px-3 py-1.5 text-xs font-medium text-[#06B6D4] bg-[#F0FDFF] rounded-lg hover:bg-[#CFFAFE] transition-colors">
+                          Invite Manager
+                        </button>
+                        <button onClick={() => loadProjectInvites(p.id)} className="px-3 py-1.5 text-xs font-medium text-[#64748B] bg-[#F8FDFE] rounded-lg hover:bg-[#EDF7F9] transition-colors">
+                          Invites
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 {orgProjects.length === 0 && (
-                  <tr><td colSpan={3} className="px-5 py-8 text-center text-sm text-[#94A3B8]">No projects in this organization</td></tr>
+                  <tr><td colSpan={4} className="px-5 py-8 text-center text-sm text-[#94A3B8]">No projects in this organization</td></tr>
                 )}
               </tbody>
             </table>
@@ -353,6 +417,73 @@ export function Organization() {
               {!addAdminResult && (
                 <button onClick={handleAddAdmin} className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-all">
                   Add Admin
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateProject && selectedOrg && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowCreateProject(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#E5F4F7]">
+              <h3 className="text-lg font-bold text-[#0F172A]">Create Project</h3>
+              <button onClick={() => setShowCreateProject(false)} className="w-8 h-8 rounded-lg hover:bg-[#F5FEFF] flex items-center justify-center transition-all"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Project Name</label>
+                <input type="text" value={projectForm.name} onChange={(e) => setProjectForm((f) => ({ ...f, name: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all" placeholder="e.g. Q4 Planning" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Description (optional)</label>
+                <textarea value={projectForm.description} onChange={(e) => setProjectForm((f) => ({ ...f, description: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all" rows={3} placeholder="Brief description of the project" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t border-[#E5F4F7]">
+              <button onClick={() => setShowCreateProject(false)} className="px-4 py-2 bg-[#F5FEFF] border border-[#E5F4F7] rounded-xl text-sm font-medium text-[#0F172A] hover:bg-[#F8FDFE] transition-all">Cancel</button>
+              <button onClick={handleCreateProject} disabled={!projectForm.name.trim()} className="px-4 py-2 bg-[#06B6D4] text-white rounded-xl text-sm font-semibold shadow-sm transition-all disabled:opacity-50">Create Project</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showInviteManager && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowInviteManager(null); setInviteResult(null); }}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-[#E5F4F7]">
+              <h3 className="text-lg font-bold text-[#0F172A]">{inviteResult ? "Invite Link Ready" : "Invite Manager"}</h3>
+              <button onClick={() => { setShowInviteManager(null); setInviteResult(null); }} className="w-8 h-8 rounded-lg hover:bg-[#F5FEFF] flex items-center justify-center transition-all"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              {inviteResult ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-emerald-800 mb-2">Invite link generated!</p>
+                  <p className="text-xs text-emerald-700 mb-2">Share this link with the person you want to invite as Manager:</p>
+                  <div className="flex items-center gap-2">
+                    <input readOnly value={inviteResult.inviteLink} className="flex-1 px-3 py-2 bg-white rounded-lg text-xs font-mono border border-emerald-200 select-all" />
+                    <button onClick={() => { navigator.clipboard.writeText(inviteResult.inviteLink); toast.success("Copied!"); }} className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors">Copy</button>
+                  </div>
+                  <p className="text-xs text-emerald-600 mt-2">Link expires in 7 days. The invitee must have or create a Meetiva account.</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-[#64748B]">Send an invite link to someone you want as a Manager on this project.</p>
+                  <div>
+                    <label className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Email (optional — restricts invite to this email)</label>
+                    <input type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ email: e.target.value })} className="w-full mt-1 px-3 py-2 bg-[#F8FDFE] border border-[#E5F4F7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]/20 focus:border-[#06B6D4] transition-all" placeholder="manager@company.com" />
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t border-[#E5F4F7]">
+              <button onClick={() => { setShowInviteManager(null); setInviteResult(null); }} className="px-4 py-2 bg-[#F5FEFF] border border-[#E5F4F7] rounded-xl text-sm font-medium text-[#0F172A] hover:bg-[#F8FDFE] transition-all">
+                {inviteResult ? "Close" : "Cancel"}
+              </button>
+              {!inviteResult && (
+                <button onClick={handleSendInvite} className="px-4 py-2 bg-[#06B6D4] text-white rounded-xl text-sm font-semibold shadow-sm transition-all">
+                  Generate Invite Link
                 </button>
               )}
             </div>

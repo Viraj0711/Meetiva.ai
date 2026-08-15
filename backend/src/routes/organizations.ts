@@ -738,6 +738,45 @@ router.delete(
   })
 );
 
+// ── Admin: update org subscription plan ───────────────────────────────────
+
+router.patch(
+  '/:id/subscription',
+  apiLimiter,
+  authenticate,
+  requireOrgAccess((req) => req.params.id),
+  requireOrgRole('admin'),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { plan } = req.body as { plan?: string };
+    if (!plan || !['monthly', 'yearly'].includes(plan)) {
+      return res.status(400).json({ message: 'Plan must be monthly or yearly' });
+    }
+
+    const org = await Organization.findByIdAndUpdate(
+      req.params.id,
+      {
+        subscriptionPlan: plan,
+        subscriptionStatus: 'active',
+        subscriptionExpiresAt: new Date(Date.now() + (plan === 'yearly' ? 365 : 30) * 24 * 60 * 60 * 1000),
+      },
+      { returnDocument: 'after' }
+    ).lean();
+
+    if (!org) {
+      return res.status(404).json({ message: 'Organization not found' });
+    }
+
+    log.info('Org subscription updated', { orgId: String(org._id), plan, by: req.userId });
+
+    res.json({
+      id: org._id.toString(),
+      subscriptionPlan: org.subscriptionPlan,
+      subscriptionStatus: org.subscriptionStatus,
+      subscriptionExpiresAt: org.subscriptionExpiresAt?.toISOString() ?? null,
+    });
+  })
+);
+
 // ── Disposition: list content from removed user ─────────────────────────────
 
 router.get(

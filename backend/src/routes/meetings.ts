@@ -63,6 +63,15 @@ const handleMulterError = (err: any, _req: Request, _res: Response, next: NextFu
 
 // Helper to get the appropriate filter based on user's role
 const getMeetingsFilter = async (req: AuthRequest, teamId?: string): Promise<Record<string, any>> => {
+  // Super Admin and Admin can see all meetings in their organization
+  if (req.userOrg?.orgRole === 'super_admin' || req.userOrg?.orgRole === 'admin') {
+    if (req.userOrg.orgRole === 'admin' && req.userOrg.organizationId) {
+      return { organizationId: new Types.ObjectId(req.userOrg.organizationId) };
+    }
+    // Super admin sees everything
+    return {};
+  }
+
   // If a specific teamId is provided, filter by that team's members
   if (teamId) {
     // Verify user is a member of this team
@@ -387,6 +396,10 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
     status: 'processing',
     processingProgress: transcribedByWhisper ? 50 : 20,
     userId: new Types.ObjectId(req.userId!),
+    // If user is on corporate profile, link the meeting to their org
+    organizationId: req.userOrg?.orgRole && req.userOrg.orgRole !== 'super_admin' && req.userOrg.organizationId
+      ? new Types.ObjectId(req.userOrg.organizationId)
+      : null,
   });
 
   // ── Step 2b: persist the raw file to Firebase Storage (optional) ─────────
@@ -910,6 +923,10 @@ router.post('/', apiLimiter, authenticate, validate(createMeetingSchema), asyncH
     duration,
     participants: participants,
     userId: new Types.ObjectId(req.userId!),
+    // If user is on corporate profile, link the meeting to their org
+    organizationId: req.userOrg?.orgRole && req.userOrg.orgRole !== 'super_admin' && req.userOrg.organizationId
+      ? new Types.ObjectId(req.userOrg.organizationId)
+      : null,
     status: 'completed',
     processingProgress: 100,
     completedAt: new Date(),

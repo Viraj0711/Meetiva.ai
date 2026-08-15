@@ -19,6 +19,8 @@ export interface IMeeting extends Document {
   participants: string[];
   processingProgress?: number | null;
   userId: Types.ObjectId;
+  organizationId?: Types.ObjectId | null;
+  teamId?: Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
   completedAt?: Date | null;
@@ -48,6 +50,8 @@ const meetingSchema = new Schema<IMeeting>(
     participants: { type: [String], default: [] },
     processingProgress: { type: Number, default: 0 },
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', default: null },
+    teamId: { type: Schema.Types.ObjectId, ref: 'Team', default: null },
     completedAt: { type: Date, default: null },
   },
   { timestamps: true, collection: 'meetings' }
