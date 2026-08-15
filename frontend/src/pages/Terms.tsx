@@ -1,39 +1,51 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Sparkles } from 'lucide-react';
-import GradientOrbs from '@/components/GradientOrbs';
+import { ShieldCheck, Sparkles, ArrowLeft } from 'lucide-react';
+
+const GRAD = '#5B3FD6';
+const GRAD2 = '#8B5CF6';
 
 const TermsPage: React.FC = () => {
   return (
-    <div className="scene-shell relative min-h-screen overflow-hidden bg-background text-foreground">
-      <GradientOrbs />
-      <div className="absolute inset-0 fine-grid opacity-25" />
-
-      <div className="relative z-10 mx-auto max-w-5xl px-6 py-6 lg:px-8 lg:py-8">
-        <div className="mb-10 flex items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4 backdrop-blur-2xl">
+    <div className="min-h-screen" style={{ background: '#FCFBFF' }}>
+      {/* Top bar */}
+      <div className="border-b border-[#E4E0F5] bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-primary text-white shadow-[0_18px_40px_rgba(91,63,214,0.35)]">
-              <span className="font-bold">M</span>
+            <div
+              className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold"
+              style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}
+            >
+              M
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-white/45">Meetiva.ai</p>
-              <p className="text-sm font-medium text-white">Terms</p>
+              <p className="text-xs uppercase tracking-[0.28em] text-[#64607A]">Meetiva.ai</p>
+              <p className="text-sm font-medium text-[#1D1B22]">Terms</p>
             </div>
           </Link>
-          <Link to="/contact" className="text-sm text-cyan-300 transition hover:text-white">
-            Contact support
+          <Link
+            to="/"
+            className="flex items-center gap-2 text-sm font-medium text-[#64607A] hover:text-[#1D1B22] transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to home
           </Link>
         </div>
+      </div>
 
-        <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-8 backdrop-blur-2xl lg:p-10">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300/80">
+      <div className="max-w-5xl mx-auto px-6 py-10">
+        {/* Hero card */}
+        <div className="rounded-[2rem] border border-[#E4E0F5] bg-white p-8 lg:p-10 shadow-sm">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#E4E0F5] bg-[#F5F3FF] px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em]"
+            style={{ color: GRAD }}>
             <ShieldCheck className="h-3.5 w-3.5" /> Terms of service
           </div>
-          <h1 className="mt-6 font-display text-4xl font-bold tracking-tight text-white md:text-5xl">
+          <h1 className="mt-6 text-4xl font-bold tracking-tight text-[#1D1B22] md:text-5xl">
             Terms that match the product: clear, direct, and built for trust.
           </h1>
-          <p className="mt-5 max-w-3xl text-lg leading-8 text-white/60">
-            By using Meetiva.ai, you agree to the terms below. They define the service, account responsibilities, acceptable use, and the practical boundaries around your data.
+          <p className="mt-5 max-w-3xl text-lg leading-8 text-[#64607A]">
+            By using Meetiva.ai, you agree to the terms below. They define the service,
+            account responsibilities, acceptable use, and the practical boundaries around your data.
           </p>
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -42,14 +54,15 @@ const TermsPage: React.FC = () => {
               ['Accounts', 'You are responsible for activity on your account.'],
               ['Data', 'You control what you upload and what we process.'],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/42">{label}</p>
-                <p className="mt-2 text-sm font-semibold text-white">{value}</p>
+              <div key={label} className="rounded-2xl border border-[#E4E0F5] bg-[#F8F7FF] p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-[#64607A]">{label}</p>
+                <p className="mt-2 text-sm font-semibold text-[#1D1B22]">{value}</p>
               </div>
             ))}
           </div>
         </div>
 
+        {/* Section cards */}
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           {[
             {
@@ -69,14 +82,17 @@ const TermsPage: React.FC = () => {
               body: 'We may revise these terms when necessary. The latest version will always be the one shown on this page.',
             },
           ].map((section) => (
-            <div key={section.title} className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
+            <div key={section.title} className="rounded-2xl border border-[#E4E0F5] bg-white p-6 shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white/[0.06] text-cyan-300">
+                <div
+                  className="grid h-11 w-11 place-items-center rounded-2xl text-white"
+                  style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}
+                >
                   <Sparkles className="h-5 w-5" />
                 </div>
-                <h2 className="text-xl font-semibold text-white">{section.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1D1B22]">{section.title}</h2>
               </div>
-              <p className="mt-4 text-sm leading-7 text-white/60">{section.body}</p>
+              <p className="mt-4 text-sm leading-7 text-[#64607A]">{section.body}</p>
             </div>
           ))}
         </div>

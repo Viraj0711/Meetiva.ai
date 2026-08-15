@@ -35,6 +35,9 @@ export interface IUser extends Document {
   forcePasswordChange: boolean;
   isRemoved: boolean;
   tokenVersion: number;
+  // Dual profile fields
+  hasEnterpriseProfile: boolean;
+  activeProfile: AccountType;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -74,6 +77,8 @@ const userSchema = new Schema<IUser>(
     forcePasswordChange: { type: Boolean, default: false },
     isRemoved: { type: Boolean, default: false },
     tokenVersion: { type: Number, default: 0 },
+    hasEnterpriseProfile: { type: Boolean, default: false },
+    activeProfile: { type: String, enum: ['self', 'corporate'], default: 'self' },
   },
   { timestamps: true, collection: 'users' }
 );

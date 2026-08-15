@@ -562,6 +562,12 @@ router.post(
       adminUserId: adminUser._id,
     });
 
+    // Set the admin's enterprise profile flag
+    await User.findByIdAndUpdate(adminUser._id, {
+      hasEnterpriseProfile: true,
+      activeProfile: 'corporate',
+    });
+
     log.info('Admin provisioned for pending org', { orgId: String(org._id), adminUserId: String(adminUser._id) });
 
     res.status(201).json({

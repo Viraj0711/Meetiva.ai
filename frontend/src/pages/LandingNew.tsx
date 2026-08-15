@@ -35,7 +35,7 @@ const PRICING = [
   {
     name: 'Team', price: '$29', period: '/mo', desc: 'For growing teams that need unlimited intelligence.',
     features: ['15 meetings/month', 'Calendar sync', 'Team collaboration', 'Analytics dashboard', 'Priority support'],
-    cta: 'Start free trial', highlight: true,
+    cta: 'Subscribe', highlight: true,
   },
   {
     name: 'Enterprise', price: 'Custom', period: '', desc: 'Tailored for large organisations with advanced needs.',
@@ -542,7 +542,7 @@ const LandingNew: React.FC = () => {
             </div>
 
             {[
-              { heading: 'Product', links: ['Features', 'Workflow', 'Pricing', 'Changelog'] },
+              { heading: 'Product', links: ['Features', 'Workflow', 'Pricing', 'Changelog'] as const },
               { heading: 'Company', links: ['About', 'Blog', 'Careers', 'Press'] },
               { heading: 'Legal', links: ['Privacy', 'Terms', 'Security', 'Cookies'] },
             ].map(col => (
@@ -551,6 +551,15 @@ const LandingNew: React.FC = () => {
                 <div className="space-y-3">
                   {col.links.map(l => (
                     <button key={l}
+                      onClick={() => {
+                        if (col.heading === 'Product' && l !== 'Changelog') {
+                          scrollTo(l.toLowerCase());
+                        } else if (col.heading === 'Legal' && l === 'Privacy') {
+                          navigate('/privacy');
+                        } else if (col.heading === 'Legal' && l === 'Terms') {
+                          navigate('/terms');
+                        }
+                      }}
                       className="block text-sm text-left transition-colors"
                       style={{ color: '#64607A' }}
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = LP; }}

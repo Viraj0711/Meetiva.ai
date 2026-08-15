@@ -48,6 +48,7 @@ import User from '../models/User';
 import TeamMember from '../models/TeamMember';
 import RefreshToken from '../models/RefreshToken';
 import GoogleCalendarAuth from '../models/GoogleCalendarAuth';
+import Organization from '../models/Organization';
 import { createLogger } from '../lib/logger';
 import { verificationOtp, passwordReset, passwordChanged } from '../lib/emailTemplates';
 
@@ -228,6 +229,9 @@ const sendAuthResponse = async (
       organizationId: user.organizationId?.toString() ?? null,
       forcePasswordChange: user.forcePasswordChange ?? false,
       hasPassword: Boolean(user.hashedPassword),
+      hasEnterpriseProfile: (user as any).hasEnterpriseProfile ?? false,
+      activeProfile: (user as any).activeProfile ?? 'self',
+      subscriptionTier: (user as any).subscriptionTier ?? 'FREE',
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     },
@@ -390,12 +394,15 @@ router.post('/login',
 // Get current authenticated user (access token required)
 router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = await User.findById(req.userId!)
-    .select('email name isVerified hashedPassword accountType orgRole organizationId forcePasswordChange createdAt updatedAt')
+    .select('email name isVerified hashedPassword accountType orgRole organizationId forcePasswordChange hasEnterpriseProfile activeProfile subscriptionTier createdAt updatedAt')
     .lean();
 
   if (!user) {
     return res.status(404).json({ message: 'User not found' });
   }
+
+  // Use activeProfile as the effective accountType when returning user data
+  const effectiveAccountType = user.activeProfile ?? user.accountType ?? 'self';
 
   return res.json({
     id: user._id.toString(),
@@ -403,10 +410,13 @@ router.get('/me', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest
     name: user.name,
     isVerified: user.isVerified,
     hasPassword: Boolean(user.hashedPassword),
-    accountType: user.accountType ?? 'self',
+    accountType: effectiveAccountType,
     orgRole: user.orgRole ?? null,
     organizationId: user.organizationId?.toString() ?? null,
     forcePasswordChange: user.forcePasswordChange ?? false,
+    hasEnterpriseProfile: user.hasEnterpriseProfile ?? false,
+    activeProfile: user.activeProfile ?? 'self',
+    subscriptionTier: effectiveAccountType === 'corporate' ? 'ENTERPRISE' : (user.subscriptionTier ?? 'FREE'),
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   });
@@ -1204,6 +1214,102 @@ router.delete('/me',
     log.info('User permanently deleted their account', { userId });
 
     return res.json({ message: 'Account deleted successfully' });
+  })
+);
+
+// ── Profile switching ──────────────────────────────────────────────────────
+// Toggle between Individual (self) and Enterprise (corporate) profiles.
+// Only available to users who have both profiles (hasEnterpriseProfile === true).
+router.post(
+  '/profile/switch',
+  apiLimiter,
+  authenticate,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = req.userId!;
+    const { profile } = req.body as { profile?: string };
+
+    if (!profile || !['self', 'corporate'].includes(profile)) {
+      return res.status(400).json({ message: 'Profile must be "self" or "corporate"' });
+    }
+
+    const user = await User.findById(userId)
+      .select('hasEnterpriseProfile accountType organizationId orgRole')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.hasEnterpriseProfile) {
+      return res.status(403).json({ message: 'No enterprise profile. Join an organization to enable profile switching.' });
+    }
+
+    if (profile === 'corporate' && !user.organizationId) {
+      return res.status(400).json({ message: 'Not linked to any organization' });
+    }
+
+    // If switching to corporate, verify org is active
+    if (profile === 'corporate') {
+      const org = await Organization.findById(user.organizationId).select('status').lean();
+      if (!org || org.status !== 'active') {
+        return res.status(403).json({ message: 'Organization is not active' });
+      }
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      { activeProfile: profile },
+      { returnDocument: 'after' }
+    )
+      .select('email name activeProfile subscriptionTier orgRole organizationId hasEnterpriseProfile')
+      .lean();
+
+    if (!updated) {
+      return res.status(500).json({ message: 'Failed to switch profile' });
+    }
+
+    log.info('Profile switched', { userId, profile });
+
+    return res.json({
+      activeProfile: updated.activeProfile,
+      accountType: profile,
+      subscriptionTier: profile === 'corporate' ? 'ENTERPRISE' : updated.subscriptionTier,
+    });
+  })
+);
+
+// ── Get user's enterprise profile info ──────────────────────────────────────
+router.get(
+  '/enterprise-info',
+  apiLimiter,
+  authenticate,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const userId = req.userId!;
+
+    const user = await User.findById(userId)
+      .select('hasEnterpriseProfile organizationId orgRole activeProfile')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    let orgInfo = null;
+    if (user.organizationId) {
+      orgInfo = await Organization.findById(user.organizationId)
+        .select('name slug status')
+        .lean();
+    }
+
+    return res.json({
+      hasEnterpriseProfile: user.hasEnterpriseProfile ?? false,
+      organizationId: user.organizationId?.toString() ?? null,
+      orgRole: user.orgRole ?? null,
+      activeProfile: user.activeProfile ?? 'self',
+      organization: orgInfo
+        ? { id: orgInfo._id.toString(), name: orgInfo.name, slug: orgInfo.slug, status: orgInfo.status }
+        : null,
+    });
   })
 );
 

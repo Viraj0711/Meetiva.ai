@@ -21,6 +21,8 @@ export type {
   MeetingStatus,
   MeetingPriority,
   IntegrationType,
+  SubscriptionPlan,
+  InviteType,
 
   // ── User types ──────────────────────────────────────────────────────
   TeamInfo,
