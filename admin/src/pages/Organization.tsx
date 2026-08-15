@@ -256,7 +256,7 @@ export function Organization() {
                     <div className="flex items-center justify-end gap-2">
                       {org.status === "pending" && (
                         <>
-                          <button onClick={(e) => { e.stopPropagation(); loadOrgDetails(org.id, true); }} className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">Review</button>
+                          <button onClick={(e) => { e.stopPropagation(); setSelectedOrg({ ...org, updatedAt: "" } as any); setShowAddAdmin(true); }} className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">Review</button>
                           <button onClick={(e) => { e.stopPropagation(); handleDeleteOrg(org.id); }} className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">Delete</button>
                         </>
                       )}
