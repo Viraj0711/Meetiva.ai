@@ -512,6 +512,31 @@ router.post(
   })
 );
 
+// ── Super Admin: delete a pending organization request ─────────────────────
+
+router.delete(
+  '/:id',
+  apiLimiter,
+  authenticate,
+  requireSuperAdmin,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const org = await Organization.findById(req.params.id).lean();
+    if (!org) {
+      return res.status(404).json({ message: 'Organization not found' });
+    }
+
+    if (org.status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending organizations can be deleted' });
+    }
+
+    await Organization.findByIdAndDelete(req.params.id);
+
+    log.info('Pending organization deleted', { orgId: req.params.id, by: req.userId });
+
+    res.json({ message: 'Organization request deleted' });
+  })
+);
+
 // ── Super Admin: provision admin credentials for pending org ─────────────────
 
 router.post(

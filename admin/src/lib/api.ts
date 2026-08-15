@@ -301,6 +301,8 @@ export const organizationsApi = {
     request(`/organizations/${id}/status`, { method: "PATCH", body: { status: "active" } }),
   suspend: (id: string) =>
     request(`/organizations/${id}/status`, { method: "PATCH", body: { status: "suspended" } }),
+  deletePending: (id: string) =>
+    request(`/organizations/${id}`, { method: "DELETE" }),
   addAdmin: (id: string, data: { email: string; name: string }) =>
     request<{ user: OrgUser & { tempPassword: string }; message: string }>(`/organizations/${id}/add-admin`, {
       method: "POST",

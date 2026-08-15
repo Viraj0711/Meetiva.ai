@@ -72,18 +72,35 @@ export function Organization() {
     load();
   }, []);
 
-  const loadOrgDetails = async (orgId: string) => {
+  const loadOrgDetails = async (orgId: string, openProvisionModal = false) => {
     try {
       const [org, usersRes, projectsRes] = await Promise.allSettled([
         organizationsApi.get(orgId),
         organizationsApi.listUsers(orgId),
         projectsApi.list(orgId),
       ]);
-      if (org.status === "fulfilled") setSelectedOrg(org.value);
+      if (org.status === "fulfilled") {
+        setSelectedOrg(org.value);
+        // Auto-open Add Admin modal for pending orgs when Review is clicked
+        if (openProvisionModal && org.value.status === "pending") {
+          setShowAddAdmin(true);
+        }
+      }
       if (usersRes.status === "fulfilled") setOrgUsers(usersRes.value.users ?? []);
       if (projectsRes.status === "fulfilled") setOrgProjects(projectsRes.value.projects ?? []);
     } catch {
       toast.error("Failed to load organization details");
+    }
+  };
+
+  const handleDeleteOrg = async (orgId: string) => {
+    if (!confirm("Are you sure you want to delete this organization request?")) return;
+    try {
+      await organizationsApi.deletePending(orgId);
+      toast.success("Organization request deleted");
+      setOrganizations((prev) => prev.filter((o) => o.id !== orgId));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete");
     }
   };
 
@@ -237,7 +254,12 @@ export function Organization() {
                   <td className="px-5 py-4 text-sm text-[#94A3B8]">{new Date(org.createdAt).toLocaleDateString()}</td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {org.status === "pending" && <button onClick={(e) => { e.stopPropagation(); loadOrgDetails(org.id); }} className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">Review</button>}
+                      {org.status === "pending" && (
+                        <>
+                          <button onClick={(e) => { e.stopPropagation(); loadOrgDetails(org.id, true); }} className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">Review</button>
+                          <button onClick={(e) => { e.stopPropagation(); handleDeleteOrg(org.id); }} className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">Delete</button>
+                        </>
+                      )}
                       {org.status === "active" && <button onClick={(e) => { e.stopPropagation(); handleSuspend(org.id); }} className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">Suspend</button>}
                     </div>
                   </td>
