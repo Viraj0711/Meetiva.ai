@@ -582,8 +582,9 @@ const LandingNew: React.FC = () => {
             style={{ borderTop: `1px solid ${LP}0C` }}>
             <div className="text-xs text-[#9B97B0]">© 2026 Meetiva, Inc. All rights reserved.</div>
             <div className="flex items-center gap-5">
-              {['Twitter', 'GitHub', 'LinkedIn'].map(s => (
+              {['Twitter', 'LinkedIn'].map(s => (
                 <button key={s}
+                  onClick={() => navigate(`/${s.toLowerCase()}`)}
                   className="text-xs font-medium transition-colors"
                   style={{ color: '#9B97B0' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = LP; }}

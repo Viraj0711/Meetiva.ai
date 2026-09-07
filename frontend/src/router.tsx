@@ -183,6 +183,22 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: '/twitter',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ComingSoon />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/linkedin',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ComingSoon />
+      </Suspense>
+    ),
+  },
+  {
     path: '/dashboard',
     element: (
       <ProtectedRoute>

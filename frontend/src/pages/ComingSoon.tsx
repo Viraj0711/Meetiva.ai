@@ -41,6 +41,16 @@ const PAGE_DATA: Record<string, { title: string; description: string }> = {
     description:
       'How Meetiva uses cookies and similar technologies to provide, secure, and improve our service. Detailed cookie policy coming soon.',
   },
+  twitter: {
+    title: 'Twitter',
+    description:
+      'Follow us on Twitter for product updates, tips, and the latest from Meetiva. Our Twitter presence is launching soon.',
+  },
+  linkedin: {
+    title: 'LinkedIn',
+    description:
+      'Connect with Meetiva on LinkedIn for company news, career opportunities, and industry insights. Coming soon.',
+  },
 };
 
 const ComingSoonPage: React.FC = () => {
