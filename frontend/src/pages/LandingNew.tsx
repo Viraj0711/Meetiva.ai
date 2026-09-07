@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Play, Zap, Target, Users, Check, Brain, Calendar, FileText } from 'lucide-react';
-import { toast } from 'sonner';
+
 
 const LP = '#5B3FD6';
 const LS = '#8B5CF6';
@@ -523,22 +523,9 @@ const LandingNew: React.FC = () => {
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg" style={{ background: `linear-gradient(135deg, ${LP}, ${LS})` }}>M</div>
                 <span className="font-bold text-[#0F0A1E] text-xl">Meetiva AI</span>
               </div>
-              <p className="text-sm text-[#64607A] leading-relaxed mb-6 max-w-[200px]">
+              <p className="text-sm text-[#64607A] leading-relaxed max-w-[200px]">
                 The AI-powered meeting workspace built for momentum.
               </p>
-              <div className="flex gap-2">
-                <input type="email" placeholder="your@email.com"
-                  className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
-                  style={{ border: `1px solid ${LP}18`, background: 'white', color: '#0F0A1E' }}
-                  onFocus={e => { (e.target as HTMLElement).style.borderColor = `${LP}40`; }}
-                  onBlur={e => { (e.target as HTMLElement).style.borderColor = `${LP}18`; }}
-                />
-                <button onClick={() => toast.success('Subscribed!', { description: "You're on the list." })}
-                  className="px-3 py-2 rounded-lg text-xs font-bold text-white"
-                  style={{ background: `linear-gradient(135deg, ${LP}, ${LS})` }}>
-                  Subscribe
-                </button>
-              </div>
             </div>
 
             {[
@@ -552,12 +539,18 @@ const LandingNew: React.FC = () => {
                   {col.links.map(l => (
                     <button key={l}
                       onClick={() => {
-                        if (col.heading === 'Product' && l !== 'Changelog') {
+                        if (col.heading === 'Product' && l === 'Changelog') {
+                          navigate('/changelog');
+                        } else if (col.heading === 'Product') {
                           scrollTo(l.toLowerCase());
+                        } else if (col.heading === 'Company') {
+                          navigate(`/${l.toLowerCase()}`);
                         } else if (col.heading === 'Legal' && l === 'Privacy') {
                           navigate('/privacy');
                         } else if (col.heading === 'Legal' && l === 'Terms') {
                           navigate('/terms');
+                        } else if (col.heading === 'Legal') {
+                          navigate(`/${l.toLowerCase()}`);
                         }
                       }}
                       className="block text-sm text-left transition-colors"
@@ -576,8 +569,9 @@ const LandingNew: React.FC = () => {
             style={{ borderTop: `1px solid ${LP}0C` }}>
             <div className="text-xs text-[#9B97B0]">© 2026 Meetiva, Inc. All rights reserved.</div>
             <div className="flex items-center gap-5">
-              {['Twitter', 'GitHub', 'LinkedIn'].map(s => (
+              {['Twitter', 'LinkedIn'].map(s => (
                 <button key={s}
+                  onClick={() => navigate(`/${s.toLowerCase()}`)}
                   className="text-xs font-medium transition-colors"
                   style={{ color: '#9B97B0' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = LP; }}

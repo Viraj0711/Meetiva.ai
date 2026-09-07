@@ -29,6 +29,7 @@ const Pricing = React.lazy(() => import('@/pages/Pricing'));
 const Contact = React.lazy(() => import('@/pages/Contact'));
 const Terms = React.lazy(() => import('@/pages/Terms'));
 const Privacy = React.lazy(() => import('@/pages/Privacy'));
+const ComingSoon = React.lazy(() => import('@/pages/ComingSoon'));
 const NotFound = React.lazy(() => import('@/pages/NotFound'));
 const InviteLanding = React.lazy(() => import('@/pages/InviteLanding'));
 
@@ -122,6 +123,78 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={<LoadingSpinner />}>
         <Privacy />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/changelog',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ComingSoon />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/about',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ComingSoon />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/blog',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ComingSoon />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/careers',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ComingSoon />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/press',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ComingSoon />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/security',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ComingSoon />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/cookies',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ComingSoon />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/twitter',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ComingSoon />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/linkedin',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ComingSoon />
       </Suspense>
     ),
   },
