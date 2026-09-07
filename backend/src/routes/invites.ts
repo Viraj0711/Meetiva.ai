@@ -128,8 +128,13 @@ router.post(
       return res.status(403).json({ message: 'Insufficient permissions to create team invites' });
     }
 
+    if (!Types.ObjectId.isValid(teamId)) {
+      return res.status(400).json({ message: 'Invalid teamId' });
+    }
+    const teamObjectId = new Types.ObjectId(teamId);
+
     // Verify the team exists
-    const team = await Team.findById(teamId).lean();
+    const team = await Team.findById(teamObjectId).lean();
     if (!team) {
       return res.status(404).json({ message: 'Team not found' });
     }
