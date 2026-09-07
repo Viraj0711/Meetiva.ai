@@ -1226,11 +1226,13 @@ router.post(
   authenticate,
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const userId = req.userId!;
-    const { profile } = req.body as { profile?: string };
+    const parsed = z.object({ profile: z.enum(['self', 'corporate']) }).safeParse(req.body);
 
-    if (!profile || !['self', 'corporate'].includes(profile)) {
+    if (!parsed.success) {
       return res.status(400).json({ message: 'Profile must be "self" or "corporate"' });
     }
+
+    const profile = parsed.data.profile;
 
     const user = await User.findById(userId)
       .select('hasEnterpriseProfile accountType organizationId orgRole')
