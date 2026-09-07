@@ -66,7 +66,7 @@ router.post(
     }
 
     // Verify the project exists and belongs to the user's org (or user is super_admin)
-    const project = await Project.findById(projectId).lean();
+    const project = await Project.findOne({ _id: { $eq: new Types.ObjectId(projectId) } }).lean();
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
