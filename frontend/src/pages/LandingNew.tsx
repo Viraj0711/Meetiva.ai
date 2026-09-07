@@ -552,12 +552,18 @@ const LandingNew: React.FC = () => {
                   {col.links.map(l => (
                     <button key={l}
                       onClick={() => {
-                        if (col.heading === 'Product' && l !== 'Changelog') {
+                        if (col.heading === 'Product' && l === 'Changelog') {
+                          navigate('/changelog');
+                        } else if (col.heading === 'Product') {
                           scrollTo(l.toLowerCase());
+                        } else if (col.heading === 'Company') {
+                          navigate(`/${l.toLowerCase()}`);
                         } else if (col.heading === 'Legal' && l === 'Privacy') {
                           navigate('/privacy');
                         } else if (col.heading === 'Legal' && l === 'Terms') {
                           navigate('/terms');
+                        } else if (col.heading === 'Legal') {
+                          navigate(`/${l.toLowerCase()}`);
                         }
                       }}
                       className="block text-sm text-left transition-colors"
