@@ -76,7 +76,7 @@ const fallbackFromTranscript = (transcript: string): GroqAnalysisResult => {
 
 const GROQ_API_BASE = 'https://api.groq.com/openai/v1';
 
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 const GROQ_FETCH_TIMEOUT_MS = parseInt(process.env.GROQ_FETCH_TIMEOUT_MS || '60000', 10);
 
@@ -207,10 +207,11 @@ ${transcript}`;
       body: JSON.stringify({
         model,
         messages: [
-          { role: 'system', content: 'You are an expert meeting analyst. Output structured meeting minutes in Markdown.' },
+          { role: 'system', content: 'You are a meeting minutes writer. You MUST output structured Minutes of Meeting in Markdown. You MUST include ALL of these sections with ## headings: Executive Summary, Meeting Details, Agenda, Attendees, Key Discussion Points, Decisions Made, Tasks, Next Steps, Conclusion. NEVER output a single paragraph. NEVER summarize. Output the FULL structured document with every section.' },
           { role: 'user', content: minutesPrompt },
         ],
         temperature: 0.3,
+        max_tokens: 4096,
       }),
       signal: controller.signal,
     }),
@@ -239,6 +240,47 @@ ${transcript}`;
     if (minutesResponse.ok) {
       const minutesData = await minutesResponse.json() as { choices: { message: { content: string } }[] };
       minutesContent = minutesData.choices?.[0]?.message?.content || '';
+      console.log('[analyzeTranscript] minutesContent length:', minutesContent.length, '| starts with:', minutesContent.slice(0, 100));
+    } else {
+      console.log('[analyzeTranscript] minutesResponse NOT ok:', minutesResponse.status);
+    }
+
+    // Retry if minutes output is a paragraph (no ## section headers)
+    if (minutesContent && !minutesContent.includes('## ')) {
+      console.log('[analyzeTranscript] minutes lacks sections, retrying with stronger prompt...');
+      const retrySystemMsg = 'You are a professional meeting minutes writer. Your ONLY job is to output a structured MoM document in Markdown. You MUST output ALL of these ## sections in order: Executive Summary, Meeting Details, Agenda, Attendees, Key Discussion Points, Decisions Made, Tasks, Next Steps, Conclusion. Output EACH section with a ## heading and 2-5 bullet points or short paragraphs under it. NEVER output a single paragraph. NEVER summarize into one block of text.';
+      const retryPrompt = `Write FULL structured meeting minutes for this transcript. Output EVERY section below with ## headings. Do NOT skip any section. Do NOT write a single paragraph.
+
+Transcript:
+${transcript}`;
+      try {
+        const retryResponse = await fetch(`${GROQ_API_BASE}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: retrySystemMsg },
+              { role: 'user', content: retryPrompt },
+            ],
+            temperature: 0.2,
+            max_tokens: 4096,
+          }),
+        });
+        if (retryResponse.ok) {
+          const retryData = await retryResponse.json() as { choices: { message: { content: string } }[] };
+          const retryContent = retryData.choices?.[0]?.message?.content || '';
+          if (retryContent.includes('## ')) {
+            minutesContent = retryContent;
+            console.log('[analyzeTranscript] retry succeeded, minutes length:', minutesContent.length);
+          }
+        }
+      } catch (retryErr) {
+        console.log('[analyzeTranscript] retry failed:', retryErr);
+      }
     }
   } catch (error: any) {
     if (error instanceof AppError) throw error;

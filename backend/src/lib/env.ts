@@ -37,7 +37,7 @@ export const validateBackendEnv = (): void => {
   }
 
   if (!process.env.LLM_MODEL) {
-    optionalMissing.push('LLM_MODEL (set Groq model name e.g. "llama-3.3-70b-versatile"; defaults to the provider default)');
+    optionalMissing.push('LLM_MODEL (set LLM model name e.g. "groq/compound"; defaults to the provider default)');
   }
 
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
