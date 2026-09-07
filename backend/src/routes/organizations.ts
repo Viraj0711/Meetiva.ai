@@ -773,14 +773,14 @@ router.patch(
   requireOrgRole('admin'),
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const { plan } = req.body as { plan?: string };
-    if (!plan || !['monthly', 'yearly'].includes(plan)) {
+    if (typeof plan !== 'string' || !['monthly', 'yearly'].includes(plan)) {
       return res.status(400).json({ message: 'Plan must be monthly or yearly' });
     }
 
     const org = await Organization.findByIdAndUpdate(
       req.params.id,
       {
-        subscriptionPlan: plan,
+        subscriptionPlan: { $eq: plan },
         subscriptionStatus: 'active',
         subscriptionExpiresAt: new Date(Date.now() + (plan === 'yearly' ? 365 : 30) * 24 * 60 * 60 * 1000),
       },
