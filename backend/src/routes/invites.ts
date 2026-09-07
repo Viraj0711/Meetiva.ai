@@ -66,7 +66,7 @@ router.post(
     }
 
     // Verify the project exists and belongs to the user's org (or user is super_admin)
-    const project = await Project.findById(projectId).lean();
+    const project = await Project.findOne({ _id: { $eq: new Types.ObjectId(projectId) } }).lean();
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
@@ -128,8 +128,13 @@ router.post(
       return res.status(403).json({ message: 'Insufficient permissions to create team invites' });
     }
 
+    if (!Types.ObjectId.isValid(teamId)) {
+      return res.status(400).json({ message: 'Invalid teamId' });
+    }
+    const teamObjectId = new Types.ObjectId(teamId);
+
     // Verify the team exists
-    const team = await Team.findById(teamId).lean();
+    const team = await Team.findById(teamObjectId).lean();
     if (!team) {
       return res.status(404).json({ message: 'Team not found' });
     }
