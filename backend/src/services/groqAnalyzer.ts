@@ -102,8 +102,8 @@ Transcript:
 ${transcript}`;
 
   const systemMsg = summaryMode === 'brief'
-    ? 'You are an expert meeting analyst. Output a SHORT Markdown summary in plain prose only. NO bullet points. NO subheadings. NO lists. Write flowing paragraphs.'
-    : 'You are an expert meeting analyst. Output a Markdown summary. Follow the user instructions for length and format exactly.';
+    ? 'You are a SUMMARY writer. Your ONLY task is to write a SHORT meeting summary. Output a Meeting Snapshot and 5-7 plain sentences in Markdown. Do NOT generate minutes. Do NOT use ## section headings. Do NOT use bullet points. Write a short prose paragraph.'
+    : 'You are a SUMMARY writer. Your ONLY task is to write a SHORT meeting summary. Output a Meeting Snapshot and 4-6 plain sentences in Markdown. Do NOT generate minutes. Do NOT use ## section headings. Do NOT use bullet points.';
 
   try {
     const response = await fetch(`${GROQ_API_BASE}/chat/completions`, {
@@ -191,7 +191,7 @@ ${transcript}`;
       body: JSON.stringify({
         model,
         messages: [
-          { role: 'system', content: 'You are an expert meeting analyst. Output a comprehensive Markdown summary.' },
+          { role: 'system', content: 'You are a SUMMARY writer. Your ONLY task is to write a SHORT meeting summary. Output a Meeting Snapshot and 4-6 sentence Summary in Markdown. Do NOT generate minutes. Do NOT use ## section headings. Do NOT use bullet points. Write a short prose paragraph.' },
           { role: 'user', content: summaryPrompt },
         ],
         temperature: 0.3,
@@ -207,7 +207,7 @@ ${transcript}`;
       body: JSON.stringify({
         model,
         messages: [
-          { role: 'system', content: 'You are a meeting minutes writer. You MUST output structured Minutes of Meeting in Markdown. You MUST include ALL of these sections with ## headings: Executive Summary, Meeting Details, Agenda, Attendees, Key Discussion Points, Decisions Made, Tasks, Next Steps, Conclusion. NEVER output a single paragraph. NEVER summarize. Output the FULL structured document with every section.' },
+          { role: 'system', content: 'You are a MINUTES writer. Your ONLY task is to write structured meeting minutes (MoM). Output a full document with ## section headings and bullet points. Do NOT write a summary. Do NOT write prose paragraphs. Do NOT skip sections. Include ALL: Executive Summary, Meeting Details, Agenda, Attendees, Key Discussion Points, Decisions Made, Tasks, Next Steps, Conclusion.' },
           { role: 'user', content: minutesPrompt },
         ],
         temperature: 0.3,
@@ -248,8 +248,8 @@ ${transcript}`;
     // Retry if minutes output is a paragraph (no ## section headers)
     if (minutesContent && !minutesContent.includes('## ')) {
       console.log('[analyzeTranscript] minutes lacks sections, retrying with stronger prompt...');
-      const retrySystemMsg = 'You are a professional meeting minutes writer. Your ONLY job is to output a structured MoM document in Markdown. You MUST output ALL of these ## sections in order: Executive Summary, Meeting Details, Agenda, Attendees, Key Discussion Points, Decisions Made, Tasks, Next Steps, Conclusion. Output EACH section with a ## heading and 2-5 bullet points or short paragraphs under it. NEVER output a single paragraph. NEVER summarize into one block of text.';
-      const retryPrompt = `Write FULL structured meeting minutes for this transcript. Output EVERY section below with ## headings. Do NOT skip any section. Do NOT write a single paragraph.
+      const retrySystemMsg = 'You are a MINUTES writer. Your ONLY task is to write structured meeting minutes (MoM). Output a full document with ## section headings and bullet points. Do NOT write a summary. Do NOT write prose paragraphs. Include ALL sections: Executive Summary, Meeting Details, Agenda, Attendees, Key Discussion Points, Decisions Made, Tasks, Next Steps, Conclusion.';
+      const retryPrompt = `Write FULL structured meeting minutes (MoM) for this transcript. Every section must have a ## heading and use bullet points underneath. Do NOT write a summary. Do NOT write paragraphs. Do NOT skip any section.
 
 Transcript:
 ${transcript}`;

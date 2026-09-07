@@ -33,26 +33,24 @@ export const MEETING_SUMMARY_PROMPT_BRIEF = `Summarize this meeting transcript i
 # Summary
 Write 5–7 plain sentences covering: what the meeting was about, the main points discussed, any decisions made, and what happens next. Use no more than 7 sentences. Do not use bullet points. Do not use subheadings. Do not use lists. Just short plain sentences.`;
 
-export const MEETING_SUMMARY_PROMPT = `You are an expert meeting analyst. Generate a SHORT meeting summary — NOT minutes, NOT a detailed report.
-
-## Format (follow exactly):
+export const MEETING_SUMMARY_PROMPT = `Generate a SHORT meeting summary. This is a SUMMARY — not minutes, not a detailed report, not a structured MoM. Do NOT output section headings. Do NOT output bullet-point lists. Do NOT output a structured document.
 
 # Meeting Snapshot
 - Title: (or "Not mentioned")
 - Date/Time: (or "Not mentioned")
-- Participants: (names, or "Speaker 1, Speaker 2")
+- Participants: (or "Speaker 1, Speaker 2")
 - Purpose: 1 sentence
 
 # Summary
-Write 4–6 plain sentences total. Cover: what was discussed, key decisions, and next steps. Do NOT break into sections per team/person. Do NOT use bullet points. Do NOT list tasks individually. Just a short paragraph that someone can read in 10 seconds.
+Write 4–6 plain sentences total. Cover what was discussed, key decisions, and next steps in a short paragraph someone can read in 10 seconds.
 
 Rules:
-- Maximum 6 sentences in the Summary section
+- Maximum 6 sentences
 - No subheadings inside Summary
 - No bullet points
 - No task lists
-- If you need to mention a task, weave it into a sentence (e.g., "James will finalize the transcript API by Wednesday.")
-- Think "tweet-length overview", not "meeting minutes"`;
+- No ## headings anywhere in the output
+- If you need to mention a task, weave it into a sentence`;
 
 export const MEETING_SUMMARY_PROMPT_DETAILED = `You are an expert meeting analyst. Generate a detailed meeting summary using ONLY bullet points — NO paragraphs, NO prose, NO formal sections.
 
@@ -71,31 +69,17 @@ Rules:
 - Aim for 40–50 lines total
 - If something is missing, write "Not specified"`;
 
-export const MEETING_MINUTES_PROMPT = `You are an expert AI assistant specialized in generating detailed yet easy-to-understand Minutes of Meeting (MoM).
-
-Your task is to convert the provided meeting transcript or notes into a structured, professional, and user-friendly MoM.
-
----
-
-### Writing Style Guidelines:
-- Use simple, clear, and natural language
-- Avoid overly complex or robotic sentences
-- Keep explanations detailed but easy to read
-- Write like a human note-taker, not a legal document
-- Use short paragraphs and clean bullet points
+export const MEETING_MINUTES_PROMPT = `Generate structured Minutes of Meeting (MoM). This is NOT a summary. This is a full structured document with ## section headings and bullet points. Do NOT write a short paragraph. Do NOT write a summary. Do NOT skip any section.
 
 ---
 
 ## Executive Summary
-Write 3–4 sentences explaining:
-- Why the meeting was held
-- What was mainly discussed
-- What was achieved
+- 3–4 bullet points explaining: why the meeting was held, what was mainly discussed, what was achieved
 
 ---
 
 ## Meeting Details
-- Meeting Title
+- Meeting Title: (or "Not specified")
 - Date: (or "Not specified")
 - Time: (or "Not specified")
 - Duration: (or "Not specified")
@@ -105,66 +89,53 @@ Write 3–4 sentences explaining:
 ---
 
 ## Agenda
-List the main topics discussed (even if inferred).
+- Bullet point each main topic discussed
 
 ---
 
 ## Attendees
-List all participants (use "Speaker 1", etc., if names are missing).
+- List each participant on its own line (use "Speaker 1", etc., if names are missing)
 
 ---
 
 ## Key Discussion Points
-(This section should be detailed but easy to follow)
-
-For each topic:
-- Use a clear subheading
-- Explain in 2–3 simple sentences:
-  - What was discussed
-  - Any important opinions or ideas
-  - Key concerns or highlights
-
-Example:
-### Committee Formation
-The group discussed how the committee would be structured. Students were invited to volunteer for roles, and some were nominated based on their skills.
+- One subheading per topic (### Topic Name)
+- Under each subheading, 3–5 bullet points covering what was discussed, key opinions, concerns, and outcomes
+- Each bullet must be one line
 
 ---
 
 ## Roles & Responsibilities (if applicable)
-- Role: Name (or "Not specified")
-- Add a simple 1-line explanation of responsibility
+- Role: Name — one-line responsibility description
 
 ---
 
 ## Decisions Made
-- List only final outcomes
-- Keep them clear and direct (no long explanations)
+- One bullet per decision, clear and direct
 
 ---
 
 ## Tasks
-Use this exact format:
-* [Owner: Name/Unassigned, Deadline: Date/Not specified] Clear and simple task description
+- [Owner: Name/Unassigned, Deadline: Date/Not specified] Task description
 
 ---
 
 ## Next Steps
-- What will happen next
-- Any follow-up meetings or plans
+- One bullet per follow-up item
 
 ---
 
 ## Conclusion
-Write a short, simple closing summary of how the meeting ended.
+- 1–2 bullet points summarizing how the meeting ended
 
 ---
 
-### Important Rules:
-- Do NOT add information that is not in the transcript
+### Rules:
+- Every section MUST use ## headings and bullet points — no paragraphs, no prose, no multi-sentence blocks
+- Do NOT write a summary — this is a full structured MoM document
+- Do NOT add information not in the transcript
 - If something is missing, write "Not specified"
-- Keep it detailed but easy to understand
-- Avoid long, complex paragraphs
-- Make it look like real meeting notes used in schools or companies`;
+- Keep every bullet to one line where possible`;
 
 export const TASK_EXTRACTION_PROMPT = `You are an expert meeting analyst. Return ONLY valid JSON with keys: executiveSummary (string), keyPoints (string[]), decisions (string[]), openQuestions (string[]), sentiment (positive|neutral|negative), tasks (array). Each task must include title, optional description, optional assignee, optional dueDate in ISO date yyyy-mm-dd when explicit, priority (low|medium|high|urgent), status (pending|in_progress|completed|cancelled), and optional tags string[]. Do not wrap in markdown.`;
 
