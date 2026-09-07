@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@reticlehq/core": "^2.0.0",
+    "@reticlehq/core": "^2.13.1",
     "@tailwindcss/postcss": "^4.3.2",
     "@tailwindcss/vite": "^4.3.2",
     "@testing-library/jest-dom": "^7.0.1",
