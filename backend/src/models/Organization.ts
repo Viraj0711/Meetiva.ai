@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import type { OrganizationStatus } from '../lib/shared';
+import type { OrganizationStatus, SubscriptionPlan } from '../lib/shared';
 
 export interface IOrganization extends Document {
   name: string;
@@ -9,6 +9,8 @@ export interface IOrganization extends Document {
   status: OrganizationStatus;
   seatLimit: number;
   seatsUsed: number;
+  subscriptionPlan: SubscriptionPlan | null;
+  subscriptionStatus: 'active' | 'past_due' | 'cancelled' | null;
   subscriptionExpiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -27,6 +29,8 @@ const organizationSchema = new Schema<IOrganization>(
     },
     seatLimit: { type: Number, default: 20 },
     seatsUsed: { type: Number, default: 0 },
+    subscriptionPlan: { type: String, enum: ['monthly', 'yearly', null], default: null },
+    subscriptionStatus: { type: String, enum: ['active', 'past_due', 'cancelled', null], default: null },
     subscriptionExpiresAt: { type: Date, default: null },
   },
   { timestamps: true, collection: 'organizations' }

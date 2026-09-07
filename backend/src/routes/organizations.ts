@@ -512,6 +512,31 @@ router.post(
   })
 );
 
+// ── Super Admin: delete a pending organization request ─────────────────────
+
+router.delete(
+  '/:id',
+  apiLimiter,
+  authenticate,
+  requireSuperAdmin,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const org = await Organization.findById(req.params.id).lean();
+    if (!org) {
+      return res.status(404).json({ message: 'Organization not found' });
+    }
+
+    if (org.status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending organizations can be deleted' });
+    }
+
+    await Organization.findByIdAndDelete(req.params.id);
+
+    log.info('Pending organization deleted', { orgId: req.params.id, by: req.userId });
+
+    res.json({ message: 'Organization request deleted' });
+  })
+);
+
 // ── Super Admin: provision admin credentials for pending org ─────────────────
 
 router.post(
@@ -560,6 +585,12 @@ router.post(
     await Organization.findByIdAndUpdate(org._id, {
       status: 'active',
       adminUserId: adminUser._id,
+    });
+
+    // Set the admin's enterprise profile flag
+    await User.findByIdAndUpdate(adminUser._id, {
+      hasEnterpriseProfile: true,
+      activeProfile: 'corporate',
     });
 
     log.info('Admin provisioned for pending org', { orgId: String(org._id), adminUserId: String(adminUser._id) });
@@ -729,6 +760,45 @@ router.delete(
     });
 
     res.json({ message: 'Team leader removed. Teams reassigned to replacement.' });
+  })
+);
+
+// ── Admin: update org subscription plan ───────────────────────────────────
+
+router.patch(
+  '/:id/subscription',
+  apiLimiter,
+  authenticate,
+  requireOrgAccess((req) => req.params.id),
+  requireOrgRole('admin'),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { plan } = req.body as { plan?: string };
+    if (typeof plan !== 'string' || !['monthly', 'yearly'].includes(plan)) {
+      return res.status(400).json({ message: 'Plan must be monthly or yearly' });
+    }
+
+    const org = await Organization.findByIdAndUpdate(
+      req.params.id,
+      {
+        subscriptionPlan: { $eq: plan },
+        subscriptionStatus: 'active',
+        subscriptionExpiresAt: new Date(Date.now() + (plan === 'yearly' ? 365 : 30) * 24 * 60 * 60 * 1000),
+      },
+      { returnDocument: 'after' }
+    ).lean();
+
+    if (!org) {
+      return res.status(404).json({ message: 'Organization not found' });
+    }
+
+    log.info('Org subscription updated', { orgId: String(org._id), plan, by: req.userId });
+
+    res.json({
+      id: org._id.toString(),
+      subscriptionPlan: org.subscriptionPlan,
+      subscriptionStatus: org.subscriptionStatus,
+      subscriptionExpiresAt: org.subscriptionExpiresAt?.toISOString() ?? null,
+    });
   })
 );
 

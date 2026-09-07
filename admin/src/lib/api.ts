@@ -301,6 +301,8 @@ export const organizationsApi = {
     request(`/organizations/${id}/status`, { method: "PATCH", body: { status: "active" } }),
   suspend: (id: string) =>
     request(`/organizations/${id}/status`, { method: "PATCH", body: { status: "suspended" } }),
+  deletePending: (id: string) =>
+    request(`/organizations/${id}`, { method: "DELETE" }),
   addAdmin: (id: string, data: { email: string; name: string }) =>
     request<{ user: OrgUser & { tempPassword: string }; message: string }>(`/organizations/${id}/add-admin`, {
       method: "POST",
@@ -311,6 +313,11 @@ export const organizationsApi = {
       method: "POST",
       body: data,
     }),
+  updateSubscription: (id: string, plan: "monthly" | "yearly") =>
+    request<{ subscriptionPlan: string; subscriptionStatus: string; subscriptionExpiresAt: string | null }>(
+      `/organizations/${id}/subscription`,
+      { method: "PATCH", body: { plan } }
+    ),
 };
 
 export const projectsApi = {
@@ -327,4 +334,32 @@ export const projectsApi = {
     request(`/projects/${id}/assign-manager`, { method: "POST", body: data }),
   teams: (id: string) =>
     request<{ teams: Team[] }>(`/projects/${id}/teams`),
+};
+
+// ── Invite API ────────────────────────────────────────────────────────────
+
+export interface InviteData {
+  id: string;
+  type: string;
+  role: string;
+  email: string | null;
+  inviteLink: string;
+  expiresAt: string;
+  invitedBy: string;
+  createdAt: string;
+}
+
+export const invitesApi = {
+  createProjectInvite: (data: { projectId: string; email?: string; expiresInDays?: number }) =>
+    request<{ token: string; inviteLink: string; expiresAt: string; type: string; role: string }>(
+      "/invites/project",
+      { method: "POST", body: data }
+    ),
+  createTeamInvite: (data: { teamId: string; role: "team_leader" | "member"; email?: string; expiresInDays?: number }) =>
+    request<{ token: string; inviteLink: string; expiresAt: string; type: string; role: string }>(
+      "/invites/team",
+      { method: "POST", body: data }
+    ),
+  listProjectInvites: (projectId: string) =>
+    request<{ invites: InviteData[] }>(`/invites/project/${projectId}`),
 };

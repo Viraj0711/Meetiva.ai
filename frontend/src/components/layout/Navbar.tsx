@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, LogOut, ChevronDown, Building2, User, Settings, Zap } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { logout } from '@/store/slices/authSlice';
+import { logout, setUser } from '@/store/slices/authSlice';
 import { notificationService, type Notification } from '@/services/notification.service';
+import { authService } from '@/services';
 
 const GRAD = '#5B3FD6';
 const GRAD2 = '#8B5CF6';
@@ -50,10 +51,28 @@ const TopBar: React.FC = () => {
   }, []);
 
   const isCorporate = user?.accountType === 'corporate' && user?.organizationId;
+  const hasEnterpriseProfile = user?.hasEnterpriseProfile === true;
 
   const workspaceInfo = isCorporate
-    ? { name: user?.name || 'Organization', subtitle: `${user?.orgRole || 'member'} · Organization`, icon: <Building2 size={14} /> }
-    : { name: user?.name || 'Personal Account', subtitle: 'Free Plan', icon: <User size={14} /> };
+    ? { name: user?.name || 'Organization', subtitle: `${user?.orgRole || 'member'} · Enterprise`, icon: <Building2 size={14} /> }
+    : { name: user?.name || 'Personal Account', subtitle: user?.subscriptionTier === 'FREE' ? 'Free Plan' : `${user?.subscriptionTier} Plan`, icon: <User size={14} /> };
+
+  const handleProfileSwitch = async (profile: 'self' | 'corporate') => {
+    try {
+      const result = await authService.switchProfile(profile);
+      // Update the user in Redux with the new accountType
+      if (user) {
+        dispatch(setUser({
+          ...user,
+          accountType: result.accountType as 'self' | 'corporate',
+          subscriptionTier: result.subscriptionTier as any,
+        }));
+      }
+      setWorkspaceOpen(false);
+    } catch {
+      // silently ignore
+    }
+  };
 
   const handleMarkAsRead = async (id: string) => {
     try {
@@ -88,7 +107,7 @@ const TopBar: React.FC = () => {
           </button>
 
           {workspaceOpen && (
-            <div className="absolute left-0 mt-1 w-56 bg-white rounded-xl border border-[#E4E0F5] shadow-lg overflow-hidden z-[60]">
+            <div className="absolute left-0 mt-1 w-64 bg-white rounded-xl border border-[#E4E0F5] shadow-lg overflow-hidden z-[60]">
               <div className="p-2">
                 <div className="px-3 py-2 text-[10px] font-bold text-[#64607A] uppercase tracking-wider">Workspace</div>
                 <button
@@ -104,6 +123,42 @@ const TopBar: React.FC = () => {
                     <div className="text-[10px] text-[#64607A] truncate">{workspaceInfo.subtitle}</div>
                   </div>
                 </button>
+
+                {/* Profile switcher — only shown if user has both profiles */}
+                {hasEnterpriseProfile && (
+                  <>
+                    <div className="mx-3 my-1 border-t border-[#E4E0F5]" />
+                    <div className="px-3 py-1 text-[10px] font-bold text-[#64607A] uppercase tracking-wider">Switch Profile</div>
+                    <button
+                      onClick={() => handleProfileSwitch('self')}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${!isCorporate ? 'bg-[#F5F3FF]' : 'hover:bg-[#F5F3FF]'}`}
+                    >
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                        style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
+                        <User size={14} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-[#1D1B22] truncate">Individual</div>
+                        <div className="text-[10px] text-[#64607A] truncate">Personal account</div>
+                      </div>
+                      {!isCorporate && <span className="text-[10px] font-bold" style={{ color: GRAD }}>Active</span>}
+                    </button>
+                    <button
+                      onClick={() => handleProfileSwitch('corporate')}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-colors ${isCorporate ? 'bg-[#F5F3FF]' : 'hover:bg-[#F5F3FF]'}`}
+                    >
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                        style={{ background: `linear-gradient(135deg, ${GRAD}, ${GRAD2})` }}>
+                        <Building2 size={14} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-[#1D1B22] truncate">Enterprise</div>
+                        <div className="text-[10px] text-[#64607A] truncate">Organization profile</div>
+                      </div>
+                      {isCorporate && <span className="text-[10px] font-bold" style={{ color: GRAD }}>Active</span>}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}

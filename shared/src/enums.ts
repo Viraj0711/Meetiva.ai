@@ -50,8 +50,11 @@ export type Sentiment = 'positive' | 'neutral' | 'negative';
 
 // ─── Notification Enums ─────────────────────────────────────────────────────
 
-export type NotificationType = 'DEADLINE_REMINDER' | 'SYSTEM';
-
-// ─── Integration Enums ──────────────────────────────────────────────────────
-
+export type NotificationType = 'DEADLINE_REMINDER' | 'SYSTEM';// ─── Integration Enums ──────────────────────────────────────────────────────
 export type IntegrationType = 'google-calendar';
+
+// ─── Subscription Plan ────────────────────────────────────────────────────
+export type SubscriptionPlan = 'monthly' | 'yearly';
+
+// ─── Invite Token ─────────────────────────────────────────────────────────
+export type InviteType = 'project_manager' | 'team_leader' | 'team_member';

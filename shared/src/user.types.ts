@@ -17,13 +17,17 @@ export interface User {
   meetingCountResetAt: string | null;
   subscriptionExpiresAt: string | null;
   // Enterprise fields
-  accountType?: AccountType;
+  accountType: AccountType;
   orgRole?: OrgRole | null;
   organizationId?: string | null;
   createdByUserId?: string | null;
   forcePasswordChange?: boolean;
   isRemoved?: boolean;
   tokenVersion?: number;
+  /** Whether this user has been linked to an organization (dual profile). */
+  hasEnterpriseProfile?: boolean;
+  /** Which profile is currently active: 'self' (individual) or 'corporate' (enterprise). */
+  activeProfile?: AccountType;
   createdAt: string;
   updatedAt: string;
 }

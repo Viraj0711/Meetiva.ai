@@ -180,4 +180,32 @@ export const authService = {
     const response = await apiClient.post<{ user: { id: string; email: string; name: string; subscriptionTier: string; subscriptionExpiresAt: string | null } }>('/auth/admin/set-tier', { tier });
     return response;
   },
+
+  /**
+   * Switch between Individual and Enterprise profiles.
+   */
+  switchProfile: async (profile: 'self' | 'corporate'): Promise<{ activeProfile: string; accountType: string; subscriptionTier: string }> => {
+    const response = await apiClient.post<{ activeProfile: string; accountType: string; subscriptionTier: string }>('/auth/profile/switch', { profile });
+    return response;
+  },
+
+  /**
+   * Get the user's enterprise profile info (org name, role, etc.).
+   */
+  getEnterpriseInfo: async (): Promise<{
+    hasEnterpriseProfile: boolean;
+    organizationId: string | null;
+    orgRole: string | null;
+    activeProfile: string;
+    organization: { id: string; name: string; slug: string; status: string } | null;
+  }> => {
+    const response = await apiClient.get<{
+      hasEnterpriseProfile: boolean;
+      organizationId: string | null;
+      orgRole: string | null;
+      activeProfile: string;
+      organization: { id: string; name: string; slug: string; status: string } | null;
+    }>('/auth/enterprise-info');
+    return response;
+  },
 };

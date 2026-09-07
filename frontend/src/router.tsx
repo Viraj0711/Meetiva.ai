@@ -30,6 +30,7 @@ const Contact = React.lazy(() => import('@/pages/Contact'));
 const Terms = React.lazy(() => import('@/pages/Terms'));
 const Privacy = React.lazy(() => import('@/pages/Privacy'));
 const NotFound = React.lazy(() => import('@/pages/NotFound'));
+const InviteLanding = React.lazy(() => import('@/pages/InviteLanding'));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
@@ -255,6 +256,14 @@ const router = createBrowserRouter([
         ),
       },
     ],
+  },
+  {
+    path: '/invite/:token',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <InviteLanding />
+      </Suspense>
+    ),
   },
   {
     path: '*',
