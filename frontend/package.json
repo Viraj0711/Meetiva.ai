@@ -15,8 +15,8 @@
     "lint:security": "npx tsx scripts/check-input-safety.ts"
   },
   "dependencies": {
-    "@meetiva/shared-types": "*",
     "@hookform/resolvers": "^5.4.0",
+    "@meetiva/shared-types": "*",
     "@reduxjs/toolkit": "^2.12.0",
     "@tanstack/react-query": "^5.101.2",
     "@tanstack/react-query-devtools": "^5.101.2",
