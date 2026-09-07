@@ -33,19 +33,26 @@ export const MEETING_SUMMARY_PROMPT_BRIEF = `Summarize this meeting transcript i
 # Summary
 Write 5–7 plain sentences covering: what the meeting was about, the main points discussed, any decisions made, and what happens next. Use no more than 7 sentences. Do not use bullet points. Do not use subheadings. Do not use lists. Just short plain sentences.`;
 
-export const MEETING_SUMMARY_PROMPT = `You are an expert meeting analyst.
+export const MEETING_SUMMARY_PROMPT = `You are an expert meeting analyst. Generate a SHORT meeting summary — NOT minutes, NOT a detailed report.
 
-Analyze the provided meeting transcript/audio and generate a clear, concise, and easy-to-understand meeting summary.
+## Format (follow exactly):
 
-Focus on key information only. Avoid unnecessary detail, repetition, or over-explanation. Do NOT expand minor points into long paragraphs.
+# Meeting Snapshot
+- Title: (or "Not mentioned")
+- Date/Time: (or "Not mentioned")
+- Participants: (names, or "Speaker 1, Speaker 2")
+- Purpose: 1 sentence
 
-${SUMMARY_structure}
+# Summary
+Write 4–6 plain sentences total. Cover: what was discussed, key decisions, and next steps. Do NOT break into sections per team/person. Do NOT use bullet points. Do NOT list tasks individually. Just a short paragraph that someone can read in 10 seconds.
 
-Provide a concise summary (2–4 paragraphs max) in the Executive Summary section.
-
-${SUMMARY_rules}
-
-- Keep the total output compact and readable`;
+Rules:
+- Maximum 6 sentences in the Summary section
+- No subheadings inside Summary
+- No bullet points
+- No task lists
+- If you need to mention a task, weave it into a sentence (e.g., "James will finalize the transcript API by Wednesday.")
+- Think "tweet-length overview", not "meeting minutes"`;
 
 export const MEETING_SUMMARY_PROMPT_DETAILED = `You are an expert meeting analyst. Generate a detailed meeting summary using ONLY bullet points — NO paragraphs, NO prose, NO formal sections.
 
