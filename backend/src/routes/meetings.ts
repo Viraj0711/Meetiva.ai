@@ -307,13 +307,12 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
   if (typeof req.body.transcriptText === 'string' && req.body.transcriptText.trim().length > 0) {
     transcriptText = req.body.transcriptText.trim();
   }
-  // Priority 2: uploaded .txt file — format to add speaker labels and structure
+  // Priority 2: uploaded .txt file — use as-is (already formatted by the user)
   else if (
     req.file &&
     (req.file.mimetype.startsWith('text/') || req.file.originalname.endsWith('.txt'))
   ) {
-    const rawText = req.file.buffer.toString('utf8').trim();
-    transcriptText = await formatTranscript(rawText);
+    transcriptText = req.file.buffer.toString('utf8').trim();
   }
   // Priority 3: audio/video file → Whisper transcription
   else if (req.file && isAudioOrVideoFile(req.file.originalname)) {
