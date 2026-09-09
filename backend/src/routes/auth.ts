@@ -264,7 +264,7 @@ const sendVerificationEmail = async (email: string, otp: string): Promise<void> 
       connectionTimeout: 10000,
       greetingTimeout: 5000,
       socketTimeout: 10000,
-    } as nodemailer.Transporter['options']);
+    } as Parameters<typeof nodemailer.createTransport>[0]);
 
     const emailContent = verificationOtp(otp);
     await Promise.race([
@@ -539,7 +539,7 @@ const sendPasswordResetEmail = async (email: string, token: string): Promise<voi
         pass: smtpPassword,
       },
       family: 4, // Force IPv4 — IPv6 is unreachable in many container/cloud environments
-    } as nodemailer.Transporter['options']);
+    } as Parameters<typeof nodemailer.createTransport>[0]);
 
     const emailContent = passwordReset(resetLink);
     await transporter.sendMail({
@@ -571,7 +571,7 @@ const sendPasswordChangedEmail = async (userId: string): Promise<void> => {
       secure: process.env.SMTP_PORT === '465',
       auth: { user: smtpUser, pass: smtpPassword },
       family: 4, // Force IPv4 — IPv6 is unreachable in many container/cloud environments
-    } as nodemailer.Transporter['options']);
+    } as Parameters<typeof nodemailer.createTransport>[0]);
 
     const emailContent = passwordChanged(user.name || 'there');
     await transporter.sendMail({
