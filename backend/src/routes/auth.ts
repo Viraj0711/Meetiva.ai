@@ -260,10 +260,11 @@ const sendVerificationEmail = async (email: string, otp: string): Promise<void> 
         user: smtpUser,
         pass: smtpPassword,
       },
+      family: 4, // Force IPv4 — IPv6 is unreachable in many container/cloud environments
       connectionTimeout: 10000,
       greetingTimeout: 5000,
       socketTimeout: 10000,
-    });
+    } as nodemailer.Transporter['options']);
 
     const emailContent = verificationOtp(otp);
     await Promise.race([
@@ -537,7 +538,8 @@ const sendPasswordResetEmail = async (email: string, token: string): Promise<voi
         user: smtpUser,
         pass: smtpPassword,
       },
-    });
+      family: 4, // Force IPv4 — IPv6 is unreachable in many container/cloud environments
+    } as nodemailer.Transporter['options']);
 
     const emailContent = passwordReset(resetLink);
     await transporter.sendMail({
@@ -568,7 +570,8 @@ const sendPasswordChangedEmail = async (userId: string): Promise<void> => {
       port: parseInt(process.env.SMTP_PORT || '587', 10),
       secure: process.env.SMTP_PORT === '465',
       auth: { user: smtpUser, pass: smtpPassword },
-    });
+      family: 4, // Force IPv4 — IPv6 is unreachable in many container/cloud environments
+    } as nodemailer.Transporter['options']);
 
     const emailContent = passwordChanged(user.name || 'there');
     await transporter.sendMail({
