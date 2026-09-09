@@ -183,7 +183,7 @@ router.patch('/:id', apiLimiter, authenticate, validate(updateTaskSchema), async
   const { title, description, assignee, dueDate, priority, status } = req.body as z.infer<typeof updateTaskSchema>;
 
   const task = await ActionItem.findOne({
-    _id: new Types.ObjectId(req.params.id),
+    _id: new Types.ObjectId(req.params.id as string),
     userId: new Types.ObjectId(req.userId!),
   }).lean();
 
@@ -230,7 +230,7 @@ router.patch('/:id', apiLimiter, authenticate, validate(updateTaskSchema), async
 
 router.delete('/:id', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const task = await ActionItem.findOne({
-    _id: new Types.ObjectId(req.params.id),
+    _id: new Types.ObjectId(req.params.id as string),
     userId: new Types.ObjectId(req.userId!),
   }).lean();
 
@@ -252,7 +252,7 @@ router.delete('/:id', apiLimiter, authenticate, asyncHandler(async (req: AuthReq
 
 router.post('/:id/complete', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const task = await ActionItem.findOne({
-    _id: new Types.ObjectId(req.params.id),
+    _id: new Types.ObjectId(req.params.id as string),
     userId: new Types.ObjectId(req.userId!),
   }).lean();
 

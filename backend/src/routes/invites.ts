@@ -476,7 +476,7 @@ router.get(
     }
 
     const invites = await InviteToken.find({
-      projectId: new Types.ObjectId(projectId),
+      projectId: new Types.ObjectId(projectId as string),
       usedBy: null,
       expiresAt: { $gt: new Date() },
     })

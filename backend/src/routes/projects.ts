@@ -148,7 +148,7 @@ router.get(
     // Access check
     const hasAccess = await canManageProject(
       req.userId!,
-      req.params.id,
+      (req.params.id as string),
       req.userOrg!
     );
     if (!hasAccess) {
@@ -184,7 +184,7 @@ router.patch(
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    const hasAccess = await canManageProject(req.userId!, req.params.id, req.userOrg!);
+    const hasAccess = await canManageProject(req.userId!, (req.params.id as string), req.userOrg!);
     if (!hasAccess) {
       return res.status(403).json({ message: 'Access denied to this project' });
     }
@@ -262,12 +262,12 @@ router.get(
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    const hasAccess = await canManageProject(req.userId!, req.params.id, req.userOrg!);
+    const hasAccess = await canManageProject(req.userId!, (req.params.id as string), req.userOrg!);
     if (!hasAccess) {
       return res.status(403).json({ message: 'Access denied to this project' });
     }
 
-    const teams = await Team.find({ projectId: new Types.ObjectId(req.params.id) })
+    const teams = await Team.find({ projectId: new Types.ObjectId(req.params.id as string) })
       .sort({ createdAt: -1 })
       .lean();
 

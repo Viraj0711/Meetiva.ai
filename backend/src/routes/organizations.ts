@@ -142,9 +142,9 @@ router.get(
   '/:id',
   apiLimiter,
   authenticate,
-  requireOrgAccess((req) => req.params.id),
+  requireOrgAccess((req) => req.params.id as string),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const org = await Organization.findById(req.params.id).lean();
+    const org = await Organization.findById(req.params.id as string).lean();
     if (!org) {
       return res.status(404).json({ message: 'Organization not found' });
     }
@@ -169,14 +169,14 @@ router.patch(
   '/:id',
   apiLimiter,
   authenticate,
-  requireOrgAccess((req) => req.params.id),
+  requireOrgAccess((req) => req.params.id as string),
   requireOrgRole('admin'),
   validate(updateOrganizationSchema),
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const { name } = req.body as z.infer<typeof updateOrganizationSchema>;
 
     const org = await Organization.findByIdAndUpdate(
-      req.params.id,
+      req.params.id as string,
       { ...(name && { name }) },
       { returnDocument: 'after' }
     ).lean();
@@ -199,11 +199,11 @@ router.get(
   '/:id/users',
   apiLimiter,
   authenticate,
-  requireOrgAccess((req) => req.params.id),
+  requireOrgAccess((req) => req.params.id as string),
   requireOrgRole('admin', 'manager'),
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const users = await User.find({
-      organizationId: new Types.ObjectId(req.params.id),
+      organizationId: new Types.ObjectId(req.params.id as string),
       isRemoved: false,
     })
       .select('email name orgRole isActive isVerified createdAt')
@@ -228,12 +228,12 @@ router.post(
   '/:id/users/provision',
   apiLimiter,
   authenticate,
-  requireOrgAccess((req) => req.params.id),
+  requireOrgAccess((req) => req.params.id as string),
   validate(provisionUserSchema),
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const { email: rawEmail, name, role } = req.body as z.infer<typeof provisionUserSchema>;
     const email = normalizeEmail(rawEmail);
-    const orgId = req.params.id;
+    const orgId = req.params.id as string;
     const creatorOrgRole = req.userOrg!.orgRole;
 
     // Role hierarchy check: who can create whom
@@ -310,9 +310,9 @@ router.get(
   '/:id/seats',
   apiLimiter,
   authenticate,
-  requireOrgAccess((req) => req.params.id),
+  requireOrgAccess((req) => req.params.id as string),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const org = await Organization.findById(req.params.id)
+    const org = await Organization.findById(req.params.id as string)
       .select('seatLimit seatsUsed name')
       .lean();
 
@@ -333,10 +333,10 @@ router.post(
   '/:id/seats/recount',
   apiLimiter,
   authenticate,
-  requireOrgAccess((req) => req.params.id),
+  requireOrgAccess((req) => req.params.id as string),
   requireOrgRole('admin'),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const orgId = req.params.id;
+    const orgId = req.params.id as string;
     const actualCount = await User.countDocuments({
       organizationId: new Types.ObjectId(orgId),
       accountType: 'corporate',
@@ -362,7 +362,7 @@ router.post(
   '/:id/seats/request',
   apiLimiter,
   authenticate,
-  requireOrgAccess((req) => req.params.id),
+  requireOrgAccess((req) => req.params.id as string),
   requireOrgRole('admin'),
   asyncHandler(async (req: AuthRequest, res: Response) => {
     res.json({ message: 'Seat increase request submitted. Our team will review and contact you.' });
@@ -412,7 +412,7 @@ router.patch(
     }
 
     const org = await Organization.findByIdAndUpdate(
-      req.params.id,
+      req.params.id as string,
       { status },
       { returnDocument: 'after' }
     ).lean();
@@ -447,7 +447,7 @@ router.post(
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const { email: rawEmail, name } = req.body as z.infer<typeof addAdminSchema>;
     const email = normalizeEmail(rawEmail);
-    const orgId = req.params.id;
+    const orgId = req.params.id as string;
 
     const org = await Organization.findById(orgId).lean();
     if (!org) {
@@ -520,7 +520,7 @@ router.delete(
   authenticate,
   requireSuperAdmin,
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const org = await Organization.findById(req.params.id).lean();
+    const org = await Organization.findById(req.params.id as string).lean();
     if (!org) {
       return res.status(404).json({ message: 'Organization not found' });
     }
@@ -529,7 +529,7 @@ router.delete(
       return res.status(400).json({ message: 'Only pending organizations can be deleted' });
     }
 
-    await Organization.findByIdAndDelete(req.params.id);
+    await Organization.findByIdAndDelete(req.params.id as string);
 
     log.info('Pending organization deleted', { orgId: req.params.id, by: req.userId });
 
@@ -545,7 +545,7 @@ router.post(
   authenticate,
   requireSuperAdmin,
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const org = await Organization.findById(req.params.id).lean();
+    const org = await Organization.findById(req.params.id as string).lean();
     if (!org) {
       return res.status(404).json({ message: 'Organization not found' });
     }
@@ -618,16 +618,16 @@ router.delete(
   '/:id/managers/:userId',
   apiLimiter,
   authenticate,
-  requireOrgAccess((req) => req.params.id),
+  requireOrgAccess((req) => req.params.id as string),
   requireOrgRole('admin'),
   validate(removeUserSchema),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { userId } = req.params;
+    const { userId } = req.params as { userId: string };
     const { replacementUserId } = req.body as z.infer<typeof removeUserSchema>;
 
     const user = await User.findOne({
       _id: new Types.ObjectId(userId),
-      organizationId: new Types.ObjectId(req.params.id),
+      organizationId: new Types.ObjectId(req.params.id as string),
       orgRole: 'manager',
       isRemoved: false,
     }).lean();
@@ -647,7 +647,7 @@ router.delete(
     // Verify replacement is a manager in the same org
     const replacement = await User.findOne({
       _id: new Types.ObjectId(replacementUserId),
-      organizationId: new Types.ObjectId(req.params.id),
+      organizationId: new Types.ObjectId(req.params.id as string),
       orgRole: 'manager',
       isRemoved: false,
     }).lean();
@@ -680,16 +680,16 @@ router.delete(
   '/:id/projects/:projectId/leaders/:userId',
   apiLimiter,
   authenticate,
-  requireOrgAccess((req) => req.params.id),
+  requireOrgAccess((req) => req.params.id as string),
   requireOrgRole('admin', 'manager'),
   validate(removeUserSchema),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { userId } = req.params;
+    const { userId } = req.params as { userId: string };
     const { replacementUserId } = req.body as z.infer<typeof removeUserSchema>;
 
     const user = await User.findOne({
       _id: new Types.ObjectId(userId),
-      organizationId: new Types.ObjectId(req.params.id),
+      organizationId: new Types.ObjectId(req.params.id as string),
       orgRole: 'team_leader',
       isRemoved: false,
     }).lean();
@@ -709,7 +709,7 @@ router.delete(
     // Verify replacement is in the same org
     const replacement = await User.findOne({
       _id: new Types.ObjectId(replacementUserId),
-      organizationId: new Types.ObjectId(req.params.id),
+      organizationId: new Types.ObjectId(req.params.id as string),
       orgRole: { $in: ['team_leader', 'member'] },
       isRemoved: false,
     }).lean();
@@ -769,7 +769,7 @@ router.patch(
   '/:id/subscription',
   apiLimiter,
   authenticate,
-  requireOrgAccess((req) => req.params.id),
+  requireOrgAccess((req) => req.params.id as string),
   requireOrgRole('admin'),
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const { plan } = req.body as { plan?: string };
@@ -778,7 +778,7 @@ router.patch(
     }
 
     const org = await Organization.findByIdAndUpdate(
-      req.params.id,
+      req.params.id as string,
       {
         subscriptionPlan: { $eq: plan },
         subscriptionStatus: 'active',
@@ -808,7 +808,7 @@ router.get(
   '/:id/disposition',
   apiLimiter,
   authenticate,
-  requireOrgAccess((req) => req.params.id),
+  requireOrgAccess((req) => req.params.id as string),
   requireOrgRole('admin', 'manager', 'team_leader'),
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const removedUserId = req.query.removedUserId as string;
@@ -849,12 +849,12 @@ router.patch(
       return res.status(400).json({ message: 'newUserId is required' });
     }
 
-    const meeting = await Meeting.findById(req.params.meetingId).lean();
+    const meeting = await Meeting.findById(req.params.meetingId as string).lean();
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
     }
 
-    await Meeting.findByIdAndUpdate(req.params.meetingId, { userId: newUserId });
+    await Meeting.findByIdAndUpdate(req.params.meetingId as string, { userId: newUserId });
 
     res.json({ message: 'Meeting reassigned' });
   })
@@ -873,12 +873,12 @@ router.patch(
       return res.status(400).json({ message: 'newUserId is required' });
     }
 
-    const task = await ActionItem.findById(req.params.taskId).lean();
+    const task = await ActionItem.findById(req.params.taskId as string).lean();
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    await ActionItem.findByIdAndUpdate(req.params.taskId, { userId: newUserId });
+    await ActionItem.findByIdAndUpdate(req.params.taskId as string, { userId: newUserId });
 
     res.json({ message: 'Task reassigned' });
   })

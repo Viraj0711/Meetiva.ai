@@ -268,7 +268,7 @@ router.get('/chat/stats', apiLimiter, authenticate, asyncHandler(async (req: Aut
 
 // Get a specific team for current user
 router.get('/:teamId', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { teamId } = req.params;
+  const { teamId } = req.params as { teamId: string };
 
   const membership = await getAcceptedMembership(teamId, req.userId!);
   if (!membership || membership.status !== 'ACCEPTED') {
@@ -294,7 +294,7 @@ router.get('/:teamId', apiLimiter, authenticate, asyncHandler(async (req: AuthRe
 
 // Get team chat messages for follow-up discussion
 router.get('/:teamId/chat/messages', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { teamId } = req.params;
+  const { teamId } = req.params as { teamId: string };
   const limitInput = parseInt((req.query.limit as string) || '50', 10);
   const limit = Number.isNaN(limitInput) ? 50 : Math.min(Math.max(limitInput, 1), 200);
   const before = req.query.before as string | undefined;
@@ -355,7 +355,7 @@ router.post(
   authenticate,
   validate(chatMessageSchema),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { teamId } = req.params;
+    const { teamId } = req.params as { teamId: string };
     const membership = await getAcceptedMembership(teamId, req.userId!);
     if (!membership || membership.status !== 'ACCEPTED') {
       return res.status(403).json({ message: 'Not a member of this team' });
@@ -392,7 +392,7 @@ router.get(
   apiLimiter,
   authenticate,
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { teamId } = req.params;
+    const { teamId } = req.params as { teamId: string };
 
     // Check if user is member of this team
     const userMembership = await TeamMember.findOne({
@@ -429,7 +429,7 @@ router.post(
   authenticate,
   validate(inviteMemberSchema),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { teamId } = req.params;
+    const { teamId } = req.params as { teamId: string };
     const rawInviteEmail = String(req.body.email);
     const normalizedEmail = normalizeEmail(rawInviteEmail);
 
@@ -635,7 +635,7 @@ router.post(
   apiLimiter,
   authenticate,
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { teamId, userId } = req.params;
+    const { teamId, userId } = req.params as { teamId: string; userId: string };
 
     // Check requester is a LEAD of this team
     const requesterMembership = await TeamMember.findOne({
@@ -693,7 +693,7 @@ router.post(
   apiLimiter,
   authenticate,
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { teamId, userId } = req.params;
+    const { teamId, userId } = req.params as { teamId: string; userId: string };
 
     // Check requester is a LEAD of this team
     const requesterMembership = await TeamMember.findOne({
@@ -743,7 +743,7 @@ router.get(
   apiLimiter,
   authenticate,
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { teamId } = req.params;
+    const { teamId } = req.params as { teamId: string };
 
     // Check requester is a LEAD of this team
     const requesterMembership = await TeamMember.findOne({
@@ -781,7 +781,7 @@ router.patch(
   authenticate,
   validate(updateMemberRoleSchema),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { teamId, userId } = req.params;
+    const { teamId, userId } = req.params as { teamId: string; userId: string };
     const { role } = req.body as z.infer<typeof updateMemberRoleSchema>;
 
     const requesterMembership = await TeamMember.findOne({
@@ -834,7 +834,7 @@ router.patch(
   authenticate,
   validate(updateMemberProfileSchema),
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { teamId, userId } = req.params;
+    const { teamId, userId } = req.params as { teamId: string; userId: string };
     const { name, email } = req.body as z.infer<typeof updateMemberProfileSchema>;
 
     const requesterMembership = await TeamMember.findOne({
@@ -894,7 +894,7 @@ router.post(
   apiLimiter,
   authenticate,
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { teamId, userId } = req.params;
+    const { teamId, userId } = req.params as { teamId: string; userId: string };
 
     const requesterMembership = await TeamMember.findOne({
       userId: new Types.ObjectId(req.userId!),
@@ -953,7 +953,7 @@ router.delete(
   apiLimiter,
   authenticate,
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const { teamId, userId } = req.params;
+    const { teamId, userId } = req.params as { teamId: string; userId: string };
 
     // Check if requester is member of this team - always verify from DB instead of JWT
     const requesterMembership = await TeamMember.findOne({
@@ -996,7 +996,7 @@ router.delete(
 
 // Delete a team created by the current user or a team leader/manager with access.
 router.delete('/:teamId', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { teamId } = req.params;
+  const { teamId } = req.params as { teamId: string };
 
   const requesterMembership = await TeamMember.findOne({
     userId: new Types.ObjectId(req.userId!),

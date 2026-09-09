@@ -960,7 +960,7 @@ router.patch('/:id', apiLimiter, authenticate, validate(updateMeetingSchema), as
 
   await Meeting.findByIdAndUpdate(req.params.id, { $set: updateData });
 
-  await syncMeetingStatusFromTasks(req.params.id);
+  await syncMeetingStatusFromTasks(req.params.id as string);
 
   const refreshed = await Meeting.findById(req.params.id).lean();
 
