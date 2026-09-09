@@ -63,7 +63,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.4.1",
-    "@types/nodemailer": "^8.0.1",
     "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^7.2.0",
     "mongodb-memory-server": "^11.2.0",
