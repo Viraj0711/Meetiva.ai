@@ -845,16 +845,18 @@ router.patch(
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const { newUserId } = req.body as { newUserId?: string };
 
-    if (!newUserId) {
-      return res.status(400).json({ message: 'newUserId is required' });
+    if (typeof newUserId !== 'string' || !Types.ObjectId.isValid(newUserId)) {
+      return res.status(400).json({ message: 'Valid newUserId is required' });
     }
+
+    const sanitizedNewUserId = new Types.ObjectId(newUserId).toString();
 
     const meeting = await Meeting.findById(req.params.meetingId as string).lean();
     if (!meeting) {
       return res.status(404).json({ message: 'Meeting not found' });
     }
 
-    await Meeting.findByIdAndUpdate(req.params.meetingId as string, { userId: newUserId });
+    await Meeting.findByIdAndUpdate(req.params.meetingId as string, { userId: sanitizedNewUserId });
 
     res.json({ message: 'Meeting reassigned' });
   })
@@ -869,16 +871,18 @@ router.patch(
   asyncHandler(async (req: AuthRequest, res: Response) => {
     const { newUserId } = req.body as { newUserId?: string };
 
-    if (!newUserId) {
-      return res.status(400).json({ message: 'newUserId is required' });
+    if (typeof newUserId !== 'string' || !Types.ObjectId.isValid(newUserId)) {
+      return res.status(400).json({ message: 'Valid newUserId is required' });
     }
+
+    const sanitizedNewUserId = new Types.ObjectId(newUserId).toString();
 
     const task = await ActionItem.findById(req.params.taskId as string).lean();
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    await ActionItem.findByIdAndUpdate(req.params.taskId as string, { userId: newUserId });
+    await ActionItem.findByIdAndUpdate(req.params.taskId as string, { userId: sanitizedNewUserId });
 
     res.json({ message: 'Task reassigned' });
   })
