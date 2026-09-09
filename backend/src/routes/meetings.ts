@@ -307,7 +307,7 @@ router.post('/upload', uploadLimiter, authenticate, upload.single('file'), handl
   if (typeof req.body.transcriptText === 'string' && req.body.transcriptText.trim().length > 0) {
     transcriptText = req.body.transcriptText.trim();
   }
-  // Priority 2: uploaded .txt file
+  // Priority 2: uploaded .txt file — use as-is (already formatted by the user)
   else if (
     req.file &&
     (req.file.mimetype.startsWith('text/') || req.file.originalname.endsWith('.txt'))
@@ -960,7 +960,7 @@ router.patch('/:id', apiLimiter, authenticate, validate(updateMeetingSchema), as
 
   await Meeting.findByIdAndUpdate(req.params.id, { $set: updateData });
 
-  await syncMeetingStatusFromTasks(req.params.id);
+  await syncMeetingStatusFromTasks(req.params.id as string);
 
   const refreshed = await Meeting.findById(req.params.id).lean();
 

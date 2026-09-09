@@ -52,7 +52,7 @@ router.get(
 
 router.patch('/:id/read', apiLimiter, authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const target = await Notification.findOne({
-    _id: new Types.ObjectId(req.params.id),
+    _id: new Types.ObjectId(req.params.id as string),
     userId: new Types.ObjectId(req.userId!),
   })
     .select('_id')
