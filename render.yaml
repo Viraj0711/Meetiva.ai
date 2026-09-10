@@ -22,11 +22,11 @@ services:
     plan: free
     buildCommand: >
       npm i -g npm@11 &&
-      rm -f package-lock.json &&
+      rm -rf node_modules package-lock.json &&
       npm install --include=dev &&
       npm run build:shared &&
       npm run build:frontend &&
-      cd backend && rm -f package-lock.json && npm install --include=dev && npm run build
+      cd backend && rm -rf node_modules package-lock.json && npm install --include=dev && npm run build
     startCommand: node backend/dist/index.js
     healthCheckPath: /health
     autoDeploy: true
