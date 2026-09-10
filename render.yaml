@@ -20,14 +20,12 @@ services:
     name: meetiva
     runtime: node
     plan: free
-    buildCommand: |
-      # Pin the latest stable npm so lockfiles (npm-11 format) install cleanly
-      # regardless of the Node runtime Render bundles (Node 20/24 ship npm 10/11).
-      npm i -g npm@11
-      npm ci --include=dev
-      cd shared && npx tsc
-      cd ../frontend && npm run build
-      cd ../backend && npm ci --include=dev && npx tsc
+    buildCommand: >
+      npm i -g npm@11 &&
+      npm install --include=dev &&
+      npm run build:shared &&
+      npm run build:frontend &&
+      cd backend && npm install --include=dev && npm run build
     startCommand: node backend/dist/index.js
     healthCheckPath: /health
     autoDeploy: true
