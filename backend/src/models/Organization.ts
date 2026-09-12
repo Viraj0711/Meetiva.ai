@@ -37,6 +37,5 @@ const organizationSchema = new Schema<IOrganization>(
 );
 
 organizationSchema.index({ adminUserId: 1 });
-organizationSchema.index({ slug: 1 });
 
 export default mongoose.model<IOrganization>('Organization', organizationSchema);

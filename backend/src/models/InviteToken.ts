@@ -17,7 +17,7 @@ export interface IInviteToken extends Document {
 
 const inviteTokenSchema = new Schema<IInviteToken>(
   {
-    token: { type: String, required: true, unique: true, index: true },
+    token: { type: String, required: true, unique: true },
     type: {
       type: String,
       enum: ['project_manager', 'team_leader', 'team_member'],
@@ -42,7 +42,6 @@ const inviteTokenSchema = new Schema<IInviteToken>(
 
 // TTL index: automatically clean up expired tokens
 inviteTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-inviteTokenSchema.index({ token: 1 });
 inviteTokenSchema.index({ organizationId: 1 });
 
 export default mongoose.model<IInviteToken>('InviteToken', inviteTokenSchema);
